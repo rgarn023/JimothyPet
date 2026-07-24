@@ -1,55 +1,38 @@
 # Jimothy
 
-A Tamagotchi-style virtual pet you can play in the **browser** or install on **Android** (and other phones) as a Progressive Web App. Raise **Jimothy the raccoon** through egg → hatchling → kit → teen → adult.
+Tamagotchi-style virtual pet starring **Jimothy the raccoon** (viral short-spine look at adult stage).
 
-## Play (web)
+## Play in Godot 4.7.1 (recommended for Android)
+
+The game is set up as a **Godot 4.7.1** project:
+
+```text
+godot/project.godot
+```
+
+1. Install [Godot 4.7.1](https://godotengine.org/download/archive/4.7.1-stable/)
+2. Open / import the `godot/` folder
+3. Press **Play (F5)**
+
+See [`godot/README.md`](godot/README.md) for Android APK export and details.
+
+## Play in browser (optional web build)
+
+A standalone HTML version also lives at the repo root:
 
 ```bash
 npm start
 # open http://localhost:8080
 ```
 
-Or open the folder with any static file server. For install / offline on a phone, the site must be served over **HTTPS** (or localhost).
-
-## Install on Android
-
-1. Open the site in **Chrome**
-2. Tap the menu → **Install app** / **Add to Home screen**
-3. Jimothy opens fullscreen like a native app and keeps working offline
-
-Same codebase — no separate Android project required for day-to-day play. For a Play Store `.apk` / `.aab` later, this static app can be wrapped with Capacitor or a Trusted Web Activity.
-
-## Real-time care
-
-Jimothy tracks **wall-clock time**:
-
-- While open, meters and age update every second
-- When you leave and come back (or reopen the installed app), **all** elapsed real time is applied — no 1-hour cap
-- Progress is saved in `localStorage` (and the PWA cache keeps the app shell available offline)
-
-Leaving him alone too long can drain meters and send him back to the woods, just like a classic pet.
-
 ## Care
 
 | Action | What it does |
 | --- | --- |
-| **Feed** | Healthy meals (Berry Bundle, Crunchy Acorns) or treats (Pizza Crust, Dumpster Fries) |
-| **Play** | **Dumpster Dive** mini-game — catch raccoon treasures, dodge rotten scraps |
-| **Scold** | Discipline Jimothy when he refuses healthy food or exercise |
-| **Clean** | Clear messes before they hurt health and happiness |
+| **Feed** | Healthy meals or raccoon treats |
+| **Play** | **Dumpster Dive** mini-game |
+| **Scold** | Discipline when he acts up |
+| **Clean** | Clear messes |
 
-## Growth
-
-1. **Mystery Egg** — warms and hatches on its own  
-2. **Peep Jimothy** — hatchling  
-3. **Kit Jimothy** — playful kit  
-4. **Teen Jimothy** — sassier, more refusals  
-5. **Adult** — the viral short-spine look (**Saint Jimothy** with good care, or **Legend Jimothy** on the chaos path)
-
-## Stack
-
-Static HTML, CSS, and vanilla JavaScript with a small service worker + web app manifest (PWA). No build step for the game itself.
-
-```bash
-npm test   # optional Playwright smoke test (needs Chrome)
-```
+Growth: Egg → Hatchling → Kit → Teen → Adult (**Saint Jimothy** / **Legend Jimothy**).  
+Time is tracked in real time (including while you’re away).
