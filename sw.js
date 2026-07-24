@@ -1,5 +1,5 @@
 /* Jimothy service worker — offline shell for installed web / Android PWA */
-const CACHE = "jimothy-v1";
+const CACHE = "jimothy-v2";
 const ASSETS = [
   "./",
   "./index.html",

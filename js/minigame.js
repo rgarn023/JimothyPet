@@ -299,43 +299,56 @@ const DumpsterDive = (() => {
   function drawPlayer(x, y) {
     ctx.save();
     ctx.translate(x, y);
-    // body
-    ctx.fillStyle = "#6f6f78";
+    // Short-spine Jimothy: round body, long legs, almost no neck
+    ctx.strokeStyle = "#4f4f58";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.ellipse(0, 4, 22, 16, 0, 0, Math.PI * 2);
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(-18, 16);
+    ctx.moveTo(-4, 2);
+    ctx.lineTo(-6, 18);
+    ctx.moveTo(4, 2);
+    ctx.lineTo(6, 18);
+    ctx.moveTo(12, 0);
+    ctx.lineTo(18, 16);
+    ctx.stroke();
+    ctx.fillStyle = "#3a3a44";
+    ctx.beginPath();
+    ctx.ellipse(-18, 18, 5, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(-6, 20, 5, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(6, 20, 5, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(18, 18, 5, 3, 0, 0, Math.PI * 2);
     ctx.fill();
-    // head
-    ctx.fillStyle = "#7a7a84";
+    // round body / head fused
+    ctx.fillStyle = "#6a6a74";
     ctx.beginPath();
-    ctx.arc(0, -14, 14, 0, Math.PI * 2);
+    ctx.ellipse(0, -4, 20, 17, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // ears
+    ctx.fillStyle = "#4a4a54";
+    ctx.beginPath();
+    ctx.ellipse(-12, -18, 4, 6, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(12, -18, 4, 6, 0.15, 0, Math.PI * 2);
     ctx.fill();
     // mask
-    ctx.fillStyle = "#222228";
+    ctx.fillStyle = "#1c1c22";
     ctx.beginPath();
-    ctx.ellipse(0, -12, 12, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -6, 14, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    // eyes
     ctx.fillStyle = "#f7f3e8";
     ctx.beginPath();
-    ctx.arc(-5, -13, 2.5, 0, Math.PI * 2);
-    ctx.arc(5, -13, 2.5, 0, Math.PI * 2);
+    ctx.arc(-5, -7, 2.6, 0, Math.PI * 2);
+    ctx.arc(5, -7, 2.6, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#121214";
     ctx.beginPath();
-    ctx.arc(-4.5, -12.5, 1.2, 0, Math.PI * 2);
-    ctx.arc(5.5, -12.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(-4.5, -6.5, 1.2, 0, Math.PI * 2);
+    ctx.arc(5.5, -6.5, 1.2, 0, Math.PI * 2);
     ctx.fill();
-    // ears
-    ctx.fillStyle = "#55555e";
+    ctx.fillStyle = "#c9a292";
     ctx.beginPath();
-    ctx.ellipse(-10, -24, 4, 6, -0.2, 0, Math.PI * 2);
-    ctx.ellipse(10, -24, 4, 6, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    // paws
-    ctx.fillStyle = "#5c5c64";
-    ctx.beginPath();
-    ctx.ellipse(-16, 14, 7, 5, 0, 0, Math.PI * 2);
-    ctx.ellipse(16, 14, 7, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -1, 4, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

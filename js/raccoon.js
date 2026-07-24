@@ -54,61 +54,102 @@ const RaccoonArt = (() => {
       <circle cx="88" cy="68" r="6" fill="#d9c4a8" opacity="0.35"/>
     `);
 
+  // Teen starts rounding out — foreshadowing the short-spine legend.
   const teen = () =>
     svg(`
-      <ellipse cx="60" cy="100" rx="34" ry="8" fill="#000" opacity="0.2"/>
-      <path d="M90 72 Q112 58 108 86 Q98 102 84 92" fill="#63636c"/>
-      <path d="M96 78 Q104 74 102 84" fill="none" stroke="#9a9aa4" stroke-width="3" stroke-linecap="round"/>
-      <ellipse cx="58" cy="74" rx="36" ry="30" fill="#6a6a74"/>
-      <circle cx="58" cy="40" r="27" fill="#767680"/>
-      <ellipse cx="34" cy="20" rx="10" ry="15" fill="#4f4f58"/>
-      <ellipse cx="82" cy="20" rx="10" ry="15" fill="#4f4f58"/>
-      <ellipse cx="34" cy="20" rx="5.5" ry="9" fill="#e6d0b4"/>
-      <ellipse cx="82" cy="20" rx="5.5" ry="9" fill="#e6d0b4"/>
-      <ellipse cx="58" cy="44" rx="23" ry="14" fill="#222228"/>
-      <circle cx="46" cy="40" r="4.5" fill="#f8f4ea"/>
-      <circle cx="70" cy="40" r="4.5" fill="#f8f4ea"/>
-      <circle cx="47" cy="40.5" r="2.2" fill="#121214"/>
-      <circle cx="71" cy="40.5" r="2.2" fill="#121214"/>
-      <circle cx="45.5" cy="39" r="1" fill="#fff" opacity="0.7"/>
-      <circle cx="69.5" cy="39" r="1" fill="#fff" opacity="0.7"/>
-      <ellipse cx="58" cy="50" rx="6.5" ry="4" fill="#c9a292"/>
-      <path d="M52 56 Q58 61 64 56" fill="none" stroke="#1e1e24" stroke-width="1.8"/>
-      <ellipse cx="38" cy="92" rx="10" ry="7" fill="#55555e"/>
-      <ellipse cx="78" cy="92" rx="10" ry="7" fill="#55555e"/>
-      <path d="M40 68 Q28 74 32 86" fill="none" stroke="#5a5a64" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="60" cy="104" rx="30" ry="7" fill="#000" opacity="0.2"/>
+      <path d="M86 62 Q108 48 104 78 Q94 92 80 80" fill="#63636c"/>
+      <path d="M92 66 Q100 62 98 74 M94 72 Q102 68 100 80" fill="none" stroke="#9a9aa4" stroke-width="2.8" stroke-linecap="round"/>
+      <!-- longer legs -->
+      <path d="M42 70 L36 98" stroke="#55555e" stroke-width="5.5" stroke-linecap="round"/>
+      <path d="M54 72 L50 100" stroke="#5c5c64" stroke-width="5.5" stroke-linecap="round"/>
+      <path d="M68 72 L72 100" stroke="#5c5c64" stroke-width="5.5" stroke-linecap="round"/>
+      <path d="M78 70 L86 98" stroke="#55555e" stroke-width="5.5" stroke-linecap="round"/>
+      <ellipse cx="36" cy="100" rx="7" ry="4" fill="#4a4a54"/>
+      <ellipse cx="50" cy="102" rx="7" ry="4" fill="#4a4a54"/>
+      <ellipse cx="72" cy="102" rx="7" ry="4" fill="#4a4a54"/>
+      <ellipse cx="86" cy="100" rx="7" ry="4" fill="#4a4a54"/>
+      <!-- compact round body + head almost fused -->
+      <ellipse cx="60" cy="58" rx="30" ry="26" fill="#6a6a74"/>
+      <circle cx="60" cy="48" r="22" fill="#767680"/>
+      <ellipse cx="42" cy="30" rx="8" ry="12" fill="#4f4f58"/>
+      <ellipse cx="78" cy="30" rx="8" ry="12" fill="#4f4f58"/>
+      <ellipse cx="42" cy="30" rx="4.5" ry="7" fill="#e6d0b4"/>
+      <ellipse cx="78" cy="30" rx="4.5" ry="7" fill="#e6d0b4"/>
+      <ellipse cx="60" cy="50" rx="18" ry="12" fill="#222228"/>
+      <circle cx="50" cy="47" r="4" fill="#f8f4ea"/>
+      <circle cx="70" cy="47" r="4" fill="#f8f4ea"/>
+      <circle cx="51" cy="47.5" r="2" fill="#121214"/>
+      <circle cx="71" cy="47.5" r="2" fill="#121214"/>
+      <ellipse cx="60" cy="56" rx="5.5" ry="3.5" fill="#c9a292"/>
+      <path d="M54 60 Q60 64 66 60" fill="none" stroke="#1e1e24" stroke-width="1.6"/>
     `);
 
+  /**
+   * Adult Jimothy — the viral short-spine silhouette:
+   * round compact body, almost no neck, long spindly legs.
+   */
   const adult = (variant = "noble") => {
     const accent = variant === "rascal" ? "#d9844a" : "#6fbf84";
-    const smirk =
+    const mouth =
       variant === "rascal"
-        ? `<path d="M50 56 Q58 54 66 58" fill="none" stroke="#1e1e24" stroke-width="2"/>`
-        : `<path d="M50 56 Q58 62 66 56" fill="none" stroke="#1e1e24" stroke-width="2"/>`;
+        ? `<path d="M54 52 Q60 50 66 54" fill="none" stroke="#1e1e24" stroke-width="1.8"/>`
+        : `<path d="M54 53 Q60 57 66 53" fill="none" stroke="#1e1e24" stroke-width="1.8"/>`;
+    const flair =
+      variant === "rascal"
+        ? `<g opacity="0.9">
+            <path d="M78 40 l10 14 -12 2 z" fill="#e0a04a"/>
+            <path d="M80 44 h8" stroke="#c45c4a" stroke-width="2"/>
+          </g>`
+        : `<g opacity="0.85">
+            <ellipse cx="78" cy="36" rx="7" ry="4" fill="${accent}" transform="rotate(-20 78 36)"/>
+            <path d="M72 36 Q78 28 84 36" fill="none" stroke="#3d6b4f" stroke-width="1.5"/>
+          </g>`;
+
     return svg(`
-      <ellipse cx="60" cy="104" rx="38" ry="8" fill="#000" opacity="0.22"/>
-      <path d="M92 70 Q118 50 114 84 Q104 108 86 94" fill="#5e5e68"/>
-      <path d="M98 76 Q108 68 106 82 M100 84 Q108 78 106 90" fill="none" stroke="#a0a0aa" stroke-width="3.2" stroke-linecap="round"/>
-      <ellipse cx="56" cy="72" rx="40" ry="34" fill="#686872"/>
-      <circle cx="56" cy="36" r="30" fill="#74747e"/>
-      <ellipse cx="30" cy="14" rx="11" ry="16" fill="#4a4a54"/>
-      <ellipse cx="82" cy="14" rx="11" ry="16" fill="#4a4a54"/>
-      <ellipse cx="30" cy="14" rx="6" ry="10" fill="#e8d2b6"/>
-      <ellipse cx="82" cy="14" rx="6" ry="10" fill="#e8d2b6"/>
-      <ellipse cx="56" cy="40" rx="25" ry="15" fill="#1f1f26"/>
-      <circle cx="43" cy="36" r="5" fill="#faf6ec"/>
-      <circle cx="69" cy="36" r="5" fill="#faf6ec"/>
-      <circle cx="44.2" cy="36.6" r="2.4" fill="#101014"/>
-      <circle cx="70.2" cy="36.6" r="2.4" fill="#101014"/>
-      <circle cx="42.5" cy="35" r="1.1" fill="#fff" opacity="0.75"/>
-      <circle cx="68.5" cy="35" r="1.1" fill="#fff" opacity="0.75"/>
-      <ellipse cx="56" cy="47" rx="7.5" ry="4.5" fill="#c9a292"/>
-      ${smirk}
-      <ellipse cx="34" cy="94" rx="12" ry="8" fill="#505058"/>
-      <ellipse cx="78" cy="94" rx="12" ry="8" fill="#505058"/>
-      <path d="M34 66 Q18 74 24 90" fill="none" stroke="#565660" stroke-width="8" stroke-linecap="round"/>
-      <circle cx="78" cy="62" r="7" fill="${accent}" opacity="0.55"/>
-      <path d="M74 58 L82 58 M78 54 L78 62" stroke="#142019" stroke-width="1.5" opacity="0.35"/>
+      <ellipse cx="60" cy="108" rx="34" ry="6" fill="#000" opacity="0.22"/>
+
+      <!-- ringed tail out back -->
+      <path d="M88 58 Q112 42 108 70 Q100 86 84 74" fill="#5a5a64"/>
+      <path d="M94 56 Q104 48 102 62 M96 64 Q106 58 104 72 M98 72 Q106 68 104 80"
+            fill="none" stroke="#b0b0ba" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- long front + hind legs (the signature lope) -->
+      <path d="M40 62 L28 102" stroke="#4f4f58" stroke-width="6" stroke-linecap="round"/>
+      <path d="M52 66 L46 104" stroke="#5a5a64" stroke-width="6" stroke-linecap="round"/>
+      <path d="M68 66 L74 104" stroke="#5a5a64" stroke-width="6" stroke-linecap="round"/>
+      <path d="M80 62 L94 102" stroke="#4f4f58" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="28" cy="104" rx="8" ry="4.5" fill="#3a3a44"/>
+      <ellipse cx="46" cy="106" rx="8" ry="4.5" fill="#3a3a44"/>
+      <ellipse cx="74" cy="106" rx="8" ry="4.5" fill="#3a3a44"/>
+      <ellipse cx="94" cy="104" rx="8" ry="4.5" fill="#3a3a44"/>
+
+      <!-- one round potato body — head fused, short spine silhouette -->
+      <ellipse cx="60" cy="52" rx="34" ry="30" fill="#6a6a74"/>
+      <ellipse cx="48" cy="44" rx="10" ry="8" fill="#7a7a84" opacity="0.35"/>
+
+      <!-- ears perched on the orb -->
+      <ellipse cx="38" cy="26" rx="8" ry="12" fill="#4a4a54"/>
+      <ellipse cx="82" cy="26" rx="8" ry="12" fill="#4a4a54"/>
+      <ellipse cx="38" cy="26" rx="4.5" ry="7" fill="#e2cdb2"/>
+      <ellipse cx="82" cy="26" rx="4.5" ry="7" fill="#e2cdb2"/>
+
+      <!-- bandit mask across the front of the round body -->
+      <ellipse cx="60" cy="46" rx="22" ry="13" fill="#1c1c22"/>
+      <circle cx="48" cy="44" r="5" fill="#faf6ec"/>
+      <circle cx="72" cy="44" r="5" fill="#faf6ec"/>
+      <circle cx="49.2" cy="44.6" r="2.4" fill="#101014"/>
+      <circle cx="73.2" cy="44.6" r="2.4" fill="#101014"/>
+      <circle cx="47.5" cy="43" r="1.1" fill="#fff" opacity="0.8"/>
+      <circle cx="71.5" cy="43" r="1.1" fill="#fff" opacity="0.8"/>
+
+      <ellipse cx="60" cy="54" rx="6.5" ry="4" fill="#c9a292"/>
+      ${mouth}
+      ${flair}
+
+      <!-- tiny whisker ticks -->
+      <path d="M40 52 h-8 M40 56 h-7 M80 52 h8 M80 56 h7"
+            stroke="#d0d0d8" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
     `);
   };
 

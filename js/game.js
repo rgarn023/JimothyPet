@@ -242,14 +242,18 @@
         state.healthyMeals >= 3 &&
         state.discipline >= 45;
       state.adultVariant = goodCare ? "noble" : "rascal";
-      const title = goodCare ? "Noble Jimothy" : "Rascal Jimothy";
+      const title = goodCare ? "Saint Jimothy" : "Legend Jimothy";
       STAGE_META.adult.name = title;
-      say(goodCare ? "He became Noble Jimothy!" : "He became Rascal Jimothy!");
+      say(
+        goodCare
+          ? "Behold — Saint Jimothy, short-spine legend!"
+          : "Behold — Legend Jimothy, Ballard’s dumpster cryptid!"
+      );
       showMessage(
         "Fully Grown!",
         goodCare
-          ? "Your care paid off — Noble Jimothy tip-toes with class (and still steals snacks)."
-          : "Chaos wins — Rascal Jimothy is a dumpster legend with a mischievous streak."
+          ? "He grew into the famous look: round body, long lope, zero neck. Saint Jimothy has entered the chat."
+          : "He grew into the famous look: round body, long lope, zero neck. Legend Jimothy is ready for the headlines."
       );
     }
     if (prev !== state.stage) save();
@@ -308,7 +312,7 @@
     $("ageLabel").textContent = formatAge();
     const meta = STAGE_META[state.stage];
     if (state.stage === "adult") {
-      meta.name = state.adultVariant === "noble" ? "Noble Jimothy" : "Rascal Jimothy";
+      meta.name = state.adultVariant === "noble" ? "Saint Jimothy" : "Legend Jimothy";
     }
     $("stageChip").textContent = meta.label;
     $("stageName").textContent = state.alive ? meta.name : "Gone to the woods…";
@@ -321,6 +325,10 @@
     const wrap = $("raccoonWrap");
     wrap.classList.toggle("stubborn", state.stubborn && state.alive);
     wrap.classList.toggle("sick", state.sick && state.alive);
+    wrap.classList.toggle(
+      "jimothy-lope",
+      state.alive && state.stage === "adult" && !state.stubborn && !state.sick
+    );
     $("raccoon").dataset.stage = state.stage;
     $("raccoon").dataset.mood = state.stubborn ? "stubborn" : state.sick ? "sick" : "idle";
     $("raccoon").innerHTML = state.alive
@@ -577,13 +585,14 @@
     wireIcons();
     bind();
     load();
+    save({ touchTick: false });
     if (!localStorage.getItem(STORAGE_KEY)) {
       say("A warm egg. Something wiggles inside…");
     }
     // Ensure adult name meta is correct after load
     if (state.stage === "adult") {
       STAGE_META.adult.name =
-        state.adultVariant === "noble" ? "Noble Jimothy" : "Rascal Jimothy";
+        state.adultVariant === "noble" ? "Saint Jimothy" : "Legend Jimothy";
     }
     render();
     if (!state.alive) {

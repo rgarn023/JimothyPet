@@ -44,7 +44,7 @@ Leaving him alone too long can drain meters and send him back to the woods, just
 2. **Peep Jimothy** — hatchling  
 3. **Kit Jimothy** — playful kit  
 4. **Teen Jimothy** — sassier, more refusals  
-5. **Adult** — **Noble Jimothy** (good care) or **Rascal Jimothy** (chaos path)
+5. **Adult** — the viral short-spine look (**Saint Jimothy** with good care, or **Legend Jimothy** on the chaos path)
 
 ## Stack
 
