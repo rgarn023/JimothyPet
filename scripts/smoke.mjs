@@ -90,6 +90,38 @@ await page.evaluate(() => {
 await page.click("#btnDiscipline", { force: true });
 const scoldDisabledAfter = await page.locator("#btnDiscipline").isDisabled();
 
+// Real-time catch-up should apply more than 1 hour (old 3600s cap removed).
+const realtime = await page.evaluate(() => {
+  const before = window.JimothyDebug.getState();
+  window.JimothyDebug.setState({
+    lastTick: Date.now() - 2 * 60 * 60 * 1000,
+    hunger: 100,
+    happy: 100,
+    health: 100,
+    alive: true,
+    hasMess: false,
+    stubborn: false,
+    ageSec: before.ageSec,
+  });
+  const elapsed = window.JimothyDebug.syncRealtime();
+  const after = window.JimothyDebug.getState();
+  return {
+    elapsed,
+    ageBefore: before.ageSec,
+    ageAfter: after.ageSec,
+    hungerAfter: after.hunger,
+    uncapped: elapsed >= 7200,
+    hungerDropped: after.hunger < 100,
+  };
+});
+
+const manifestOk = await page.evaluate(async () => {
+  const res = await fetch("./manifest.webmanifest");
+  if (!res.ok) return false;
+  const data = await res.json();
+  return data.short_name === "Jimothy" && Array.isArray(data.icons);
+});
+
 await page.screenshot({
   path: "/opt/cursor/artifacts/screenshots/jimothy-after-care.png",
   fullPage: true,
@@ -105,6 +137,8 @@ const summary = {
   cleanEnabledWithMess: !cleanDisabled,
   cleanDisabledAfterClean: cleanDisabledAfter,
   scoldDisabledAfterDiscipline: scoldDisabledAfter,
+  realtime,
+  manifestOk,
   errors,
 };
 summary.ok =
@@ -114,7 +148,10 @@ summary.ok =
   summary.feedEnabledOnKit &&
   summary.cleanEnabledWithMess &&
   summary.cleanDisabledAfterClean &&
-  summary.scoldDisabledAfterDiscipline;
+  summary.scoldDisabledAfterDiscipline &&
+  summary.realtime.uncapped &&
+  summary.realtime.hungerDropped &&
+  summary.manifestOk;
 
 console.log(JSON.stringify(summary, null, 2));
 if (!summary.ok) process.exit(1);

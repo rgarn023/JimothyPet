@@ -94,18 +94,36 @@
       if (!raw) return;
       const saved = JSON.parse(raw);
       Object.assign(state, saved);
-      // Apply offline decay
-      const now = Date.now();
-      const elapsed = Math.min(60 * 60, Math.floor((now - (state.lastTick || now)) / 1000));
-      if (elapsed > 0 && state.alive) applyDecay(elapsed);
-      state.lastTick = now;
+      // Catch up to real wall-clock time (no cap).
+      syncRealtime({ announceDeath: false });
     } catch {
       /* fresh pet */
     }
   }
 
-  function save() {
-    state.lastTick = Date.now();
+  /**
+   * Apply all elapsed real-world seconds since lastTick.
+   * Works for browser tabs, installed PWAs, and Android wrappers.
+   */
+  function syncRealtime({ announceDeath = true } = {}) {
+    const now = Date.now();
+    const last = state.lastTick || now;
+    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
+    const wasAlive = state.alive;
+    if (elapsed > 0 && state.alive) applyDecay(elapsed);
+    state.lastTick = now;
+    if (announceDeath && wasAlive && !state.alive) {
+      showMessage(
+        "Jimothy wandered off…",
+        "Time kept moving while you were away. Start a new egg?"
+      );
+      $("messageOk").dataset.reset = "1";
+    }
+    return elapsed;
+  }
+
+  function save({ touchTick = true } = {}) {
+    if (touchTick) state.lastTick = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
@@ -577,9 +595,27 @@
     }
     tickHandle = setInterval(onTick, TICK_MS);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") save();
+      if (document.visibilityState === "hidden") {
+        save();
+        return;
+      }
+      // Returning from background / another app: catch up full real time.
+      syncRealtime({ announceDeath: true });
+      render();
+      save();
+    });
+    window.addEventListener("focus", () => {
+      syncRealtime({ announceDeath: true });
+      render();
+      save();
     });
     window.addEventListener("beforeunload", save);
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {
+        /* optional offline shell */
+      });
+    }
   }
 
   init();
@@ -590,7 +626,13 @@
     setState: (partial) => {
       Object.assign(state, partial);
       render();
+      save({ touchTick: false });
+    },
+    syncRealtime: () => {
+      const elapsed = syncRealtime({ announceDeath: true });
+      render();
       save();
+      return elapsed;
     },
     reset: resetPet,
   };
