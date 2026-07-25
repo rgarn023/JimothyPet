@@ -927,15 +927,15 @@
       state.adultForm === "alley_ghost";
     const roll = Math.random();
     let kind = "idle";
-    if (state.energy > 55 && state.happy > 50 && roll < (peppy ? 0.42 : 0.32)) {
-      kind = peppy && roll < 0.18 ? (state.fitness > 45 ? "run" : "jump") : "walk";
-    } else if (roll < 0.5) {
+    if (state.energy > 55 && state.happy > 50 && roll < (peppy ? 0.48 : 0.38)) {
+      kind = peppy && roll < 0.2 ? (state.fitness > 45 ? "run" : "jump") : "walk";
+    } else if (roll < 0.62) {
       kind = "walk";
-    } else if (roll < 0.66) {
+    } else if (roll < 0.74) {
       kind = peppy ? "jump" : "sniff";
-    } else if (roll < 0.78) {
+    } else if (roll < 0.84) {
       kind = state.stage === "adult" ? "lope" : state.stage !== "baby" ? "stretch" : "sniff";
-    } else if (roll < 0.9) {
+    } else if (roll < 0.93) {
       kind = sneaky || state.stage === "baby" ? "sniff" : "stretch";
     } else {
       kind = "idle";
@@ -1084,22 +1084,22 @@
 
   const FORM_BLURBS = {
     young: {
-      puff: "Round, fluffy starter — leans dumpling or scruff.",
-      looper: "Long-legged bounce — leans bounder or nightlane.",
-      shadow: "Dark mask, sneaky gait — leans nightlane or scruff.",
-      nub: "Compact scrappy kit — leans bounder or dumpling.",
+      puff: "Cotton-ball fluff + stubby legs — leans dumpling or scruff.",
+      looper: "Stilt legs + pep stripe — leans bounder or nightlane.",
+      shadow: "Charcoal crouch + ringed tail — leans nightlane or scruff.",
+      nub: "Big head, nub ears, chin tuft — leans bounder or dumpling.",
     },
     teen: {
-      dumpling: "Soft loaf energy → Saint (care) or Ballard Blip (neglect).",
-      bounder: "Springy night runner → Alley Ghost (care) or Legend (neglect).",
-      nightlane: "Quiet alley prowler → Alley Ghost (care) or Legend (neglect).",
-      scruff: "Rough edges → Saint (care) or Ballard Blip (neglect).",
+      dumpling: "Loaf body, sleepy eye → Saint (care) or Ballard Blip (neglect).",
+      bounder: "Athletic stilts + spring mark → Alley Ghost / Legend.",
+      nightlane: "Sleek navy prowler + pale gleam → Alley Ghost / Legend.",
+      scruff: "Jagged back fur + notch ear → Saint / Ballard Blip.",
     },
     adult: {
-      saint: "Moss-touched short-spine — calm cryptid glow.",
-      legend: "Bold night icon — louder silhouette flair.",
-      alley_ghost: "Pale alley haunt — cooler, quieter fur.",
-      ballard_blip: "Neighborhood blip — scrappy local legend.",
+      saint: "Moss ear leaf + soft green undertone.",
+      legend: "Amber face blaze + proud stilts.",
+      alley_ghost: "Pale mist coat + hollow gleam.",
+      ballard_blip: "Scrap scarf + notched ear, warm alley fur.",
     },
   };
 

@@ -1,5 +1,5 @@
 /**
- * SVG art + motion for Jimothy — bush rustle, form variance, walk/run/jump.
+ * SVG art + motion for Jimothy — side-profile walks, distinct form silhouettes.
  * Spirit match for godot/scripts/raccoon_view.gd
  */
 const RaccoonArt = (() => {
@@ -11,20 +11,13 @@ const RaccoonArt = (() => {
     return Number(genes[key]);
   }
 
-  function fur(genes, stage, adultForm) {
-    const gray = g(genes, "gray");
-    let r = 0.42 + gray * 0.08;
-    let green = 0.42 + gray * 0.06;
-    let b = 0.46 + gray * 0.05;
-    if (stage === "adult" && adultForm === "alley_ghost") {
-      r *= 0.9;
-      green *= 0.9;
-      b *= 0.92;
-    }
-    const toHex = (n) =>
-      Math.round(Math.min(255, Math.max(0, n * 255)))
-        .toString(16)
-        .padStart(2, "0");
+  function toHex(n) {
+    return Math.round(Math.min(255, Math.max(0, n * 255)))
+      .toString(16)
+      .padStart(2, "0");
+  }
+
+  function rgb(r, green, b) {
     return `#${toHex(r)}${toHex(green)}${toHex(b)}`;
   }
 
@@ -48,65 +41,72 @@ const RaccoonArt = (() => {
       .padStart(2, "0")}`;
   }
 
-  function ears(cx, cy, spread, up, flare) {
-    const f = 1 + flare * 0.35;
-    return `
-      <ellipse cx="${cx - spread}" cy="${cy - up}" rx="${7 * f}" ry="${11 * f}" fill="#4a4a54"/>
-      <ellipse cx="${cx + spread}" cy="${cy - up}" rx="${7 * f}" ry="${11 * f}" fill="#4a4a54"/>
-      <ellipse cx="${cx - spread}" cy="${cy - up}" rx="4" ry="6" fill="#e2cdb2"/>
-      <ellipse cx="${cx + spread}" cy="${cy - up}" rx="4" ry="6" fill="#e2cdb2"/>
-    `;
-  }
-
-  function mask(cx, cy, rx, ry, eye, maskGene, smiling = false) {
-    const maskC = maskGene > 0.7 ? "#1c1c22" : "#2a2a32";
-    if (smiling) {
-      const ey = cy - 1;
-      return `
-        <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${maskC}"/>
-        <path class="smile-eye" d="M${cx - eye * 1.7} ${ey} Q${cx - eye} ${ey - 3} ${cx - eye * 0.35} ${ey}"
-              fill="none" stroke="#faf6ec" stroke-width="2.2" stroke-linecap="round"/>
-        <path class="smile-eye" d="M${cx + eye * 0.35} ${ey} Q${cx + eye} ${ey - 3} ${cx + eye * 1.7} ${ey}"
-              fill="none" stroke="#faf6ec" stroke-width="2.2" stroke-linecap="round"/>
-        <ellipse cx="${cx}" cy="${cy + eye * 1.35}" rx="${eye * 1.5}" ry="${eye * 0.85}" fill="#c9a292"/>
-        <ellipse class="blush" cx="${cx - eye * 2.1}" cy="${cy + eye * 0.6}" rx="${eye * 0.7}" ry="${eye * 0.4}" fill="rgba(230,140,140,0.4)"/>
-        <ellipse class="blush" cx="${cx + eye * 2.1}" cy="${cy + eye * 0.6}" rx="${eye * 0.7}" ry="${eye * 0.4}" fill="rgba(230,140,140,0.4)"/>
-      `;
+  /** Form-specific base fur (side silhouette reads through color + shape). */
+  function formFur(stage, form, genes) {
+    const gray = g(genes, "gray");
+    if (stage === "young") {
+      if (form === "puff") return rgb(0.55 + gray * 0.08, 0.5 + gray * 0.05, 0.48);
+      if (form === "looper") return rgb(0.48 + gray * 0.06, 0.44, 0.4);
+      if (form === "shadow") return rgb(0.22 + gray * 0.04, 0.22, 0.26);
+      if (form === "nub") return rgb(0.42, 0.38 + gray * 0.05, 0.34);
     }
-    return `
-      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${maskC}"/>
-      <circle class="eye" cx="${cx - eye * 1.35}" cy="${cy - 1}" r="${eye}" fill="#faf6ec"/>
-      <circle class="eye" cx="${cx + eye * 1.35}" cy="${cy - 1}" r="${eye}" fill="#faf6ec"/>
-      <circle cx="${cx - eye * 1.15}" cy="${cy - 0.3}" r="${eye * 0.45}" fill="#101014"/>
-      <circle cx="${cx + eye * 1.55}" cy="${cy - 0.3}" r="${eye * 0.45}" fill="#101014"/>
-      <ellipse cx="${cx}" cy="${cy + eye * 1.15}" rx="${eye * 1.1}" ry="${eye * 0.7}" fill="#c9a292"/>
-    `;
+    if (stage === "teen") {
+      if (form === "dumpling") return rgb(0.58, 0.52, 0.48);
+      if (form === "bounder") return rgb(0.46, 0.42, 0.4);
+      if (form === "nightlane") return rgb(0.2, 0.22, 0.3);
+      if (form === "scruff") return rgb(0.4, 0.34, 0.3);
+    }
+    if (stage === "adult") {
+      if (form === "saint") return rgb(0.4, 0.46, 0.4);
+      if (form === "legend") return rgb(0.45, 0.4, 0.36);
+      if (form === "alley_ghost") return rgb(0.55, 0.58, 0.64);
+      if (form === "ballard_blip") return rgb(0.48, 0.38, 0.3);
+    }
+    return rgb(0.42 + gray * 0.08, 0.42 + gray * 0.06, 0.46 + gray * 0.05);
   }
 
-  function tail(cx, cy, scale) {
-    return `
-      <path d="M${cx} ${cy} Q${cx + 26 * scale} ${cy - 14 * scale} ${cx + 22 * scale} ${cy + 12 * scale}
-               Q${cx + 14 * scale} ${cy + 18 * scale} ${cx + 4 * scale} ${cy + 8 * scale}"
-            fill="#5a5a64"/>
-      <path d="M${cx + 6 * scale} ${cy - 2} Q${cx + 16 * scale} ${cy - 8 * scale} ${cx + 18 * scale} ${cy + 2}
-               M${cx + 8 * scale} ${cy + 4} Q${cx + 18 * scale} ${cy} ${cx + 16 * scale} ${cy + 10 * scale}"
-            fill="none" stroke="#b0b0ba" stroke-width="${2.5 * scale}" stroke-linecap="round"/>
-    `;
-  }
-
-  function legs(baseY, legScale, ampClass = "leg") {
-    const h = 22 * legScale;
+  function sideLegs(hipY, frontX, backX, legH, strokeW = 4.5) {
+    const foot = "#3a3a44";
+    const leg = "#4f4f58";
     return `
       <g class="legs">
-        <path class="${ampClass} l1" d="M46 ${baseY} L42 ${baseY + h}" stroke="#4f4f58" stroke-width="4.5" stroke-linecap="round"/>
-        <path class="${ampClass} l2" d="M54 ${baseY + 2} L52 ${baseY + h + 2}" stroke="#4f4f58" stroke-width="4.5" stroke-linecap="round"/>
-        <path class="${ampClass} l3" d="M66 ${baseY + 2} L68 ${baseY + h + 2}" stroke="#4f4f58" stroke-width="4.5" stroke-linecap="round"/>
-        <path class="${ampClass} l4" d="M74 ${baseY} L80 ${baseY + h}" stroke="#4f4f58" stroke-width="4.5" stroke-linecap="round"/>
-        <ellipse cx="42" cy="${baseY + h}" rx="6" ry="3.5" fill="#3a3a44"/>
-        <ellipse cx="52" cy="${baseY + h + 2}" rx="6" ry="3.5" fill="#3a3a44"/>
-        <ellipse cx="68" cy="${baseY + h + 2}" rx="6" ry="3.5" fill="#3a3a44"/>
-        <ellipse cx="80" cy="${baseY + h}" rx="6" ry="3.5" fill="#3a3a44"/>
+        <path class="leg l1" d="M${backX} ${hipY} L${backX - 4} ${hipY + legH}" stroke="${leg}" stroke-width="${strokeW}" stroke-linecap="round"/>
+        <path class="leg l2" d="M${backX + 6} ${hipY + 1} L${backX + 8} ${hipY + legH + 1}" stroke="${leg}" stroke-width="${strokeW * 0.9}" stroke-linecap="round" opacity="0.55"/>
+        <path class="leg l3" d="M${frontX - 4} ${hipY + 1} L${frontX - 6} ${hipY + legH}" stroke="${leg}" stroke-width="${strokeW * 0.9}" stroke-linecap="round" opacity="0.55"/>
+        <path class="leg l4" d="M${frontX} ${hipY} L${frontX + 5} ${hipY + legH}" stroke="${leg}" stroke-width="${strokeW}" stroke-linecap="round"/>
+        <ellipse cx="${backX - 4}" cy="${hipY + legH}" rx="5.5" ry="3" fill="${foot}"/>
+        <ellipse cx="${frontX + 5}" cy="${hipY + legH}" rx="5.5" ry="3" fill="${foot}"/>
       </g>
+    `;
+  }
+
+  function sideEye(x, y, r, smiling, gleam = "#faf6ec") {
+    if (smiling) {
+      return `<path d="M${x - r * 1.2} ${y} Q${x} ${y - r * 1.1} ${x + r * 1.2} ${y}"
+        fill="none" stroke="${gleam}" stroke-width="2" stroke-linecap="round"/>`;
+    }
+    return `
+      <circle cx="${x}" cy="${y}" r="${r}" fill="${gleam}"/>
+      <circle cx="${x + r * 0.25}" cy="${y}" r="${r * 0.45}" fill="#101014"/>
+    `;
+  }
+
+  function ringedTail(baseX, baseY, len, rings = true) {
+    const tipX = baseX - len;
+    const tipY = baseY - len * 0.25;
+    let stripes = "";
+    if (rings) {
+      for (let i = 0; i < 4; i++) {
+        const t = 0.2 + i * 0.18;
+        const sx = baseX + (tipX - baseX) * t;
+        const sy = baseY + (tipY - baseY) * t;
+        stripes += `<ellipse cx="${sx}" cy="${sy}" rx="4" ry="3.2" fill="#c8c8d0" opacity="0.75" transform="rotate(-25 ${sx} ${sy})"/>`;
+      }
+    }
+    return `
+      <path d="M${baseX} ${baseY} Q${baseX - len * 0.45} ${baseY - len * 0.55} ${tipX} ${tipY}"
+            fill="none" stroke="#5a5a64" stroke-width="8" stroke-linecap="round"/>
+      ${stripes}
     `;
   }
 
@@ -130,105 +130,305 @@ const RaccoonArt = (() => {
     `);
   }
 
+  /** Side-profile baby kit — round potato facing right. */
   function baby(genes, smiling = false) {
-    const color = fur(genes, "baby");
-    const flare = g(genes, "ear_flare");
+    const color = formFur("baby", "", genes);
+    const belly = lighten(color, 0.18);
     return svg(`
-      <ellipse cx="60" cy="100" rx="18" ry="5" fill="#000" opacity="0.2"/>
-      <ellipse class="body" cx="60" cy="74" rx="18" ry="14" fill="${color}"/>
-      <circle class="head" cx="60" cy="58" r="14" fill="${lighten(color, 0.05)}"/>
-      ${ears(60, 58, 11, 10, flare)}
-      ${mask(60, 60, 11, 7, 2.6, g(genes, "mask"), smiling)}
-      <ellipse cx="50" cy="88" rx="5" ry="3" fill="#3a3a44"/>
-      <ellipse cx="70" cy="88" rx="5" ry="3" fill="#3a3a44"/>
+      <ellipse cx="62" cy="102" rx="22" ry="5" fill="#000" opacity="0.2"/>
+      <path d="M40 72 Q28 68 26 78 Q30 86 42 80" fill="${color}"/>
+      ${sideLegs(78, 72, 48, 16, 3.8)}
+      <ellipse class="body" cx="58" cy="72" rx="22" ry="14" fill="${color}"/>
+      <ellipse cx="62" cy="76" rx="12" ry="8" fill="${belly}" opacity="0.55"/>
+      <ellipse class="head" cx="78" cy="62" rx="13" ry="12" fill="${lighten(color, 0.04)}"/>
+      <ellipse cx="88" cy="64" rx="5" ry="3.5" fill="#c9a292"/>
+      <ellipse cx="74" cy="52" rx="5" ry="7" fill="#4a4a54"/>
+      <ellipse cx="74" cy="52" rx="2.5" ry="4" fill="#e2cdb2"/>
+      <ellipse cx="78" cy="64" rx="9" ry="6" fill="#2a2a32"/>
+      ${sideEye(82, 63, 2.4, smiling)}
     `);
   }
 
   function young(genes, form, smiling = false) {
-    const color = fur(genes, "young");
-    const roundness = g(genes, "roundness");
-    let legsMul = 0.7 + g(genes, "legginess") * 0.8;
-    let bodyRx = 22 + roundness * 8;
-    let bodyRy = 16 + (1 - roundness) * 4;
+    const color = formFur("young", form, genes);
+    const belly = lighten(color, 0.2);
+    let bodyRx = 26;
+    let bodyRy = 15;
+    let bodyY = 66;
+    let headX = 84;
+    let headR = 14;
+    let legH = 22;
+    let frontX = 74;
+    let backX = 46;
+    let accent = "";
+    let tail = ringedTail(38, 68, 22, form !== "puff");
+
     if (form === "puff") {
-      bodyRx += 4;
-      bodyRy += 3;
+      bodyRx = 28;
+      bodyRy = 20;
+      bodyY = 64;
+      legH = 14;
+      headR = 15;
+      tail = `
+        <ellipse cx="34" cy="70" rx="10" ry="8" fill="${lighten(color, 0.08)}"/>
+        <ellipse cx="30" cy="68" rx="6" ry="5" fill="${lighten(color, 0.18)}"/>
+      `;
+      accent = `
+        <ellipse cx="78" cy="50" rx="6" ry="5" fill="${lighten(color, 0.15)}" opacity="0.8"/>
+        <ellipse cx="70" cy="48" rx="5" ry="4" fill="${lighten(color, 0.12)}" opacity="0.7"/>
+        <ellipse cx="62" cy="72" rx="14" ry="9" fill="${belly}" opacity="0.65"/>
+      `;
     } else if (form === "looper") {
-      legsMul += 0.35;
+      bodyRx = 24;
+      bodyRy = 11;
+      bodyY = 58;
+      legH = 34;
+      headX = 86;
+      headR = 12;
+      frontX = 76;
+      backX = 44;
+      accent = `
+        <path d="M50 52 Q62 46 74 52" fill="none" stroke="#e0a04a" stroke-width="2.2" stroke-linecap="round" opacity="0.7"/>
+        <ellipse cx="64" cy="62" rx="10" ry="5" fill="${belly}" opacity="0.4"/>
+      `;
+    } else if (form === "shadow") {
+      bodyRx = 28;
+      bodyRy = 12;
+      bodyY = 70;
+      legH = 20;
+      headX = 88;
+      accent = `
+        <ellipse cx="88" cy="68" rx="14" ry="9" fill="#121218"/>
+        <path d="M40 62 L70 58" stroke="#1a1a22" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+      `;
+      tail = ringedTail(36, 72, 28, true);
     } else if (form === "nub") {
-      bodyRx -= 2;
-      legsMul -= 0.15;
+      bodyRx = 20;
+      bodyRy = 14;
+      bodyY = 68;
+      headX = 80;
+      headR = 16;
+      legH = 16;
+      frontX = 70;
+      backX = 48;
+      tail = `<ellipse cx="40" cy="72" rx="5" ry="4" fill="${lighten(color, -0.05)}"/>`;
+      accent = `
+        <path d="M72 54 L76 46 L80 54" fill="#4a4a54"/>
+        <path d="M66 56 L68 50 L72 56" fill="#4a4a54"/>
+        <ellipse cx="78" cy="78" rx="6" ry="3" fill="#3a3a44"/>
+        <path d="M84 74 Q88 78 84 80" fill="none" stroke="${lighten(color, -0.1)}" stroke-width="2"/>
+      `;
     }
-    const shade = form === "shadow" ? lighten(color, -0.08) : color;
+
+    const ear =
+      form === "nub"
+        ? ""
+        : `<ellipse cx="${headX - 4}" cy="${bodyY - headR - 2}" rx="5" ry="8" fill="#4a4a54"/>
+           <ellipse cx="${headX - 4}" cy="${bodyY - headR - 2}" rx="2.5" ry="4.5" fill="#e2cdb2"/>`;
+
+    const snoutFill = form === "shadow" ? "#1c1c22" : "#c9a292";
+    const eyeGleam = form === "shadow" ? "#d0d8e8" : "#faf6ec";
+
     return svg(`
-      <ellipse cx="60" cy="104" rx="24" ry="6" fill="#000" opacity="0.2"/>
-      ${tail(78, 68, 0.75)}
-      ${legs(70, legsMul)}
-      <ellipse class="body" cx="60" cy="66" rx="${bodyRx}" ry="${bodyRy}" fill="${shade}"/>
-      <circle class="head" cx="60" cy="52" r="${16 + roundness * 3}" fill="${lighten(shade, 0.04)}"/>
-      ${ears(60, 52, 14, 12, g(genes, "ear_flare"))}
-      ${mask(60, 54, 14, 9, 3.3, g(genes, "mask"), smiling)}
+      <ellipse cx="62" cy="104" rx="28" ry="6" fill="#000" opacity="0.2"/>
+      ${tail}
+      ${sideLegs(bodyY + 8, frontX, backX, legH, form === "looper" ? 4 : 4.5)}
+      <ellipse class="body" cx="60" cy="${bodyY}" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
+      ${accent}
+      <ellipse class="head" cx="${headX}" cy="${bodyY - 4}" rx="${headR}" ry="${headR * 0.92}" fill="${lighten(color, 0.05)}"/>
+      ${ear}
+      <ellipse cx="${headX + 8}" cy="${bodyY - 2}" rx="6" ry="4" fill="${snoutFill}"/>
+      <ellipse cx="${headX}" cy="${bodyY - 2}" rx="${headR * 0.75}" ry="${headR * 0.55}" fill="${
+      form === "shadow" ? "#121218" : "#2a2a32"
+    }" opacity="${form === "shadow" ? 0.95 : 0.85}"/>
+      ${sideEye(headX + 2, bodyY - 4, form === "shadow" ? 3.2 : 2.8, smiling, eyeGleam)}
     `);
   }
 
   function teen(genes, form, smiling = false) {
-    const color = fur(genes, "teen");
-    let legsMul = 1 + g(genes, "legginess") * 0.7;
-    let roundness = g(genes, "roundness");
-    if (form === "bounder") legsMul += 0.4;
-    else if (form === "dumpling") {
-      roundness = Math.max(roundness, 0.7);
-      legsMul -= 0.1;
-    } else if (form === "nightlane") legsMul += 0.2;
-    else if (form === "scruff") roundness *= 0.8;
+    const color = formFur("teen", form, genes);
+    const belly = lighten(color, 0.18);
+    let bodyRx = 30;
+    let bodyRy = 16;
+    let bodyY = 62;
+    let headX = 88;
+    let headR = 15;
+    let legH = 26;
+    let frontX = 78;
+    let backX = 44;
+    let accent = "";
+    let tail = ringedTail(34, 64, 26, true);
+
+    if (form === "dumpling") {
+      bodyRx = 34;
+      bodyRy = 24;
+      bodyY = 64;
+      legH = 12;
+      headR = 14;
+      accent = `
+        <ellipse cx="64" cy="72" rx="18" ry="12" fill="${belly}" opacity="0.7"/>
+        <path d="M82 58 Q88 62 82 64" fill="none" stroke="#faf6ec" stroke-width="1.6" opacity="0.5"/>
+      `;
+      tail = `<ellipse cx="32" cy="68" rx="9" ry="7" fill="${lighten(color, 0.05)}"/>`;
+    } else if (form === "bounder") {
+      bodyRx = 26;
+      bodyRy = 13;
+      bodyY = 54;
+      legH = 38;
+      backX = 42;
+      frontX = 76;
+      accent = `
+        <ellipse cx="48" cy="58" rx="8" ry="14" fill="${lighten(color, -0.05)}" opacity="0.35"/>
+        <path d="M70 48 L78 40" stroke="#e0a04a" stroke-width="2" stroke-linecap="round" opacity="0.65"/>
+      `;
+    } else if (form === "nightlane") {
+      bodyRx = 34;
+      bodyRy = 11;
+      bodyY = 66;
+      legH = 24;
+      headX = 94;
+      headR = 13;
+      accent = `
+        <ellipse cx="70" cy="62" rx="20" ry="6" fill="#101018" opacity="0.45"/>
+        <circle cx="96" cy="64" r="2" fill="#c8d8f0" opacity="0.85"/>
+      `;
+      tail = ringedTail(30, 68, 34, true);
+    } else if (form === "scruff") {
+      bodyRx = 28;
+      bodyRy = 15;
+      bodyY = 64;
+      legH = 24;
+      accent = `
+        <path d="M48 50 L52 42 L56 50 L60 44 L64 52 L70 46 L74 54" fill="none" stroke="${lighten(
+          color,
+          -0.12
+        )}" stroke-width="3" stroke-linecap="round"/>
+        <path d="M84 48 L90 40" stroke="#4a4a54" stroke-width="3" stroke-linecap="round"/>
+        <path d="M78 50 L80 44" stroke="#4a4a54" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M86 68 L94 70" stroke="#8a5a4a" stroke-width="2" opacity="0.7"/>
+      `;
+    }
+
+    const earY = bodyY - headR - 2;
+    const eye =
+      form === "dumpling" && !smiling
+        ? `<path d="M${headX - 2} ${bodyY - 2} Q${headX + 2} ${bodyY - 5} ${headX + 6} ${
+            bodyY - 2
+          }" fill="none" stroke="#faf6ec" stroke-width="2" stroke-linecap="round"/>`
+        : sideEye(headX + 2, bodyY - 3, form === "nightlane" ? 3.4 : 3, smiling, form === "nightlane" ? "#d8e4f8" : "#faf6ec");
 
     return svg(`
-      <ellipse cx="60" cy="108" rx="28" ry="6" fill="#000" opacity="0.22"/>
-      ${tail(82, 64, 0.9)}
-      ${legs(68, legsMul)}
-      <ellipse class="body" cx="60" cy="62" rx="${26 + roundness * 6}" ry="${20 + (1 - roundness) * 3}" fill="${color}"/>
-      <circle class="head" cx="60" cy="50" r="18" fill="${lighten(color, 0.03)}"/>
-      ${ears(60, 50, 16, 14, g(genes, "ear_flare"))}
-      ${mask(60, 52, 16, 10, 3.8, g(genes, "mask"), smiling)}
+      <ellipse cx="64" cy="106" rx="32" ry="6" fill="#000" opacity="0.22"/>
+      ${tail}
+      ${sideLegs(bodyY + 10, frontX, backX, legH, form === "bounder" ? 5.2 : 4.8)}
+      <ellipse class="body" cx="62" cy="${bodyY}" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
+      ${accent}
+      <ellipse class="head" cx="${headX}" cy="${bodyY - 2}" rx="${headR}" ry="${headR * 0.9}" fill="${lighten(
+      color,
+      0.04
+    )}"/>
+      <ellipse cx="${headX - 3}" cy="${earY}" rx="5.5" ry="9" fill="#4a4a54"/>
+      <ellipse cx="${headX - 3}" cy="${earY}" rx="2.8" ry="5" fill="#e2cdb2"/>
+      <ellipse cx="${headX + 9}" cy="${bodyY}" rx="7" ry="4.5" fill="${
+      form === "nightlane" ? "#1a1a24" : "#c9a292"
+    }"/>
+      <ellipse cx="${headX}" cy="${bodyY}" rx="${headR * 0.72}" ry="${headR * 0.5}" fill="${
+      form === "nightlane" ? "#0e1018" : "#2a2a32"
+    }" opacity="0.9"/>
+      ${eye}
     `);
   }
 
   function adult(genes, form, smiling = false) {
-    const color = fur(genes, "adult", form);
-    const legsMul = 1.25 + g(genes, "legginess") * 0.45;
-    const roundness = 0.7 + g(genes, "roundness") * 0.3;
-    const bodyRx = 30 + roundness * 8;
-    const bodyRy = 26 + roundness * 4;
-    let flair = "";
+    // Short-spine Jimothy in profile: fused head/body potato + long stilts, facing right.
+    const color = formFur("adult", form, genes);
+    const belly = lighten(color, 0.16);
+    let bodyRx = 34;
+    let bodyRy = 28;
+    let bodyY = 52;
+    let legH = 42;
+    let frontX = 78;
+    let backX = 42;
+    let accent = "";
+    let mist = "";
+    let snout = "#c9a292";
+    let eyeGleam = "#faf6ec";
+    let earExtra = "";
+
     if (form === "saint") {
-      flair = `<ellipse cx="78" cy="42" rx="7" ry="4" fill="#6fbf84" transform="rotate(-20 78 42)"/>`;
+      bodyRy = 30;
+      accent = `
+        <ellipse cx="64" cy="60" rx="14" ry="10" fill="${belly}" opacity="0.45"/>
+        <ellipse cx="86" cy="30" rx="8" ry="5" fill="#6fbf84" transform="rotate(-18 86 30)"/>
+        <ellipse cx="78" cy="28" rx="4" ry="3" fill="#548a62" opacity="0.7"/>
+        <circle cx="70" cy="34" r="1.6" fill="#b8e0c0" opacity="0.7"/>
+        <circle cx="96" cy="40" r="1.3" fill="#b8e0c0" opacity="0.55"/>
+      `;
+      earExtra = `<ellipse cx="78" cy="26" rx="6" ry="10" fill="#4a4a54"/><ellipse cx="78" cy="26" rx="3" ry="5.5" fill="#e2cdb2"/>`;
     } else if (form === "legend") {
-      flair = `<path d="M76 46 L88 60 L74 62 Z" fill="#e0a04a"/>`;
+      bodyRx = 32;
+      bodyRy = 26;
+      legH = 46;
+      accent = `
+        <path d="M72 40 L98 48 L74 56 Z" fill="#e0a04a"/>
+        <ellipse cx="58" cy="48" rx="8" ry="12" fill="${lighten(color, -0.08)}" opacity="0.35"/>
+        <path d="M88 44 L102 50" stroke="#f0c57a" stroke-width="2.5" stroke-linecap="round"/>
+      `;
+      eyeGleam = "#fff3d0";
+      earExtra = `<ellipse cx="76" cy="24" rx="7" ry="12" fill="#4a4a54"/><ellipse cx="76" cy="24" rx="3.2" ry="6" fill="#e2cdb2"/>`;
     } else if (form === "alley_ghost") {
-      flair = `<circle cx="80" cy="52" r="3" fill="rgba(217,230,242,0.55)"/>`;
+      bodyRx = 36;
+      bodyRy = 24;
+      legH = 44;
+      snout = "#b8c4d4";
+      eyeGleam = "#e8f0ff";
+      mist = `
+        <ellipse cx="36" cy="56" rx="10" ry="6" fill="rgba(200,220,240,0.28)"/>
+        <ellipse cx="28" cy="48" rx="7" ry="4" fill="rgba(200,220,240,0.2)"/>
+        <ellipse cx="100" cy="58" rx="8" ry="5" fill="rgba(200,220,240,0.22)"/>
+      `;
+      accent = `
+        <ellipse cx="86" cy="50" rx="16" ry="12" fill="rgba(230,240,255,0.18)"/>
+      `;
+      earExtra = `<ellipse cx="78" cy="26" rx="5.5" ry="11" fill="#6a7380"/><ellipse cx="78" cy="26" rx="2.6" ry="5.5" fill="#d0d8e0"/>`;
     } else if (form === "ballard_blip") {
-      flair = `<ellipse cx="60" cy="68" rx="10" ry="5" fill="rgba(224,160,74,0.35)"/>`;
+      bodyRx = 33;
+      bodyRy = 27;
+      legH = 40;
+      accent = `
+        <path d="M70 58 Q86 70 98 58" fill="none" stroke="#c45c4a" stroke-width="4" stroke-linecap="round"/>
+        <ellipse cx="64" cy="62" rx="12" ry="8" fill="rgba(224,160,74,0.35)"/>
+        <ellipse cx="84" cy="74" rx="7" ry="4" fill="#3a3a44"/>
+      `;
+      earExtra = `
+        <path d="M74 18 L80 32 L70 30 Z" fill="#4a4a54"/>
+        <path d="M78 20 L79 26" stroke="#e2cdb2" stroke-width="2"/>
+        <path d="M82 24 L88 20" stroke="#4a4a54" stroke-width="2" stroke-linecap="round"/>
+      `;
+    } else {
+      earExtra = `<ellipse cx="78" cy="26" rx="6" ry="11" fill="#4a4a54"/><ellipse cx="78" cy="26" rx="3" ry="5.5" fill="#e2cdb2"/>`;
     }
 
+    const whisk = `
+      <path d="M92 50 h10 M92 54 h8 M92 58 h9" stroke="#d0d0d8" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+    `;
+
     return svg(`
-      <ellipse cx="60" cy="112" rx="34" ry="7" fill="#000" opacity="0.22"/>
-      ${tail(84, 58, 1.05)}
-      <g class="legs">
-        <path class="leg l1" d="M42 62 L30 98" stroke="#4f4f58" stroke-width="6" stroke-linecap="round"/>
-        <path class="leg l2" d="M52 66 L48 102" stroke="#5a5a64" stroke-width="6" stroke-linecap="round"/>
-        <path class="leg l3" d="M68 66 L74 102" stroke="#5a5a64" stroke-width="6" stroke-linecap="round"/>
-        <path class="leg l4" d="M78 62 L92 98" stroke="#4f4f58" stroke-width="6" stroke-linecap="round"/>
-        <ellipse cx="30" cy="100" rx="8" ry="4.5" fill="#3a3a44"/>
-        <ellipse cx="48" cy="104" rx="8" ry="4.5" fill="#3a3a44"/>
-        <ellipse cx="74" cy="104" rx="8" ry="4.5" fill="#3a3a44"/>
-        <ellipse cx="92" cy="100" rx="8" ry="4.5" fill="#3a3a44"/>
-      </g>
-      <ellipse class="body" cx="60" cy="52" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
-      ${ears(60, 52, 20, 24, g(genes, "ear_flare"))}
-      ${mask(60, 50, 20, 12, 4.6, g(genes, "mask"), smiling)}
-      ${flair}
-      <path d="M40 56 h-8 M40 60 h-7 M80 56 h8 M80 60 h7"
-            stroke="#d0d0d8" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+      <ellipse cx="64" cy="110" rx="36" ry="7" fill="#000" opacity="0.22"/>
+      ${mist}
+      ${ringedTail(30, 54, 28, form !== "alley_ghost")}
+      ${form === "alley_ghost" ? `<path d="M34 54 Q18 40 12 52" fill="none" stroke="#a8b4c4" stroke-width="7" stroke-linecap="round" opacity="0.7"/>` : ""}
+      ${sideLegs(bodyY + 14, frontX, backX, legH, 6)}
+      <ellipse class="body" cx="64" cy="${bodyY}" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
+      ${accent}
+      ${earExtra}
+      <ellipse cx="90" cy="${bodyY + 2}" rx="9" ry="6" fill="${snout}"/>
+      <ellipse cx="78" cy="${bodyY}" rx="18" ry="12" fill="${
+      form === "alley_ghost" ? "#3a4250" : "#1c1c22"
+    }" opacity="0.88"/>
+      ${sideEye(84, bodyY - 2, 4.2, smiling, eyeGleam)}
+      ${whisk}
+      <path d="M40 56 h-8 M40 60 h-7" stroke="#d0d0d8" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
     `);
   }
 
@@ -269,7 +469,7 @@ const RaccoonArt = (() => {
 window.RaccoonArt = RaccoonArt;
 
 /**
- * Pose / locomotion controller — walk, run, jump, bush rustle.
+ * Pose / locomotion — side-to-side walks with facing flip.
  */
 const RaccoonAnim = (() => {
   let wrap = null;
@@ -353,6 +553,7 @@ const RaccoonAnim = (() => {
       wrap.classList.toggle("is-bush", showBush);
       wrap.classList.toggle("ascending", anim === "ascend" || !!info.ascending);
       wrap.dataset.anim = anim;
+      wrap.dataset.facing = facing < 0 ? "left" : "right";
       if (showBush) {
         wrap.style.opacity = "1";
         const wings = wrap.querySelector(".ascend-wings");
@@ -391,23 +592,23 @@ const RaccoonAnim = (() => {
         clearFoodProp();
         break;
       case "run":
-        animDur = 1.4 + Math.random() * 1;
-        speed = 90 + Math.random() * 50;
-        targetX = -70 + Math.random() * 140;
-        facing = Math.sign(targetX - poseX) || 1;
+        animDur = 1.6 + Math.random() * 1.2;
+        speed = 100 + Math.random() * 55;
+        targetX = -78 + Math.random() * 156;
+        facing = Math.sign(targetX - poseX) || (Math.random() < 0.5 ? -1 : 1);
         break;
       case "walk":
       case "lope":
-        animDur = 1.8 + Math.random() * 1.4;
-        speed = kind === "walk" ? 35 + Math.random() * 35 : 55 + Math.random() * 40;
-        targetX = -65 + Math.random() * 130;
+        animDur = 2.2 + Math.random() * 1.6;
+        speed = kind === "walk" ? 40 + Math.random() * 40 : 60 + Math.random() * 45;
+        targetX = -78 + Math.random() * 156;
         facing = Math.sign(targetX - poseX) || (Math.random() < 0.5 ? -1 : 1);
         break;
       case "jump":
         animDur = 0.55 + Math.random() * 0.35;
         jumpPeak = 18 + Math.random() * 18;
         facing = Math.random() < 0.5 ? -1 : 1;
-        targetX = Math.max(-70, Math.min(70, poseX + facing * (20 + Math.random() * 30)));
+        targetX = Math.max(-78, Math.min(78, poseX + facing * (28 + Math.random() * 36)));
         break;
       case "pop":
         animDur = 0.85;
@@ -430,6 +631,8 @@ const RaccoonAnim = (() => {
       case "hop":
         animDur = 0.7;
         jumpPeak = 22 + Math.random() * 12;
+        facing = Math.random() < 0.5 ? -1 : 1;
+        targetX = Math.max(-70, Math.min(70, poseX + facing * (16 + Math.random() * 24)));
         break;
       case "nuzzle":
         animDur = 0.9;
@@ -458,9 +661,11 @@ const RaccoonAnim = (() => {
 
   function applyTransform() {
     if (!wrap) return;
+    // Art is drawn facing right; flip for leftward travel.
     const scaleX = facing < 0 ? -1 : 1;
     wrap.style.transform = `translate(${poseX}px, ${poseY + headDip * 0.35}px) scaleX(${scaleX})`;
     wrap.dataset.anim = anim;
+    wrap.dataset.facing = facing < 0 ? "left" : "right";
     wrap.style.setProperty("--head-dip", String(headDip));
   }
 
@@ -510,8 +715,8 @@ const RaccoonAnim = (() => {
         walkPhase += dt * (speed * 0.12);
         poseY = Math.abs(Math.sin(walkPhase)) * (anim === "walk" ? 3 : 5.5);
         if (Math.abs(poseX - targetX) < 1.5 || animT >= animDur) {
-          if (Math.random() < 0.45 && animT < animDur) {
-            targetX = -70 + Math.random() * 140;
+          if (Math.random() < 0.55 && animT < animDur) {
+            targetX = -78 + Math.random() * 156;
             facing = Math.sign(targetX - poseX) || facing;
           } else {
             anim = "idle";
@@ -520,7 +725,8 @@ const RaccoonAnim = (() => {
         }
         break;
       }
-      case "jump": {
+      case "jump":
+      case "hop": {
         const u = Math.min(1, animT / animDur);
         poseY = -Math.sin(u * Math.PI) * jumpPeak;
         poseX += (targetX - poseX) * Math.min(1, dt * 3.5);
@@ -602,7 +808,11 @@ const RaccoonAnim = (() => {
       case "sniff": {
         headDip = 6 + Math.sin(t * 10) * 2;
         poseY = Math.sin(t * 3) * 1;
-        facing = Math.sin(t * 1.4) > 0 ? 1 : -1;
+        // Pace a short sniff walk left/right
+        const sniffTarget = Math.sin(t * 1.1) * 36;
+        const sniffDir = Math.sign(sniffTarget - poseX) || facing;
+        facing = sniffDir;
+        poseX += sniffDir * Math.min(Math.abs(sniffTarget - poseX), 28 * dt);
         if (animT >= animDur) {
           anim = "idle";
           headDip = 0;
@@ -618,15 +828,6 @@ const RaccoonAnim = (() => {
           anim = "idle";
           poseY = 0;
           headDip = 0;
-        }
-        break;
-      }
-      case "hop": {
-        const u = Math.min(1, animT / animDur);
-        poseY = -Math.sin(u * Math.PI) * jumpPeak;
-        if (u >= 1) {
-          anim = "idle";
-          poseY = 0;
         }
         break;
       }
@@ -653,7 +854,6 @@ const RaccoonAnim = (() => {
         break;
       }
       case "rustle": {
-        // Handled in bush branch with stronger amp via dataset
         if (animT >= animDur) anim = "idle";
         break;
       }
@@ -665,17 +865,20 @@ const RaccoonAnim = (() => {
         break;
       }
       default: {
+        // Idle: gentle bob + deliberate side-to-side pacing
         poseY = Math.sin(t * 2.4) * 2.2 + Math.sin(t * 5.1) * 0.6;
-        const idleTarget = Math.sin(t * 0.4) * 10 + Math.sin(t * 0.13) * 4;
-        poseX += Math.sign(idleTarget - poseX) * Math.min(Math.abs(idleTarget - poseX), 12 * dt);
+        const idleTarget = Math.sin(t * 0.55) * 42 + Math.sin(t * 0.19) * 12;
+        const dir = Math.sign(idleTarget - poseX) || facing;
+        if (Math.abs(idleTarget - poseX) > 2) facing = dir;
+        poseX += dir * Math.min(Math.abs(idleTarget - poseX), 22 * dt);
         headDip = Math.sin(t * 1.7) * 1.4;
         walkPhase += dt * 1.2;
-        if (Math.floor(t * 2) % 11 === 0 && Math.random() < 0.02) facing *= -1;
+        if (Math.floor(t * 2) % 9 === 0 && Math.random() < 0.04) facing *= -1;
         break;
       }
     }
 
-    poseX = Math.max(-55, Math.min(55, poseX));
+    poseX = Math.max(-78, Math.min(78, poseX));
     applyTransform();
   }
 
