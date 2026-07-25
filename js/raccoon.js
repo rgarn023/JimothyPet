@@ -1139,10 +1139,15 @@ const RaccoonAnim = (() => {
   let headDip = 0;
   let eatFood = "berries";
   let foodEl = null;
+  let onAscendFinished = null;
 
   function init(wrapEl, raccoonEl) {
     wrap = wrapEl;
     raccoon = raccoonEl;
+  }
+
+  function setOnAscendFinished(cb) {
+    onAscendFinished = typeof cb === "function" ? cb : null;
   }
 
   function getView() {
@@ -1257,10 +1262,10 @@ const RaccoonAnim = (() => {
   }
 
   function play(kind, opts = {}) {
-    // Don't let ambient walks cut off a slow eat / ascent.
+    // Don't let ambient walks cut off a slow eat / ascent / stage-up.
     if (
-      ["eat", "ascend"].includes(anim) &&
-      ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick"].includes(kind)
+      ["eat", "ascend", "stageUp"].includes(anim) &&
+      ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"].includes(kind)
     ) {
       return;
     }
@@ -1356,6 +1361,12 @@ const RaccoonAnim = (() => {
       case "sleep":
         animDur = 4;
         break;
+      case "stageUp":
+        animDur = 10;
+        jumpPeak = 26;
+        speed = 0;
+        clearFoodProp();
+        break;
       default:
         animDur = 1 + Math.random();
         speed = 0;
@@ -1391,6 +1402,11 @@ const RaccoonAnim = (() => {
       if (wings) wings.style.setProperty("--wing-span", String(wingSpan));
       wrap.classList.add("ascending");
       applyTransform();
+      if (u >= 1 && typeof onAscendFinished === "function") {
+        const cb = onAscendFinished;
+        onAscendFinished = null;
+        cb();
+      }
       return;
     }
 
@@ -1599,6 +1615,37 @@ const RaccoonAnim = (() => {
         poseX += (0 - poseX) * Math.min(1, dt * 1.2);
         break;
       }
+      case "stageUp": {
+        const u = Math.min(1, animT / animDur);
+        // 10s grow celebration: bounce, spin hops, settle into new form.
+        if (u < 0.2) {
+          const p = u / 0.2;
+          poseY = -Math.sin(p * Math.PI) * 22;
+          poseX = Math.sin(t * 8) * 6;
+        } else if (u < 0.55) {
+          const p = (u - 0.2) / 0.35;
+          poseY = -Math.abs(Math.sin(p * Math.PI * 3)) * 18;
+          poseX = Math.sin(t * 10) * 16;
+          walkPhase += dt * 8;
+        } else if (u < 0.82) {
+          const p = (u - 0.55) / 0.27;
+          poseY = -Math.sin(p * Math.PI) * 12;
+          poseX += (0 - poseX) * Math.min(1, dt * 2.2);
+          headDip = Math.sin(t * 6) * 3;
+        } else {
+          const p = (u - 0.82) / 0.18;
+          poseY = -Math.sin(p * Math.PI) * 6 * (1 - p);
+          poseX += (0 - poseX) * Math.min(1, dt * 3);
+          headDip = 2 * (1 - p);
+        }
+        if (animT >= animDur) {
+          anim = "idle";
+          poseY = 0;
+          poseX = 0;
+          headDip = 0;
+        }
+        break;
+      }
       default: {
         // Idle: face the screen, gentle bob, settle toward center (no rapid flips).
         const isSick = wrap.classList.contains("sick");
@@ -1631,9 +1678,9 @@ const RaccoonAnim = (() => {
   }
 
   function isBusy() {
-    return ["eat", "ascend", "refuse", "pop", "fallAsleep"].includes(anim);
+    return ["eat", "ascend", "refuse", "pop", "fallAsleep", "stageUp"].includes(anim);
   }
 
-  return { init, reset, sync, play, tick, getView, getAnim, isBusy };
+  return { init, reset, sync, play, tick, getView, getAnim, isBusy, setOnAscendFinished };
 })();
 window.RaccoonAnim = RaccoonAnim;

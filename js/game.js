@@ -125,6 +125,13 @@
   let wasSleeping = false;
   /** Session-only Dev override: "" | "sleep" | "awake". */
   let devSleepOverride = "";
+  /** True during the 10s stage-up celebration. */
+  let stageCelebrating = false;
+  let stageCelebrateTimer = null;
+  /** Pending modal after stage celebration: { title, body }. */
+  let pendingStageMessage = null;
+  /** Waiting for player to start a new kit after ascend finishes. */
+  let awaitingNewSession = false;
 
   const DAY_MS = 86400000;
   const MAX_ILLNESS_PER_DAY = 2;
@@ -285,21 +292,23 @@
     state.ascending = true;
     state.deathReason = reason;
     state.stubborn = false;
+    awaitingNewSession = false;
     if (reason === "lifespan") {
-      say("His time is done. Wings catch the moonlight…");
+      say("His time is done. Wings catch the moonlight…", 8000);
     } else if (reason === "neglect") {
-      say("Poor care wore him thin. Wings unfold anyway…");
+      say("Poor care wore him thin. Wings unfold anyway…", 8000);
     } else {
-      say("Jimothy’s life is over. He rises into the sky…");
+      say("Jimothy’s life is over. He rises into the sky…", 8000);
+    }
+    if (window.RaccoonAnim && typeof RaccoonAnim.setOnAscendFinished === "function") {
+      RaccoonAnim.setOnAscendFinished(() => onAscendFinished());
+    } else {
+      setTimeout(() => onAscendFinished(), 4200);
     }
     pulseAnim("ascend");
     sfx("ascend");
     render();
     save();
-    // After the rise, clear the pet and show the rustling bush under the farewell.
-    setTimeout(() => {
-      startNextKitAfterAscension(reason);
-    }, 4200);
   }
 
   function deathWhy(reason) {
@@ -309,17 +318,67 @@
     return "His story has ended.";
   }
 
-  function startNextKitAfterAscension(reason) {
-    const why = deathWhy(reason);
+  /** Ascend anim finished and Jimothy is gone — then ask to start a new session. */
+  function onAscendFinished() {
+    if (!state.ascending && awaitingNewSession) return;
     state.ascending = false;
-    resetPet();
+    awaitingNewSession = true;
+    if (window.RaccoonAnim) {
+      RaccoonAnim.setOnAscendFinished(null);
+    }
+    const wrap = $("raccoonWrap");
+    if (wrap) {
+      wrap.style.opacity = "1";
+      wrap.classList.remove("ascending", "is-bush", "stage-celebrating");
+      const wings = wrap.querySelector(".ascend-wings");
+      if (wings) wings.remove();
+    }
+    const why = deathWhy(state.deathReason);
     showMessage(
       "Jimothy ascended",
-      `${why} He grew wings and rose into the sky.\n\nA new bush is rustling…`
+      `${why} He grew wings and rose into the sky.\n\nStart a new session when you’re ready.`
     );
-    $("messageOk").textContent = "OK";
-    $("messageOk").dataset.reset = "";
+    $("messageOk").textContent = "Start new session";
+    $("messageOk").dataset.reset = "1";
     $("messageOk").dataset.openSchedule = "1";
+    render();
+    save({ touchTick: false });
+  }
+
+  function beginStageCelebration(stageKey, title, body, subtitle = "") {
+    stageCelebrating = true;
+    pendingStageMessage = { title, body };
+    if (stageCelebrateTimer) clearTimeout(stageCelebrateTimer);
+    const banner = $("stageTransition");
+    const label = $("stageTransitionLabel");
+    const sub = $("stageTransitionSub");
+    if (label) label.textContent = title;
+    if (sub) sub.textContent = subtitle || "";
+    if (banner) banner.hidden = false;
+    const wrap = $("raccoonWrap");
+    if (wrap) wrap.classList.add("stage-celebrating");
+    pulseAnim("stageUp");
+    animCooldown = 10.5;
+    stageCelebrateTimer = setTimeout(() => {
+      stageCelebrateTimer = null;
+      endStageCelebration();
+    }, 10000);
+  }
+
+  function endStageCelebration() {
+    stageCelebrating = false;
+    const banner = $("stageTransition");
+    if (banner) banner.hidden = true;
+    const wrap = $("raccoonWrap");
+    if (wrap) wrap.classList.remove("stage-celebrating");
+    const msg = pendingStageMessage;
+    pendingStageMessage = null;
+    if (msg) {
+      showMessage(msg.title, msg.body);
+      $("messageOk").textContent = "OK";
+      $("messageOk").dataset.reset = "";
+      $("messageOk").dataset.openSchedule = "";
+    }
     render();
   }
 
@@ -427,7 +486,7 @@
   }
 
   function interactTap() {
-    if (state.ascending || !state.alive) return "";
+    if (state.ascending || !state.alive || stageCelebrating || awaitingNewSession) return "";
     if (tapCooldown > 0) return "";
     tapCooldown = 0.55;
 
@@ -1050,19 +1109,20 @@
   }
 
   function evolveIfNeeded() {
-    if (!state.alive) return;
+    if (!state.alive || stageCelebrating) return;
     const prev = state.stage;
 
     if (state.stage === "bush" && state.ageSec >= bushEnd()) {
       state.stage = "baby";
       state.weight = 1.2;
       state.happy = clamp(state.happy + 10);
-      say("The bush explodes in leaves — baby kit Jimothy!");
-      pulseAnim("pop");
+      say("The bush explodes in leaves — baby kit Jimothy!", 10000);
       sfx("baby");
-      showMessage(
+      beginStageCelebration(
+        "baby",
         "Baby Kit!",
-        "Jimothy burst from the bush. Keep him fed and cozy."
+        "Jimothy burst from the bush. Keep him fed and cozy.",
+        "He leaves the leaves behind"
       );
       if (state.alertsEnabled && window.JimothyNotify) {
         JimothyNotify.notifyForm("baby", "Baby Kit");
@@ -1071,13 +1131,14 @@
       state.stage = "young";
       state.youngForm = pickYoungForm(state.genes);
       state.weight = 3.5;
-      say(`He’s a young kit now — form: ${capitalize(state.youngForm)}.`);
-      pulseAnim("stretch");
+      say(`He’s a young kit now — form: ${capitalize(state.youngForm)}.`, 10000);
       sfx("stage");
       unlockCurrentForm();
-      showMessage(
+      beginStageCelebration(
+        "young",
         "Young Kit!",
-        `Form: ${capitalize(state.youngForm)}. His teen/adult path is already leaning this way.`
+        `Form: ${capitalize(state.youngForm)}. His teen/adult path is already leaning this way.`,
+        prettyForm(state.youngForm)
       );
       if (state.alertsEnabled && window.JimothyNotify) {
         JimothyNotify.notifyForm("young", prettyForm(state.youngForm));
@@ -1087,13 +1148,14 @@
       state.teenForm = pickTeenForm(state.youngForm, state.genes);
       state.weight = 7;
       state.teenDuration = randRange(TEEN_SEC_MIN, TEEN_SEC_MAX);
-      say(`Teen kit era. He’s turning into a ${state.teenForm}.`);
-      pulseAnim("run");
+      say(`Teen kit era. He’s turning into a ${state.teenForm}.`, 10000);
       sfx("stage");
       unlockCurrentForm();
-      showMessage(
+      beginStageCelebration(
+        "teen",
         "Teen Kit!",
-        `Form: ${capitalize(state.teenForm)}. Keep caring — he keeps growing.`
+        `Form: ${capitalize(state.teenForm)}. Keep caring — he keeps growing.`,
+        prettyForm(state.teenForm)
       );
       if (state.alertsEnabled && window.JimothyNotify) {
         JimothyNotify.notifyForm("teen", prettyForm(state.teenForm));
@@ -1120,13 +1182,14 @@
       state.weight = 11 + state.fitness * 0.03;
       state.genes.legginess = clamp(state.genes.legginess * 0.5 + 0.55, 0, 1);
       state.genes.roundness = clamp(state.genes.roundness * 0.4 + 0.65, 0, 1);
-      say(`Fully grown — ${adultFormTitle()} Jimothy, midnight cryptid.`);
-      pulseAnim("lope");
+      say(`Fully grown — ${adultFormTitle()} Jimothy, your cryptid companion.`, 10000);
       sfx("stage");
       unlockCurrentForm();
-      showMessage(
+      beginStageCelebration(
+        "adult",
         "Adult Cryptid!",
-        `${adultFormTitle()} Jimothy — care well and he may linger longer; neglect shortens his sky-bound days.`
+        `${adultFormTitle()} Jimothy — care well and he may linger longer; neglect shortens his sky-bound days.`,
+        adultFormTitle()
       );
       if (state.alertsEnabled && window.JimothyNotify) {
         JimothyNotify.notifyForm("adult", adultFormTitle());
@@ -1221,12 +1284,13 @@
     // Keep ambient from cutting off a slow eat / key reaction.
     if (kind === "eat") animCooldown = 3.2;
     else if (kind === "ascend") animCooldown = 5;
+    else if (kind === "stageUp") animCooldown = 10.5;
     else animCooldown = randRange(1.2, 3.2);
   }
 
   function ambientAnim(dt) {
     tapCooldown = Math.max(0, tapCooldown - dt);
-    if (!state.alive || state.ascending) return;
+    if (!state.alive || state.ascending || stageCelebrating || awaitingNewSession) return;
     if (window.RaccoonAnim && typeof RaccoonAnim.isBusy === "function" && RaccoonAnim.isBusy()) {
       return;
     }
@@ -1303,15 +1367,17 @@
     raccoon.dataset.stage = showBody ? state.stage : "gone";
     raccoon.dataset.mood = state.ascending
       ? "ascend"
-      : !state.alive
-        ? "gone"
-        : isSleeping()
-          ? "sleep"
-          : state.sick
-            ? "sick"
-            : state.stubborn
-              ? "stubborn"
-              : "idle";
+      : stageCelebrating
+        ? "stageUp"
+        : !state.alive
+          ? "gone"
+          : isSleeping()
+            ? "sleep"
+            : state.sick
+              ? "sick"
+              : state.stubborn
+                ? "stubborn"
+                : "idle";
     raccoon.dataset.form =
       state.stage === "adult"
         ? state.adultForm
@@ -1330,6 +1396,14 @@
         alive: showBody,
         ascending: !!state.ascending,
       });
+    }
+
+    if (awaitingNewSession && !state.ascending) {
+      $("stageName").textContent = "Ascended";
+      if ($("hint")) {
+        $("hint").textContent =
+          "Jimothy has ascended. Start a new session when you’re ready.";
+      }
     }
 
     renderMessPiles();
@@ -1868,6 +1942,12 @@
 
   function doResetPet() {
     closeResetModal();
+    awaitingNewSession = false;
+    stageCelebrating = false;
+    if (stageCelebrateTimer) {
+      clearTimeout(stageCelebrateTimer);
+      stageCelebrateTimer = null;
+    }
     resetPet();
     say("A new bush is rustling…", 6000);
     openScheduleModal();
@@ -2019,13 +2099,19 @@
     const raccoon = $("raccoon");
     if (!raccoon) return;
     const showBody = state.alive || state.ascending;
-    const profile = showBody
-      ? artProfile()
-      : { stage: "bush", ageSec: 0, genes: {}, view: "front" };
+    // Empty clearing while waiting to start a new session after ascend.
+    if (!showBody) {
+      const key = "gone";
+      if (!force && key === lastArtKey) return;
+      lastArtKey = key;
+      raccoon.innerHTML = "";
+      return;
+    }
+    const profile = artProfile();
     const bushBucket =
       profile.stage === "bush" ? Math.floor((profile.ageSec || 0) / 8) : 0;
     const key = [
-      showBody ? state.stage : "gone",
+      state.stage,
       profile.youngForm || "",
       profile.teenForm || "",
       profile.adultForm || "",
@@ -2036,6 +2122,7 @@
       profile.view || "side",
       bushBucket,
       state.ascending ? "up" : "",
+      stageCelebrating ? "grow" : "",
     ].join("|");
     if (!force && key === lastArtKey) return;
     lastArtKey = key;
@@ -2192,12 +2279,16 @@
       $("messageOk").textContent = "OK";
       $("messageOk").dataset.reset = "";
       $("messageOk").dataset.openSchedule = "";
+      // After ascend: start a new session, then ask for wake/sleep times.
+      if (shouldReset && (!state.alive || awaitingNewSession)) {
+        awaitingNewSession = false;
+        resetPet();
+        render();
+        openScheduleModal();
+        return;
+      }
       if (openSchedule || !state.scheduleSet) {
         openScheduleModal();
-      }
-      // Legacy: only reset if a dialog still asked to raise another kit.
-      if (shouldReset && !state.alive) {
-        resetPet();
       }
     });
 
@@ -2275,11 +2366,24 @@
     }
     refreshAlertsButton();
     save({ touchTick: false });
-    if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
+    if (window.RaccoonAnim) {
+      RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
+      RaccoonAnim.setOnAscendFinished(() => onAscendFinished());
+    }
     render();
-    // Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
-    if (!state.alive) {
-      startNextKitAfterAscension(state.deathReason);
+    // Dead / leftover saves: wait for player to start a new session (no auto bush).
+    if (state.ascending) {
+      // Resume mid-ascent if a save caught him rising.
+      pulseAnim("ascend");
+    } else if (!state.alive) {
+      awaitingNewSession = true;
+      showMessage(
+        "Jimothy ascended",
+        `${deathWhy(state.deathReason)} He grew wings and rose into the sky.\n\nStart a new session when you’re ready.`
+      );
+      $("messageOk").textContent = "Start new session";
+      $("messageOk").dataset.reset = "1";
+      $("messageOk").dataset.openSchedule = "1";
     } else if (!state.scheduleSet) {
       openScheduleModal();
     }

@@ -44,6 +44,12 @@ var btn_dev: Button
 var _speech_timer: SceneTreeTimer
 var _awaiting_new_kit: bool = false
 var _open_schedule_after_message: bool = false
+var _stage_celebrating: bool = false
+var _pending_stage_title: String = ""
+var _pending_stage_body: String = ""
+var _stage_banner: PanelContainer
+var _stage_banner_label: Label
+var _stage_banner_sub: Label
 var _forms_panel: ColorRect
 var _forms_list: VBoxContainer
 var _dev_panel: ColorRect
@@ -63,6 +69,7 @@ var _brand_tap_times: Array[float] = []
 
 func _ready() -> void:
 	_make_panels_transparent()
+	_build_stage_banner()
 	PetState.state_changed.connect(_refresh)
 	PetState.speech.connect(_on_speech)
 	PetState.pet_died.connect(_on_pet_died)
@@ -87,11 +94,57 @@ func _ready() -> void:
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
 	_refresh()
-	# Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
-	if not PetState.alive:
-		_start_next_kit_after_ascension()
+	# Dead / leftover saves: wait for player to start a new session (no auto bush).
+	if PetState.ascending:
+		pass  # raccoon_view resumes ascend anim
+	elif not PetState.alive:
+		_prompt_new_session_after_ascend()
 	elif not PetState.schedule_set:
 		_open_schedule_panel()
+
+
+func _build_stage_banner() -> void:
+	var stage_area := raccoon.get_parent() if raccoon else null
+	if stage_area == null:
+		return
+	_stage_banner = PanelContainer.new()
+	_stage_banner.visible = false
+	_stage_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_stage_banner.offset_left = -120
+	_stage_banner.offset_right = 120
+	_stage_banner.offset_top = 8
+	_stage_banner.offset_bottom = 78
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.1, 0.07, 0.78)
+	style.border_color = Color(0.94, 0.77, 0.48, 0.4)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(12)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	_stage_banner.add_theme_stylebox_override("panel", style)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	_stage_banner.add_child(vbox)
+	var kicker := Label.new()
+	kicker.text = "GROWING UP"
+	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	kicker.add_theme_font_size_override("font_size", 11)
+	kicker.add_theme_color_override("font_color", Color(0.94, 0.77, 0.48, 0.8))
+	vbox.add_child(kicker)
+	_stage_banner_label = Label.new()
+	_stage_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stage_banner_label.add_theme_font_size_override("font_size", 20)
+	_stage_banner_label.add_theme_color_override("font_color", Color("f0c57a"))
+	vbox.add_child(_stage_banner_label)
+	_stage_banner_sub = Label.new()
+	_stage_banner_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stage_banner_sub.add_theme_font_size_override("font_size", 12)
+	_stage_banner_sub.add_theme_color_override("font_color", Color(0.85, 0.92, 0.86, 0.9))
+	vbox.add_child(_stage_banner_sub)
+	stage_area.add_child(_stage_banner)
 
 
 func _make_panels_transparent() -> void:
@@ -786,6 +839,8 @@ func _refresh() -> void:
 	var mood := "idle"
 	if PetState.ascending:
 		mood = "ascend"
+	elif _stage_celebrating:
+		mood = "stageUp"
 	elif PetState.is_sleeping():
 		mood = "sleep"
 	elif PetState.sick:
@@ -832,6 +887,9 @@ func _refresh() -> void:
 		hint_label.text = "Tap the bush — it rustles. Something’s waking…"
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
+	elif _awaiting_new_kit or (not PetState.alive and not PetState.ascending):
+		stage_name.text = "Ascended"
+		hint_label.text = "Jimothy has ascended. Start a new session when you’re ready."
 	elif PetState.is_sleeping():
 		hint_label.text = "Sleep hours — Jimothy is dozing in his nest. He’ll wake at his wake time."
 	elif PetState.sick:
@@ -870,18 +928,58 @@ func _on_speech(text: String) -> void:
 
 
 func _on_stage_changed(stage: String) -> void:
+	var title := ""
+	var body := ""
+	var sub := ""
 	match stage:
 		"baby":
-			_show_message("Baby Kit!", "Jimothy burst from the bush. Keep him fed and cozy.")
+			title = "Baby Kit!"
+			body = "Jimothy burst from the bush. Keep him fed and cozy."
+			sub = "He leaves the leaves behind"
 		"young":
-			_show_message("Young Kit!", "Form: %s. His teen/adult path is already leaning this way." % PetState.young_form.capitalize())
+			title = "Young Kit!"
+			body = "Form: %s. His teen/adult path is already leaning this way." % PetState.young_form.capitalize()
+			sub = str(PetState.young_form).capitalize()
 		"teen":
-			_show_message("Teen Kit!", "Form: %s. Keep caring — he keeps growing." % PetState.teen_form.capitalize())
+			title = "Teen Kit!"
+			body = "Form: %s. Keep caring — he keeps growing." % PetState.teen_form.capitalize()
+			sub = str(PetState.teen_form).capitalize()
 		"adult":
-			_show_message(
-				"Adult Cryptid!",
-				"%s Jimothy — care well and he may linger longer; neglect shortens his sky-bound days." % PetState.adult_form_title()
-			)
+			title = "Adult Cryptid!"
+			body = "%s Jimothy — care well and he may linger longer; neglect shortens his sky-bound days." % PetState.adult_form_title()
+			sub = PetState.adult_form_title()
+		_:
+			return
+	_begin_stage_celebration(title, body, sub)
+
+
+func _begin_stage_celebration(title: String, body: String, subtitle: String = "") -> void:
+	_stage_celebrating = true
+	_pending_stage_title = title
+	_pending_stage_body = body
+	if _stage_banner_label:
+		_stage_banner_label.text = title
+	if _stage_banner_sub:
+		_stage_banner_sub.text = subtitle
+	if _stage_banner:
+		_stage_banner.visible = true
+	_refresh()
+	var timer := get_tree().create_timer(10.0)
+	timer.timeout.connect(_end_stage_celebration, CONNECT_ONE_SHOT)
+
+
+func _end_stage_celebration() -> void:
+	_stage_celebrating = false
+	if _stage_banner:
+		_stage_banner.visible = false
+	var title := _pending_stage_title
+	var body := _pending_stage_body
+	_pending_stage_title = ""
+	_pending_stage_body = ""
+	_refresh()
+	if title != "":
+		_show_message(title, body)
+		btn_message_ok.text = "OK"
 
 
 func _on_pet_died(_reason: String) -> void:
@@ -890,7 +988,8 @@ func _on_pet_died(_reason: String) -> void:
 
 
 func _on_ascend_finished() -> void:
-	_start_next_kit_after_ascension()
+	# Wait until he’s fully gone, then ask — don’t auto-start a new kit.
+	_prompt_new_session_after_ascend()
 
 
 func _death_why() -> String:
@@ -903,21 +1002,19 @@ func _death_why() -> String:
 			return "His story has ended."
 
 
-## Clear ascend visuals, spawn the rustling bush immediately, then show farewell.
-func _start_next_kit_after_ascension() -> void:
-	var why := _death_why()
+## Ascend finished: Jimothy disappeared. Ask to start a new session (schedule after OK).
+func _prompt_new_session_after_ascend() -> void:
 	PetState.ascending = false
-	PetState.reset_pet()
 	if raccoon.has_method("clear_ascend"):
 		raccoon.clear_ascend()
-	_awaiting_new_kit = false
+	_awaiting_new_kit = true
 	_open_schedule_after_message = true
 	_refresh()
 	_show_message(
 		"Jimothy ascended",
-		"%s He grew wings and rose into the sky.\n\nA new bush is rustling…" % why
+		"%s He grew wings and rose into the sky.\n\nStart a new session when you’re ready." % _death_why()
 	)
-	btn_message_ok.text = "OK"
+	btn_message_ok.text = "Start new session"
 
 
 func _show_message(title: String, body: String) -> void:
@@ -1172,11 +1269,16 @@ func _on_heal_pressed() -> void:
 func _on_message_ok() -> void:
 	message_panel.visible = false
 	btn_message_ok.text = "OK"
-	# Legacy path: only reset if somehow still dead when dismissing.
+	# After ascend: start a new session, then ask for wake/sleep times.
 	if _awaiting_new_kit or not PetState.alive:
 		_awaiting_new_kit = false
+		if raccoon and raccoon.has_method("clear_ascend"):
+			raccoon.clear_ascend()
 		PetState.reset_pet()
 		_refresh()
+		_open_schedule_after_message = false
+		_open_schedule_panel()
+		return
 	if _open_schedule_after_message or not PetState.schedule_set:
 		_open_schedule_after_message = false
 		_open_schedule_panel()

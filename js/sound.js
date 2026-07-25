@@ -206,8 +206,10 @@ const JimothySound = (() => {
         play("chirp", 0.7);
         break;
       case "stage":
-        play("chirp", 0.6);
-        play("chitter", 0.45);
+      case "stageUp":
+        play("chirp", 0.85);
+        play("chitter", 0.7);
+        play("rustle", 0.45);
         break;
       case "bush":
         play("rustle", 0.95);

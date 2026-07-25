@@ -167,6 +167,10 @@ func _on_anim(kind: String) -> void:
 		"pop", "stretch":
 			play("rustle", -2.0)
 			play("chirp", -4.0)
+		"stageUp":
+			play("chirp", -1.0)
+			play("chitter", -3.0)
+			play("rustle", -5.0)
 		"ascend":
 			play("ascend", -1.0)
 		"jump", "hop", "happy", "play", "chirp":

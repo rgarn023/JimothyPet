@@ -105,7 +105,6 @@ func clear_ascend() -> void:
 	_pose_x = 0.0
 	_pose_y = 0.0
 	_wing_span = 0.0
-	_fade = 1.0
 	_head_dip = 0.0
 	_body_squash = 1.0
 	_ascend_done_emitted = false
@@ -113,7 +112,13 @@ func clear_ascend() -> void:
 	_facing = 1.0
 	_desired_facing = 1.0
 	_face_cooldown = 0.0
-	modulate = Color(1, 1, 1, 1)
+	# Stay invisible after a finished life until a new kit starts.
+	if PetState != null and not PetState.alive and not PetState.ascending:
+		_fade = 0.0
+		modulate = Color(1, 1, 1, 0)
+	else:
+		_fade = 1.0
+		modulate = Color(1, 1, 1, 1)
 	_sync_from_state()
 
 
@@ -173,8 +178,8 @@ func set_look(_stage: String, _variant: String = "", _mood: String = "idle") -> 
 
 
 func play_anim(kind: String) -> void:
-	# Don't let ambient walks cut off a slow eat / ascent.
-	if _anim in ["eat", "ascend", "fallAsleep"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"]:
+	# Don't let ambient walks cut off a slow eat / ascent / stage-up.
+	if _anim in ["eat", "ascend", "fallAsleep", "stageUp"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"]:
 		return
 	_anim = kind
 	_anim_t = 0.0
@@ -185,6 +190,12 @@ func play_anim(kind: String) -> void:
 			_fade = 1.0
 			_ascend_done_emitted = false
 			_speed = 0.0
+		"stageUp":
+			_anim_dur = 10.0
+			_jump_peak = 26.0
+			_speed = 0.0
+			_smile = 1.0
+			_fade = 1.0
 		"fallAsleep":
 			_anim_dur = 1.5
 			_speed = 0.0
@@ -279,6 +290,42 @@ func _process(delta: float) -> void:
 		if u >= 1.0 and not _ascend_done_emitted:
 			_ascend_done_emitted = true
 			ascend_finished.emit()
+		return
+
+	if _anim == "stageUp":
+		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+		_smile = 1.0
+		if u < 0.2:
+			var p := u / 0.2
+			_pose_y = -sin(p * PI) * 22.0
+			_pose_x = sin(_t * 8.0) * 6.0
+		elif u < 0.55:
+			var p2 := (u - 0.2) / 0.35
+			_pose_y = -absf(sin(p2 * PI * 3.0)) * 18.0
+			_pose_x = sin(_t * 10.0) * 16.0
+			_walk_phase += delta * 8.0
+		elif u < 0.82:
+			var p3 := (u - 0.55) / 0.27
+			_pose_y = -sin(p3 * PI) * 12.0
+			_pose_x = lerpf(_pose_x, 0.0, minf(1.0, delta * 2.2))
+			_head_dip = sin(_t * 6.0) * 3.0
+		else:
+			var p4 := (u - 0.82) / 0.18
+			_pose_y = -sin(p4 * PI) * 6.0 * (1.0 - p4)
+			_pose_x = lerpf(_pose_x, 0.0, minf(1.0, delta * 3.0))
+			_head_dip = 2.0 * (1.0 - p4)
+		if _anim_t >= _anim_dur:
+			_anim = "idle"
+			_pose_y = 0.0
+			_pose_x = 0.0
+			_head_dip = 0.0
+		queue_redraw()
+		return
+
+	# After ascend finishes, stay invisible until a new kit starts.
+	if PetState != null and not PetState.alive and not PetState.ascending:
+		_fade = 0.0
+		queue_redraw()
 		return
 
 	if stage == "bush":
@@ -555,15 +602,21 @@ func _draw() -> void:
 		_draw_avatar()
 		return
 	_draw_clearing()
+	# Empty nest after ascend until the player starts a new session.
+	if PetState != null and not PetState.alive and not PetState.ascending and _anim != "ascend":
+		return
 	var c := size * 0.5 + Vector2(_pose_x, _pose_y)
 	if stage == "bush" and _anim != "ascend":
 		_draw_bush(size * 0.5)
 		return
 
-	# Soft sky glow during ascent
+	# Soft sky glow during ascent / stage-up
 	if _anim == "ascend":
 		var glow_a := (1.0 - _fade) * 0.35 + _wing_span * 0.25
 		_ellipse(c + Vector2(0, 10), Vector2(70, 40), Color(0.95, 0.88, 0.55, glow_a * 0.35))
+	elif _anim == "stageUp":
+		var pulse := 0.35 + 0.45 * absf(sin(_t * 3.0))
+		_ellipse(c + Vector2(0, 8), Vector2(55, 36), Color(0.95, 0.8, 0.4, pulse * 0.28))
 
 	var face := _facing if _facing != 0.0 else 1.0
 	var old_mod := modulate

@@ -781,13 +781,13 @@ func _evolve_if_needed() -> void:
 		weight = 1.2
 		happy = clamp01(happy + 10.0)
 		speech.emit("The bush explodes in leaves — baby kit Jimothy!")
-		anim_impulse.emit("pop")
+		anim_impulse.emit("stageUp")
 	elif stage == "baby" and age_sec >= baby_end():
 		stage = "young"
 		young_form = _pick_young_form(genes)
 		weight = 3.5
 		speech.emit("He’s a young kit now — form: %s." % young_form.capitalize())
-		anim_impulse.emit("stretch")
+		anim_impulse.emit("stageUp")
 		unlock_current_form()
 	elif stage == "young" and age_sec >= young_end():
 		stage = "teen"
@@ -796,7 +796,7 @@ func _evolve_if_needed() -> void:
 		# Teen duration already rolled; may re-roll lightly for variance
 		teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
 		speech.emit("Teen kit era. He’s turning into a %s." % teen_form)
-		anim_impulse.emit("run")
+		anim_impulse.emit("stageUp")
 		unlock_current_form()
 	elif stage == "teen" and age_sec >= teen_end():
 		stage = "adult"
@@ -814,8 +814,8 @@ func _evolve_if_needed() -> void:
 		# Nudge genes toward short-spine Jimothy silhouette
 		genes.legginess = clampf(float(genes.legginess) * 0.5 + 0.55, 0.0, 1.0)
 		genes.roundness = clampf(float(genes.roundness) * 0.4 + 0.65, 0.0, 1.0)
-		speech.emit("Fully grown — %s Jimothy, midnight cryptid." % adult_form_title())
-		anim_impulse.emit("lope")
+		speech.emit("Fully grown — %s Jimothy, your cryptid companion." % adult_form_title())
+		anim_impulse.emit("stageUp")
 		unlock_current_form()
 
 	if prev != stage:

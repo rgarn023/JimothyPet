@@ -903,6 +903,95 @@ button {
   color: var(--amber-soft);
 }
 
+.stage-transition {
+  position: absolute;
+  inset: 12% 8% auto;
+  z-index: 6;
+  text-align: center;
+  pointer-events: none;
+  padding: 0.65rem 0.85rem;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 22, 16, 0.72),
+    rgba(18, 32, 24, 0.55)
+  );
+  border: 1px solid rgba(240, 197, 122, 0.35);
+  animation: stage-banner-in 0.55s ease both;
+}
+
+.stage-transition[hidden] {
+  display: none !important;
+}
+
+.stage-transition-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(240, 197, 122, 0.75);
+}
+
+.stage-transition-label {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--amber-soft);
+  animation: stage-label-pulse 1.8s ease-in-out infinite;
+}
+
+.stage-transition-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(220, 235, 220, 0.85);
+}
+
+.raccoon-wrap[data-anim="stageUp"] .raccoon {
+  animation: stage-up-grow 10s ease-in-out both;
+  filter: drop-shadow(0 0 10px rgba(240, 197, 122, 0.45));
+}
+
+.raccoon-wrap.stage-celebrating::after {
+  content: "";
+  position: absolute;
+  inset: 10% 18% 28%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(240, 197, 122, 0.28),
+    transparent 68%
+  );
+  animation: stage-glow 2.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes stage-banner-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes stage-label-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes stage-up-grow {
+  0% { transform: translateY(8px) scale(0.82); opacity: 0.75; }
+  12% { transform: translateY(-18px) scale(1.08); opacity: 1; }
+  28% { transform: translateY(2px) scale(0.96) rotate(-4deg); }
+  42% { transform: translateY(-14px) scale(1.1) rotate(4deg); }
+  58% { transform: translateY(0) scale(1.02) rotate(-2deg); }
+  74% { transform: translateY(-10px) scale(1.08); }
+  88% { transform: translateY(-4px) scale(1.04); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes stage-glow {
+  0%, 100% { opacity: 0.35; transform: scale(0.92); }
+  50% { opacity: 0.85; transform: scale(1.08); }
+}
+
 .clearing-floor {
   position: absolute;
   left: 8%;
