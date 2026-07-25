@@ -332,7 +332,8 @@
       genes: state.genes,
       fitness: state.fitness,
       ageSec: state.ageSec,
-      smiling: performance.now() < smileUntil,
+      smiling: performance.now() < smileUntil && !(state.sick && state.alive),
+      sick: !!(state.sick && state.alive && !state.ascending),
     };
   }
 
@@ -789,7 +790,7 @@
       sfx("baby");
       showMessage(
         "Baby Kit!",
-        "Jimothy burst from the bush. Keep him fed — young kit in ~1 hour."
+        "Jimothy burst from the bush. Keep him fed and cozy."
       );
       if (state.alertsEnabled && window.JimothyNotify) {
         JimothyNotify.notifyForm("baby", "Baby Kit");
@@ -820,7 +821,7 @@
       unlockCurrentForm();
       showMessage(
         "Teen Kit!",
-        `Form: ${capitalize(state.teenForm)}. Adult Jimothy arrives in 1–3 real days.`
+        `Form: ${capitalize(state.teenForm)}. Keep caring — he keeps growing.`
       );
       if (state.alertsEnabled && window.JimothyNotify) {
         JimothyNotify.notifyForm("teen", prettyForm(state.teenForm));
@@ -1016,10 +1017,10 @@
       ? "ascend"
       : !state.alive
         ? "gone"
-        : state.stubborn
-          ? "stubborn"
-          : state.sick
-            ? "sick"
+        : state.sick
+          ? "sick"
+          : state.stubborn
+            ? "stubborn"
             : "idle";
     raccoon.dataset.form =
       state.stage === "adult"
@@ -1072,11 +1073,12 @@
     if (state.ascending) {
       $("hint").textContent = "Watch… Jimothy grows wings and rises into the sky.";
     } else if (state.stage === "bush") {
-      $("hint").textContent =
-        "Tap the bush to rustle it. A baby kit may pop out soon.";
+      $("hint").textContent = "Tap the bush to rustle it. Something’s waking…";
     } else if (!state.alive) {
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
+    } else if (state.sick) {
+      $("hint").textContent = "He’s under the weather — use Treat when you can.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
         "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
@@ -1626,6 +1628,7 @@
       profile.teenForm || "",
       profile.adultForm || "",
       profile.smiling ? "1" : "0",
+      profile.sick ? "sick" : "",
       profile.view || "side",
       bushBucket,
       state.ascending ? "up" : "",

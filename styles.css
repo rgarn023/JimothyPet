@@ -442,8 +442,8 @@ button {
 }
 
 .raccoon-wrap.sick .raccoon {
-  filter: hue-rotate(50deg) saturate(0.7);
-  animation: sick-sway 1.2s ease-in-out infinite;
+  filter: saturate(0.62) brightness(0.96) sepia(0.18) hue-rotate(55deg);
+  animation: sick-sway 1.6s ease-in-out infinite;
 }
 
 .raccoon-wrap.happy .raccoon {

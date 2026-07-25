@@ -541,10 +541,10 @@ func _refresh() -> void:
 	var mood := "idle"
 	if PetState.ascending:
 		mood = "ascend"
-	elif PetState.stubborn:
-		mood = "stubborn"
 	elif PetState.sick:
 		mood = "sick"
+	elif PetState.stubborn:
+		mood = "stubborn"
 	raccoon.set_look(PetState.stage, PetState.adult_form, mood)
 	mess_mark.visible = PetState.has_mess and PetState.alive and not PetState.ascending
 
@@ -569,9 +569,11 @@ func _refresh() -> void:
 	if PetState.ascending:
 		hint_label.text = "Watch… Jimothy grows wings and rises into the sky."
 	elif PetState.stage == "bush":
-		hint_label.text = "Tap the bush — it rustles. In about a minute, a baby kit may pop out."
+		hint_label.text = "Tap the bush — it rustles. Something’s waking…"
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
+	elif PetState.sick:
+		hint_label.text = "He’s under the weather — use Treat when you can."
 	elif PetState.stage == "baby":
 		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for a full night run yet."
 	else:
@@ -604,11 +606,11 @@ func _on_speech(text: String) -> void:
 func _on_stage_changed(stage: String) -> void:
 	match stage:
 		"baby":
-			_show_message("Baby Kit!", "Jimothy burst from the bush. Keep him fed — young kit in ~1 hour.")
+			_show_message("Baby Kit!", "Jimothy burst from the bush. Keep him fed and cozy.")
 		"young":
 			_show_message("Young Kit!", "Form: %s. His teen/adult path is already leaning this way." % PetState.young_form.capitalize())
 		"teen":
-			_show_message("Teen Kit!", "Form: %s. Adult Jimothy arrives in 1–3 real days." % PetState.teen_form.capitalize())
+			_show_message("Teen Kit!", "Form: %s. Keep caring — he keeps growing." % PetState.teen_form.capitalize())
 		"adult":
 			_show_message(
 				"Adult Cryptid!",
