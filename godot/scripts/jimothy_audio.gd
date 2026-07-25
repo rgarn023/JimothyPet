@@ -10,8 +10,10 @@ const FILES := {
 	"crunch": "crunch.wav",
 	"chew": "chew.wav",
 	"cry": "cry.wav",
+	"discipline": "discipline.wav",
 	"ascend": "ascend.wav",
 }
+const CRY_SEC := 5.0
 
 var ambience_on: bool = false
 var sfx_on: bool = true
@@ -20,6 +22,8 @@ var _sfx_players: Array[AudioStreamPlayer] = []
 var _sfx_i: int = 0
 var _accent_cd: float = 4.0
 var _cry_player: AudioStreamPlayer
+var _cry_left: float = 0.0
+var _cry_busy: bool = false
 
 
 func _ready() -> void:
@@ -45,6 +49,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _cry_busy:
+		_cry_left -= delta
+		if _cry_left <= 0.0:
+			_stop_cry()
 	if not sfx_on:
 		return
 	_accent_cd -= delta
@@ -99,12 +107,7 @@ func play(kind: String, volume_db: float = 0.0) -> void:
 	if not _streams.has(kind):
 		return
 	if kind == "cry":
-		_stop_cry()
-		_cry_player.stop()
-		_cry_player.stream = _streams[kind]
-		_cry_player.volume_db = volume_db
-		_cry_player.pitch_scale = randf_range(0.96, 1.04)
-		_cry_player.play()
+		_play_cry(volume_db)
 		return
 	var p: AudioStreamPlayer = _sfx_players[_sfx_i]
 	_sfx_i = (_sfx_i + 1) % 4
@@ -115,9 +118,26 @@ func play(kind: String, volume_db: float = 0.0) -> void:
 	p.play()
 
 
+func _play_cry(volume_db: float = -1.0) -> void:
+	# One 5s cry per acting-up bout — ignore ambient stubborn pulses.
+	if _cry_busy:
+		return
+	if not _streams.has("cry"):
+		return
+	_cry_player.stop()
+	_cry_player.stream = _streams["cry"]
+	_cry_player.volume_db = volume_db
+	_cry_player.pitch_scale = 1.0
+	_cry_player.play()
+	_cry_busy = true
+	_cry_left = CRY_SEC
+
+
 func _stop_cry() -> void:
 	if _cry_player and _cry_player.playing:
 		_cry_player.stop()
+	_cry_busy = false
+	_cry_left = 0.0
 
 
 func _on_anim(kind: String) -> void:
@@ -128,10 +148,10 @@ func _on_anim(kind: String) -> void:
 		"refuse":
 			play("grumble", -2.0)
 		"stubborn":
-			play("cry", -1.0)
+			_play_cry(-1.0)
 		"scold":
 			_stop_cry()
-			play("chitter", -3.0)
+			play("discipline", -1.5)
 		"pop", "stretch":
 			play("rustle", -2.0)
 			play("chirp", -4.0)

@@ -1,5 +1,5 @@
 /* Jimothy service worker — offline shell + care notification clicks */
-const CACHE = "jimothy-v22";
+const CACHE = "jimothy-v23";
 const ASSETS = [
   "./",
   "./index.html",
@@ -19,6 +19,7 @@ const ASSETS = [
   "./audio/crunch.wav",
   "./audio/chew.wav",
   "./audio/cry.wav",
+  "./audio/discipline.wav",
   "./audio/ascend.wav",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

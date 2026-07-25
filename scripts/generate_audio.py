@@ -319,12 +319,14 @@ def chew() -> list[float]:
 
 
 def raccoon_cry(dur: float = 5.0) -> list[float]:
-    """Whiny raccoon crying / fussing for ~5 seconds when acting up."""
+    """Whiny raccoon crying / fussing — hard-capped to exactly `dur` seconds."""
     n = int(dur * SR)
     out = [0.0] * n
     t = 0.0
-    while t < dur - 0.15:
-        note_dur = rng.uniform(0.18, 0.42)
+    while t < dur - 0.2:
+        note_dur = min(rng.uniform(0.18, 0.42), dur - t - 0.05)
+        if note_dur <= 0.05:
+            break
         f0 = rng.uniform(420, 780)
         wobble = rng.uniform(18, 55)
         amp = rng.uniform(0.16, 0.28)
@@ -352,7 +354,46 @@ def raccoon_cry(dur: float = 5.0) -> list[float]:
         u = i / max(1, n - 1)
         env = math.sin(math.pi * u) ** 0.7
         out[i] = out[i] * 0.92 + bed[i] * 0.12 * env
-    return fade(out, 0.02, 0.18)
+    # Hard fade-out in the last 0.2s so it never rings past 5s.
+    return fade(out[:n], 0.02, 0.2)
+
+
+def discipline() -> list[float]:
+    """Firm scold: short stern chitter burst + soft stamp."""
+    parts: list[float] = []
+    # Stern descending chirps
+    for note_i, (f0, dur, amp) in enumerate(
+        [(620, 0.09, 0.28), (480, 0.11, 0.32), (360, 0.14, 0.26)]
+    ):
+        nn = int(dur * SR)
+        note = []
+        for i in range(nn):
+            t = i / SR
+            u = i / max(1, nn - 1)
+            env = (math.sin(math.pi * u) ** 0.85) * (1.0 - 0.25 * u)
+            f = f0 * (1.0 - 0.12 * u)
+            v = 0.65 * sine(f, t) + 0.22 * sine(f * 2.05, t) + 0.1 * sine(f * 3.1, t)
+            v += rng.uniform(-1, 1) * 0.05 * env
+            note.append(v * env * amp)
+        parts.extend(fade(note, 0.004, 0.02))
+        parts.extend([0.0] * int(0.035 * SR))
+    # Soft paw stamp
+    sn = int(0.08 * SR)
+    stamp = lowpass(noise(sn, 0.7), 0.12)
+    for i in range(sn):
+        stamp[i] *= (1 - i / sn) ** 0.5 * 0.35
+    parts.extend(fade(stamp, 0.001, 0.03))
+    # Closing firm chuff
+    cn = int(0.12 * SR)
+    chuff = []
+    for i in range(cn):
+        t = i / SR
+        u = i / max(1, cn - 1)
+        env = math.sin(math.pi * u) ** 1.2
+        v = 0.4 * sine(220, t) + 0.2 * sine(330, t) + rng.uniform(-1, 1) * 0.08
+        chuff.append(v * env * 0.22)
+    parts.extend(fade(chuff, 0.005, 0.04))
+    return fade(parts, 0.008, 0.06)
 
 
 def ascend() -> list[float]:
@@ -411,6 +452,7 @@ def main() -> None:
         "crunch.wav": crunch(),
         "chew.wav": chew(),
         "cry.wav": raccoon_cry(5.0),
+        "discipline.wav": discipline(),
         "ascend.wav": ascend(),
         "hoot.wav": soft_hoot(),
     }

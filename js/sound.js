@@ -12,8 +12,10 @@ const JimothySound = (() => {
     crunch: "crunch.wav",
     chew: "chew.wav",
     cry: "cry.wav",
+    discipline: "discipline.wav",
     ascend: "ascend.wav",
   };
+  const CRY_MS = 5000;
 
   let sfxOn = true;
   let unlocked = false;
@@ -21,6 +23,8 @@ const JimothySound = (() => {
   let accentTimer = null;
   let onChange = null;
   let activeCry = null;
+  let cryTimer = null;
+  let cryBusyUntil = 0;
 
   function notify() {
     if (onChange) onChange({ ambienceOn: false, sfxOn });
@@ -88,6 +92,10 @@ const JimothySound = (() => {
   }
 
   function stopCry() {
+    if (cryTimer) {
+      clearTimeout(cryTimer);
+      cryTimer = null;
+    }
     if (activeCry) {
       try {
         activeCry.pause();
@@ -97,23 +105,52 @@ const JimothySound = (() => {
       }
       activeCry = null;
     }
+    cryBusyUntil = 0;
+  }
+
+  function playCry(volume = 0.85) {
+    if (!unlocked || !sfxOn) return;
+    // One 5s cry per acting-up bout — ignore ambient stubborn pulses.
+    if (Date.now() < cryBusyUntil) return;
+    stopCry();
+    const base = ensureAudio("cry");
+    const a = base.cloneNode();
+    a.volume = Math.max(0, Math.min(1, volume));
+    a.playbackRate = 1.0;
+    activeCry = a;
+    cryBusyUntil = Date.now() + CRY_MS;
+    a.onended = () => {
+      if (activeCry === a) activeCry = null;
+    };
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+    // Hard stop at exactly 5 seconds.
+    cryTimer = setTimeout(() => {
+      cryTimer = null;
+      if (activeCry === a) {
+        try {
+          a.pause();
+          a.currentTime = 0;
+        } catch {
+          /* ignore */
+        }
+        activeCry = null;
+      }
+    }, CRY_MS);
   }
 
   function play(kind, volume = 0.7) {
     if (!unlocked) return;
     if (!FILES[kind]) return;
     if (!sfxOn) return;
+    if (kind === "cry") {
+      playCry(volume);
+      return;
+    }
     const base = ensureAudio(kind);
     const a = base.cloneNode();
     a.volume = Math.max(0, Math.min(1, volume));
     a.playbackRate = 0.94 + Math.random() * 0.12;
-    if (kind === "cry") {
-      stopCry();
-      activeCry = a;
-      a.onended = () => {
-        if (activeCry === a) activeCry = null;
-      };
-    }
     const p = a.play();
     if (p && p.catch) p.catch(() => {});
   }
@@ -128,11 +165,11 @@ const JimothySound = (() => {
         play("grumble", 0.78);
         break;
       case "stubborn":
-        play("cry", 0.85);
+        playCry(0.85);
         break;
       case "scold":
         stopCry();
-        play("chitter", 0.65);
+        play("discipline", 0.88);
         break;
       case "heal":
       case "treat":
