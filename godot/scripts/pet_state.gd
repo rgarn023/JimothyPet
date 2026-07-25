@@ -99,8 +99,12 @@ var forms_unlocked: Dictionary = {
 var dev_mode: bool = false
 ## Secret gesture unlocks the Dev button (persists).
 var dev_unlocked: bool = false
-## When true, night ambience + raccoon SFX are muted (persists).
+## Legacy master mute (kept for migration). Prefer ambience_muted / sfx_muted.
 var sound_muted: bool = false
+## When true, night ambience + owl accents are muted (persists).
+var ambience_muted: bool = false
+## When true, Jimothy raccoon SFX are muted (persists).
+var sfx_muted: bool = false
 ## When true, care notifications (hungry / play / acting up / waste) are allowed.
 var alerts_enabled: bool = false
 ## Last successful food key — used by eat animation prop.
@@ -191,6 +195,8 @@ func _reset_defaults() -> void:
 func reset_pet() -> void:
 	var keep_forms := forms_unlocked.duplicate(true)
 	var keep_mute := sound_muted
+	var keep_amb := ambience_muted
+	var keep_sfx := sfx_muted
 	var keep_alerts := alerts_enabled
 	# Dev unlock is session-only — do not carry cheats across a kit reset.
 	var keep_dev_unlocked := dev_unlocked
@@ -199,6 +205,8 @@ func reset_pet() -> void:
 	dev_mode = false
 	dev_unlocked = keep_dev_unlocked
 	sound_muted = keep_mute
+	ambience_muted = keep_amb
+	sfx_muted = keep_sfx
 	alerts_enabled = keep_alerts
 	save_game()
 	speech.emit("A roadside bush shivers… something’s in there.")
@@ -842,6 +850,26 @@ func interact_tap() -> String:
 	return kind
 
 
+func treat_illness() -> String:
+	if not alive or ascending or stage == "bush":
+		return "blocked"
+	if not sick:
+		speech.emit("He’s already feeling fine.")
+		state_changed.emit()
+		return "ok"
+	sick = false
+	health = clamp01(health + 14.0)
+	happy = clamp01(happy + 4.0)
+	energy = clamp01(energy - 4.0)
+	care_score += 1
+	speech.emit("You soothe his tummy. Warmth returns to his ears.")
+	anim_impulse.emit("heal")
+	_anim_cooldown = 1.6
+	state_changed.emit()
+	save_game()
+	return "ok"
+
+
 func clean_mess() -> void:
 	if not alive or not has_mess:
 		return
@@ -998,6 +1026,8 @@ func to_dict() -> Dictionary:
 		"forms_unlocked": forms_unlocked,
 		"dev_mode": false,
 		"sound_muted": sound_muted,
+		"ambience_muted": ambience_muted,
+		"sfx_muted": sfx_muted,
 		"alerts_enabled": alerts_enabled,
 	}
 
@@ -1049,6 +1079,13 @@ func from_dict(d: Dictionary) -> void:
 	dev_mode = false
 	dev_unlocked = false
 	sound_muted = bool(d.get("sound_muted", false))
+	var has_split := d.has("ambience_muted") or d.has("sfx_muted")
+	ambience_muted = bool(d.get("ambience_muted", sound_muted))
+	sfx_muted = bool(d.get("sfx_muted", sound_muted))
+	# Old saves only stored sound_muted — treat as both muted when true.
+	if sound_muted and not has_split:
+		ambience_muted = true
+		sfx_muted = true
 	alerts_enabled = bool(d.get("alerts_enabled", false))
 	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.
 	if not alive:

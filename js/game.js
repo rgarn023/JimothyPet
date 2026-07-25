@@ -107,6 +107,8 @@
     formsUnlocked: { young: {}, teen: {}, adult: {} },
     devMode: false,
     soundMuted: false,
+    ambienceMuted: false,
+    sfxMuted: false,
     alertsEnabled: false,
   };
 
@@ -442,6 +444,8 @@
       formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
       devMode: false,
       soundMuted: !!state.soundMuted,
+      ambienceMuted: !!state.ambienceMuted,
+      sfxMuted: !!state.sfxMuted,
       alertsEnabled: !!state.alertsEnabled,
     });
     state.youngForm = pickYoungForm(state.genes);
@@ -452,18 +456,35 @@
     if (window.JimothySound) JimothySound.cue(kind);
   }
 
-  function refreshSoundButton() {
-    const btn = $("btnSound");
-    if (!btn) return;
-    const on = window.JimothySound ? JimothySound.isEnabled() : !state.soundMuted;
-    btn.textContent = on ? "Sound: On" : "Sound: Off";
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  function refreshSoundButtons() {
+    const bgOn = window.JimothySound
+      ? JimothySound.isAmbienceEnabled()
+      : !state.ambienceMuted;
+    const sfxOn = window.JimothySound ? JimothySound.isSfxEnabled() : !state.sfxMuted;
+    const btnBg = $("btnAmbience");
+    const btnSfx = $("btnSfx");
+    if (btnBg) {
+      btnBg.textContent = bgOn ? "BG: On" : "BG: Off";
+      btnBg.setAttribute("aria-pressed", bgOn ? "true" : "false");
+    }
+    if (btnSfx) {
+      btnSfx.textContent = sfxOn ? "Jimothy: On" : "Jimothy: Off";
+      btnSfx.setAttribute("aria-pressed", sfxOn ? "true" : "false");
+    }
+    state.ambienceMuted = !bgOn;
+    state.sfxMuted = !sfxOn;
+    state.soundMuted = !bgOn && !sfxOn;
   }
 
-  function setSoundEnabled(on) {
-    state.soundMuted = !on;
-    if (window.JimothySound) JimothySound.setEnabled(on);
-    refreshSoundButton();
+  function setAmbienceEnabled(on) {
+    if (window.JimothySound) JimothySound.setAmbienceEnabled(on);
+    refreshSoundButtons();
+    save({ touchTick: false });
+  }
+
+  function setSfxEnabled(on) {
+    if (window.JimothySound) JimothySound.setSfxEnabled(on);
+    refreshSoundButtons();
     save({ touchTick: false });
   }
 
@@ -536,6 +557,8 @@
       // Dev is session-only — never restore a published Dev button from saves.
       state.devMode = false;
       if (state.soundMuted == null) state.soundMuted = false;
+      if (state.ambienceMuted == null) state.ambienceMuted = !!state.soundMuted;
+      if (state.sfxMuted == null) state.sfxMuted = !!state.soundMuted;
       if (state.alertsEnabled == null) state.alertsEnabled = false;
       unlockCurrentForm();
       syncRealtime({ announceDeath: false });
@@ -547,7 +570,11 @@
 
   function save({ touchTick = true } = {}) {
     if (touchTick) state.lastTick = nowMs();
-    const payload = { ...state, devMode: false };
+    const payload = {
+      ...state,
+      devMode: false,
+      soundMuted: !!(state.ambienceMuted && state.sfxMuted),
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }
 
@@ -590,12 +617,16 @@
   function resetPet() {
     const keepForms = JSON.parse(JSON.stringify(state.formsUnlocked || { young: {}, teen: {}, adult: {} }));
     const keepMute = !!state.soundMuted;
+    const keepAmb = !!state.ambienceMuted;
+    const keepSfx = !!state.sfxMuted;
     const keepAlerts = !!state.alertsEnabled;
     const keepSessionDev = devUnlocked;
     resetDefaults();
     state.formsUnlocked = keepForms;
     state.devMode = keepSessionDev;
     state.soundMuted = keepMute;
+    state.ambienceMuted = keepAmb;
+    state.sfxMuted = keepSfx;
     state.alertsEnabled = keepAlerts;
     save();
     if (window.RaccoonAnim) RaccoonAnim.reset();
@@ -1025,6 +1056,10 @@
     const canCare = state.alive && state.stage !== "bush" && !state.ascending;
     $("btnDiscipline").disabled = !(state.alive && state.stubborn);
     $("btnClean").disabled = !(state.alive && state.hasMess);
+    if ($("btnHeal")) {
+      $("btnHeal").disabled = !(state.alive && state.sick && state.stage !== "bush");
+      $("btnHeal").classList.toggle("needs-attention", state.sick && state.alive);
+    }
     $("btnFeed").disabled = !canCare;
     $("btnPlay").disabled =
       !state.alive || state.ascending || state.stage === "bush" || state.stage === "baby";
@@ -1309,6 +1344,25 @@
     state.careScore += 1;
     say("Nest cleared. He sniffs approval.");
     sfx("clean");
+    render();
+    save();
+  }
+
+  function treatIllness() {
+    if (!state.alive || state.ascending || state.stage === "bush") return;
+    if (!state.sick) {
+      say("He’s already feeling fine.");
+      render();
+      return;
+    }
+    state.sick = false;
+    state.health = clamp(state.health + 14);
+    state.happy = clamp(state.happy + 4);
+    state.energy = clamp(state.energy - 4);
+    state.careScore += 1;
+    say("You soothe his tummy. Warmth returns to his ears.");
+    pulseAnim("heal");
+    sfx("heal");
     render();
     save();
   }
@@ -1632,6 +1686,9 @@
     $("btnPlay").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.play;
     $("btnDiscipline").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.scold;
     $("btnClean").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.clean;
+    if ($("btnHeal") && $("btnHeal").querySelector(".ctrl-icon")) {
+      $("btnHeal").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.heal;
+    }
 
     document.querySelectorAll(".food-btn").forEach((btn) => {
       const key = btn.dataset.food;
@@ -1662,6 +1719,7 @@
     }
     $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
+    if ($("btnHeal")) $("btnHeal").addEventListener("click", treatIllness);
     const wrap = $("raccoonWrap");
     if (wrap) {
       wrap.style.cursor = "pointer";
@@ -1680,10 +1738,18 @@
         }
       });
     }
-    if ($("btnSound")) {
-      $("btnSound").addEventListener("click", () => {
-        const next = window.JimothySound ? !JimothySound.isEnabled() : state.soundMuted;
-        setSoundEnabled(next);
+    if ($("btnAmbience")) {
+      $("btnAmbience").addEventListener("click", () => {
+        const next = window.JimothySound
+          ? !JimothySound.isAmbienceEnabled()
+          : state.ambienceMuted;
+        setAmbienceEnabled(next);
+      });
+    }
+    if ($("btnSfx")) {
+      $("btnSfx").addEventListener("click", () => {
+        const next = window.JimothySound ? !JimothySound.isSfxEnabled() : state.sfxMuted;
+        setSfxEnabled(next);
       });
     }
     if ($("btnAlerts")) {
@@ -1771,13 +1837,14 @@
       say("A roadside bush shivers… something’s in there.");
     }
     if (window.JimothySound) {
-      JimothySound.setOnChange((on) => {
-        state.soundMuted = !on;
-        refreshSoundButton();
+      JimothySound.setOnChange(() => {
+        refreshSoundButtons();
+        save({ touchTick: false });
       });
-      JimothySound.setEnabled(!state.soundMuted, { announce: false });
+      JimothySound.setAmbienceEnabled(!state.ambienceMuted, { announce: false });
+      JimothySound.setSfxEnabled(!state.sfxMuted, { announce: false });
     }
-    refreshSoundButton();
+    refreshSoundButtons();
     if (window.JimothyNotify) {
       JimothyNotify.setOnChange(() => refreshAlertsButton());
       if (state.alertsEnabled) {

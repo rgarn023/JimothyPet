@@ -236,9 +236,10 @@ func play_anim(kind: String) -> void:
 		"hop":
 			_anim_dur = 0.7
 			_jump_peak = randf_range(22.0, 34.0)
-		"nuzzle":
-			_anim_dur = 0.9
-			_smile = 0.7
+		"nuzzle", "heal":
+			_anim_dur = 1.05
+			_smile = 0.85
+			_head_dip = 2.0
 		"spin":
 			_anim_dur = 0.85
 		"rustle":

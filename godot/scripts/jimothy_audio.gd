@@ -1,5 +1,5 @@
 extends Node
-## Night ambience + raccoon SFX for Jimothy (runtime WAV load, no editor import required).
+## Night ambience + raccoon SFX (runtime WAV load). BG and Jimothy SFX toggle separately.
 
 const AUDIO_DIR := "res://audio/"
 const FILES := {
@@ -12,21 +12,22 @@ const FILES := {
 	"ascend": "ascend.wav",
 	"hoot": "hoot.wav",
 }
+const BG_KEYS := ["night", "hoot"]
 
-var enabled: bool = true
+var ambience_on: bool = true
+var sfx_on: bool = true
 var _streams: Dictionary = {}
 var _ambience: AudioStreamPlayer
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _sfx_i: int = 0
 var _accent_cd: float = 4.0
-var _bootstrapped: bool = false
 
 
 func _ready() -> void:
 	_load_streams()
 	_ambience = AudioStreamPlayer.new()
 	_ambience.name = "Ambience"
-	_ambience.volume_db = -10.0
+	_ambience.volume_db = -9.0
 	_ambience.bus = "Master"
 	add_child(_ambience)
 	for i in 4:
@@ -37,7 +38,12 @@ func _ready() -> void:
 		_sfx_players.append(p)
 
 	if PetState:
-		enabled = not bool(PetState.sound_muted)
+		ambience_on = not bool(PetState.ambience_muted)
+		sfx_on = not bool(PetState.sfx_muted)
+		# Migrate legacy single mute → both off
+		if bool(PetState.sound_muted) and ambience_on and sfx_on:
+			ambience_on = false
+			sfx_on = false
 		PetState.anim_impulse.connect(_on_anim)
 		PetState.speech.connect(_on_speech)
 		PetState.stage_changed.connect(_on_stage)
@@ -47,7 +53,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not enabled:
+	if not ambience_on and not sfx_on:
 		return
 	_accent_cd -= delta
 	if _accent_cd > 0.0:
@@ -55,32 +61,51 @@ func _process(delta: float) -> void:
 	_accent_cd = randf_range(6.0, 14.0)
 	if PetState == null:
 		return
-	if PetState.stage == "bush" and PetState.alive:
+	if PetState.stage == "bush" and PetState.alive and sfx_on:
 		play("rustle", -4.0)
-	elif PetState.alive and not PetState.ascending and randf() < 0.45:
+	elif PetState.alive and not PetState.ascending and ambience_on and randf() < 0.5:
 		play("hoot", -8.0)
-	elif PetState.alive and not PetState.ascending and randf() < 0.35:
+	elif PetState.alive and not PetState.ascending and sfx_on and randf() < 0.35:
 		play("chitter", -10.0)
 
 
-func set_enabled(on: bool) -> void:
-	enabled = on
+func set_ambience_enabled(on: bool) -> void:
+	ambience_on = on
 	if PetState:
-		PetState.sound_muted = not on
+		PetState.ambience_muted = not on
+		PetState.sound_muted = not (ambience_on or sfx_on)
 		PetState.save_game()
 	_apply_ambience()
+
+
+func set_sfx_enabled(on: bool) -> void:
+	sfx_on = on
+	if PetState:
+		PetState.sfx_muted = not on
+		PetState.sound_muted = not (ambience_on or sfx_on)
+		PetState.save_game()
 	if on:
-		# Soft confirm chirp when turning sound back on.
+		play("chitter", -8.0)
+
+
+func set_enabled(on: bool) -> void:
+	set_ambience_enabled(on)
+	set_sfx_enabled(on)
+	if on:
 		play("chirp", -6.0)
 
 
 func toggle() -> bool:
-	set_enabled(not enabled)
-	return enabled
+	var next := not (ambience_on or sfx_on)
+	set_enabled(next)
+	return next
 
 
 func play(kind: String, volume_db: float = 0.0) -> void:
-	if not enabled:
+	var is_bg := kind in BG_KEYS
+	if is_bg and not ambience_on:
+		return
+	if not is_bg and not sfx_on:
 		return
 	if not _streams.has(kind):
 		return
@@ -96,7 +121,7 @@ func play(kind: String, volume_db: float = 0.0) -> void:
 func _apply_ambience() -> void:
 	if _ambience == null:
 		return
-	if enabled and _streams.has("night"):
+	if ambience_on and _streams.has("night"):
 		if _ambience.stream != _streams["night"]:
 			_ambience.stream = _streams["night"]
 		if not _ambience.playing:
@@ -128,12 +153,14 @@ func _on_anim(kind: String) -> void:
 			play("chitter", -8.0)
 		"rustle":
 			play("rustle", -3.0)
+		"heal":
+			play("chirp", -5.0)
+			play("chitter", -7.0)
 		_:
 			pass
 
 
 func _on_speech(_text: String) -> void:
-	# Action anims already carry the main raccoon SFX; keep speech mostly quiet.
 	pass
 
 
@@ -152,9 +179,19 @@ func _on_stage(stage: String) -> void:
 func _on_state() -> void:
 	if PetState == null:
 		return
-	var want := not PetState.sound_muted
-	if want != enabled:
-		enabled = want
+	var want_bg := not PetState.ambience_muted
+	var want_sfx := not PetState.sfx_muted
+	if bool(PetState.sound_muted) and want_bg and want_sfx:
+		want_bg = false
+		want_sfx = false
+	var changed := false
+	if want_bg != ambience_on:
+		ambience_on = want_bg
+		changed = true
+	if want_sfx != sfx_on:
+		sfx_on = want_sfx
+		changed = true
+	if changed:
 		_apply_ambience()
 
 
@@ -176,7 +213,6 @@ func _load_wav(path: String, loop: bool = false) -> AudioStreamWAV:
 	var bytes := file.get_buffer(file.get_length())
 	if bytes.size() < 44:
 		return null
-	# RIFF/WAVE little-endian parse
 	if _ascii(bytes, 0, 4) != "RIFF":
 		return null
 	if _ascii(bytes, 8, 4) != "WAVE":
@@ -201,7 +237,7 @@ func _load_wav(path: String, loop: bool = false) -> AudioStreamWAV:
 		elif chunk_id == "data":
 			data = bytes.slice(chunk_start, chunk_end)
 			break
-		offset = chunk_end + (chunk_size % 2) # word align
+		offset = chunk_end + (chunk_size % 2)
 
 	if data.is_empty() or bits != 16:
 		push_warning("Unsupported WAV: %s" % path)

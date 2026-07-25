@@ -59,12 +59,13 @@ Full wall-clock catch-up when you return (no 1-hour cap). Saves use `jimothy-pet
 | **Play** | **Dumpster Dive** night forage, or **High or Low** d20 gamble — burns energy, builds mood/fitness |
 | **Scold** | Discipline when he acts up |
 | **Clean** | Clear nest messes |
+| **Treat** | Clear illness when he’s sick (grayed out otherwise) |
 
 Satiety stops overfeeding; junk treats can make him sick. Baby kits and the bush can’t run a full Dumpster Dive. Jimothy walks, runs, jumps, and lopes around the stage.
 
 ## Sound
 
-Night ambience (crickets / soft wind) loops in the background, with raccoon chitters, bush rustles, eating crunches, and an ascend whoosh. Use **Sound: On/Off** to mute; preference is saved.
+Night ambience (crickets / soft wind / distant owl) loops in the background, with raccoon chitters, bush rustles, eating crunches, and an ascend whoosh. Toggle **BG** and **Jimothy** separately; both preferences are saved.
 
 ## Care alerts
 

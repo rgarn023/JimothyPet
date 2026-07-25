@@ -1,6 +1,7 @@
 /**
- * Night ambience + raccoon SFX for Jimothy (Web Audio / HTMLAudio).
- * Starts ambience after the first user gesture (browser autoplay rules).
+ * Night ambience + raccoon SFX for Jimothy (HTMLAudio).
+ * Background (ambience/owl) and Jimothy SFX can be toggled separately.
+ * Starts after the first user gesture (browser autoplay rules).
  */
 const JimothySound = (() => {
   const BASE = "audio/";
@@ -14,36 +15,75 @@ const JimothySound = (() => {
     ascend: "ascend.wav",
     hoot: "hoot.wav",
   };
+  const BG_KEYS = new Set(["night", "hoot"]);
 
-  let enabled = true;
+  let ambienceOn = true;
+  let sfxOn = true;
   let unlocked = false;
   let ambience = null;
   const buffers = {};
   let accentTimer = null;
   let onChange = null;
 
-  function setEnabled(on, opts = {}) {
-    const announce = opts.announce !== false;
-    enabled = !!on;
-    if (enabled) {
+  function notify() {
+    if (onChange) onChange({ ambienceOn, sfxOn });
+  }
+
+  function setAmbienceEnabled(on, opts = {}) {
+    ambienceOn = !!on;
+    if (ambienceOn) {
       unlock();
       startAmbience();
-      if (announce) play("chirp", 0.45);
       scheduleAccents();
     } else {
       stopAmbience();
-      clearAccents();
+      // Keep accents timer only if SFX still wants Jimothy ambient chirps — accents mix both.
+      if (!sfxOn) clearAccents();
+      else scheduleAccents();
     }
-    if (onChange) onChange(enabled);
-    return enabled;
+    if (opts.announce !== false && ambienceOn && sfxOn) play("chirp", 0.35);
+    notify();
+    return ambienceOn;
+  }
+
+  function setSfxEnabled(on, opts = {}) {
+    sfxOn = !!on;
+    if (sfxOn) {
+      unlock();
+      scheduleAccents();
+      if (opts.announce !== false) play("chitter", 0.4);
+    } else if (!ambienceOn) {
+      clearAccents();
+    } else {
+      scheduleAccents();
+    }
+    notify();
+    return sfxOn;
+  }
+
+  /** Legacy master switch — turns both on/off. */
+  function setEnabled(on, opts = {}) {
+    const want = !!on;
+    setAmbienceEnabled(want, { announce: false });
+    setSfxEnabled(want, opts);
+    return want;
   }
 
   function toggle() {
-    return setEnabled(!enabled);
+    const next = !(ambienceOn || sfxOn);
+    return setEnabled(next);
   }
 
   function isEnabled() {
-    return enabled;
+    return ambienceOn || sfxOn;
+  }
+
+  function isAmbienceEnabled() {
+    return ambienceOn;
+  }
+
+  function isSfxEnabled() {
+    return sfxOn;
   }
 
   function setOnChange(fn) {
@@ -53,12 +93,9 @@ const JimothySound = (() => {
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    // Warm-decode all clips
     Object.keys(FILES).forEach((key) => ensureAudio(key));
-    if (enabled) {
-      startAmbience();
-      scheduleAccents();
-    }
+    if (ambienceOn) startAmbience();
+    if (ambienceOn || sfxOn) scheduleAccents();
   }
 
   function ensureAudio(key) {
@@ -67,16 +104,16 @@ const JimothySound = (() => {
     a.preload = "auto";
     if (key === "night") {
       a.loop = true;
-      a.volume = 0.28;
+      a.volume = 0.3;
     } else {
-      a.volume = 0.7;
+      a.volume = 0.72;
     }
     buffers[key] = a;
     return a;
   }
 
   function startAmbience() {
-    if (!enabled || !unlocked) return;
+    if (!ambienceOn || !unlocked) return;
     const a = ensureAudio("night");
     ambience = a;
     const p = a.play();
@@ -95,10 +132,12 @@ const JimothySound = (() => {
   }
 
   function play(kind, volume = 0.7) {
-    if (!enabled || !unlocked) return;
+    if (!unlocked) return;
     if (!FILES[kind]) return;
+    const isBg = BG_KEYS.has(kind);
+    if (isBg && !ambienceOn) return;
+    if (!isBg && !sfxOn) return;
     const base = ensureAudio(kind);
-    // Clone so overlapping SFX work
     const a = base.cloneNode();
     a.volume = Math.max(0, Math.min(1, volume));
     a.playbackRate = 0.94 + Math.random() * 0.12;
@@ -109,15 +148,20 @@ const JimothySound = (() => {
   function cue(kind) {
     switch (kind) {
       case "eat":
-        play("crunch", 0.75);
-        play("chitter", 0.5);
+        play("crunch", 0.78);
+        play("chitter", 0.48);
         break;
       case "refuse":
       case "stubborn":
-        play("grumble", 0.75);
+        play("grumble", 0.78);
         break;
       case "scold":
         play("chitter", 0.65);
+        break;
+      case "heal":
+      case "treat":
+        play("chirp", 0.5);
+        play("chitter", 0.4);
         break;
       case "pop":
       case "stretch":
@@ -166,16 +210,16 @@ const JimothySound = (() => {
 
   function scheduleAccents() {
     clearAccents();
-    if (!enabled) return;
+    if (!ambienceOn && !sfxOn) return;
     const tick = () => {
       accentTimer = setTimeout(() => {
-        if (!enabled || !unlocked) return;
+        if (!unlocked || (!ambienceOn && !sfxOn)) return;
         const stage = window.JimothyDebug?.getState?.()?.stage;
         const alive = window.JimothyDebug?.getState?.()?.alive;
         const ascending = window.JimothyDebug?.getState?.()?.ascending;
-        if (stage === "bush" && alive) play("rustle", 0.4);
-        else if (alive && !ascending && Math.random() < 0.45) play("hoot", 0.3);
-        else if (alive && !ascending && Math.random() < 0.35) play("chitter", 0.28);
+        if (stage === "bush" && alive && sfxOn) play("rustle", 0.4);
+        else if (alive && !ascending && ambienceOn && Math.random() < 0.5) play("hoot", 0.32);
+        else if (alive && !ascending && sfxOn && Math.random() < 0.35) play("chitter", 0.28);
         tick();
       }, 6000 + Math.random() * 8000);
     };
@@ -201,8 +245,12 @@ const JimothySound = (() => {
 
   return {
     setEnabled,
+    setAmbienceEnabled,
+    setSfxEnabled,
     toggle,
     isEnabled,
+    isAmbienceEnabled,
+    isSfxEnabled,
     setOnChange,
     unlock,
     play,

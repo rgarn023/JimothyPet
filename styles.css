@@ -891,16 +891,16 @@ button {
 
 @media (min-width: 420px) {
   .utility-row {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
   .utility-row.has-dev {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 
 @media (min-width: 380px) and (max-width: 419px) {
   .utility-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
   .utility-row.has-dev {
     grid-template-columns: 1fr 1fr 1fr;
@@ -1060,8 +1060,8 @@ button {
 /* Controls */
 .controls {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.45rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
   margin-top: 0.85rem;
 }
 

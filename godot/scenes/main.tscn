@@ -294,6 +294,14 @@ size_flags_horizontal = 3
 disabled = true
 text = "Clean"
 
+[node name="BtnHeal" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+tooltip_text = "Treat illness when he’s sick"
+text = "Treat"
+
 [node name="HintLabel" type="Label" parent="Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -307,11 +315,19 @@ autowrap_mode = 3
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="BtnSound" type="Button" parent="Margin/VBox/UtilityRow"]
+[node name="BtnAmbience" type="Button" parent="Margin/VBox/UtilityRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Sound: On"
+tooltip_text = "Night background ambience"
+text = "BG: On"
+
+[node name="BtnSfx" type="Button" parent="Margin/VBox/UtilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Jimothy raccoon sounds"
+text = "Jimothy: On"
 
 [node name="BtnAlerts" type="Button" parent="Margin/VBox/UtilityRow"]
 unique_name_in_owner = true
@@ -567,7 +583,9 @@ text = "Bail Out"
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnPlay" to="." method="_on_play_pressed"]
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnScold" to="." method="_on_scold_pressed"]
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnClean" to="." method="_on_clean_pressed"]
-[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnSound" to="." method="_on_sound_pressed"]
+[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnHeal" to="." method="_on_heal_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnAmbience" to="." method="_on_ambience_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnSfx" to="." method="_on_sfx_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnAlerts" to="." method="_on_alerts_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnForms" to="." method="_on_forms_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnReset" to="." method="_on_reset_pressed"]

@@ -22,7 +22,9 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var btn_play: Button = %BtnPlay
 @onready var btn_scold: Button = %BtnScold
 @onready var btn_clean: Button = %BtnClean
-@onready var btn_sound: Button = %BtnSound
+@onready var btn_heal: Button = %BtnHeal
+@onready var btn_ambience: Button = %BtnAmbience
+@onready var btn_sfx: Button = %BtnSfx
 @onready var btn_alerts: Button = %BtnAlerts
 @onready var btn_forms: Button = %BtnForms
 @onready var btn_reset: Button = %BtnReset
@@ -65,7 +67,7 @@ func _ready() -> void:
 	_build_dice_panel()
 	_build_reset_panel()
 	_wire_brand_secret()
-	_refresh_sound_button()
+	_refresh_sound_buttons()
 	_refresh_alerts_button()
 	_refresh()
 	# Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
@@ -559,6 +561,9 @@ func _refresh() -> void:
 	btn_play.disabled = not PetState.alive or PetState.stage in ["bush", "baby"] or PetState.ascending
 	btn_scold.disabled = not (PetState.alive and PetState.stubborn)
 	btn_clean.disabled = not (PetState.alive and PetState.has_mess)
+	if btn_heal:
+		btn_heal.disabled = not (PetState.alive and PetState.sick and PetState.stage != "bush" and not PetState.ascending)
+	_refresh_sound_buttons()
 	_refresh_dev_panel()
 
 	if PetState.ascending:
@@ -654,24 +659,39 @@ func _show_message(title: String, body: String) -> void:
 	message_panel.visible = true
 
 
-func _refresh_sound_button() -> void:
-	if btn_sound == null:
-		return
-	var on := true
+func _refresh_sound_buttons() -> void:
+	var bg_on := true
+	var sfx_on := true
 	if JimothyAudio:
-		on = JimothyAudio.enabled
+		bg_on = JimothyAudio.ambience_on
+		sfx_on = JimothyAudio.sfx_on
 	elif PetState:
-		on = not PetState.sound_muted
-	btn_sound.text = "Sound: On" if on else "Sound: Off"
+		bg_on = not PetState.ambience_muted
+		sfx_on = not PetState.sfx_muted
+	if btn_ambience:
+		btn_ambience.text = "BG: On" if bg_on else "BG: Off"
+	if btn_sfx:
+		btn_sfx.text = "Jimothy: On" if sfx_on else "Jimothy: Off"
 
 
-func _on_sound_pressed() -> void:
+func _on_ambience_pressed() -> void:
 	if JimothyAudio:
-		JimothyAudio.toggle()
+		JimothyAudio.set_ambience_enabled(not JimothyAudio.ambience_on)
 	elif PetState:
-		PetState.sound_muted = not PetState.sound_muted
+		PetState.ambience_muted = not PetState.ambience_muted
+		PetState.sound_muted = PetState.ambience_muted and PetState.sfx_muted
 		PetState.save_game()
-	_refresh_sound_button()
+	_refresh_sound_buttons()
+
+
+func _on_sfx_pressed() -> void:
+	if JimothyAudio:
+		JimothyAudio.set_sfx_enabled(not JimothyAudio.sfx_on)
+	elif PetState:
+		PetState.sfx_muted = not PetState.sfx_muted
+		PetState.sound_muted = PetState.ambience_muted and PetState.sfx_muted
+		PetState.save_game()
+	_refresh_sound_buttons()
 
 
 func _refresh_alerts_button() -> void:
@@ -850,6 +870,10 @@ func _on_clean_pressed() -> void:
 	PetState.clean_mess()
 	if JimothyAudio and not PetState.has_mess:
 		JimothyAudio.play("rustle", -5.0)
+
+
+func _on_heal_pressed() -> void:
+	PetState.treat_illness()
 
 
 func _on_message_ok() -> void:
