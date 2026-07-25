@@ -275,6 +275,9 @@ const RaccoonAnim = (() => {
   let jumpPeak = 0;
   let targetX = 0;
   let speed = 0;
+  let headDip = 0;
+  let eatFood = "berries";
+  let foodEl = null;
 
   function init(wrapEl, raccoonEl) {
     wrap = wrapEl;
@@ -290,14 +293,41 @@ const RaccoonAnim = (() => {
     animDur = 1.2;
     walkPhase = 0;
     speed = 0;
+    headDip = 0;
     if (wrap) {
       wrap.style.opacity = "1";
       wrap.classList.remove("ascending");
       wrap.classList.add("is-bush");
       const wings = wrap.querySelector(".ascend-wings");
       if (wings) wings.remove();
+      clearFoodProp();
     }
     applyTransform();
+  }
+
+  function clearFoodProp() {
+    if (foodEl) {
+      foodEl.remove();
+      foodEl = null;
+    }
+  }
+
+  function ensureFoodProp(kind) {
+    if (!wrap) return null;
+    clearFoodProp();
+    foodEl = document.createElement("div");
+    foodEl.className = "eat-food";
+    foodEl.dataset.food = kind || "berries";
+    foodEl.innerHTML =
+      kind === "pizza" || kind === "fries"
+        ? `<span class="crumb crust"></span>`
+        : kind === "fish"
+          ? `<span class="crumb fish"></span>`
+          : kind === "crickets"
+            ? `<span class="crumb bug"></span>`
+            : `<span class="crumb berry"></span><span class="crumb berry b2"></span>`;
+    wrap.appendChild(foodEl);
+    return foodEl;
   }
 
   function sync(info) {
@@ -333,7 +363,7 @@ const RaccoonAnim = (() => {
     return wings;
   }
 
-  function play(kind) {
+  function play(kind, opts = {}) {
     anim = kind || "idle";
     animT = 0;
     if (!wrap) return;
@@ -344,6 +374,7 @@ const RaccoonAnim = (() => {
         animDur = 4.2;
         ensureWings();
         wrap.classList.add("ascending");
+        clearFoodProp();
         break;
       case "run":
         animDur = 1.4 + Math.random() * 1;
@@ -365,17 +396,28 @@ const RaccoonAnim = (() => {
         targetX = Math.max(-70, Math.min(70, poseX + facing * (20 + Math.random() * 30)));
         break;
       case "pop":
+        animDur = 0.85;
+        break;
       case "stretch":
-        animDur = 0.8;
+        animDur = 1.05;
         break;
       case "eat":
-        animDur = 0.9;
+        animDur = 1.15;
+        eatFood = opts.food || eatFood || "berries";
+        ensureFoodProp(eatFood);
+        break;
+      case "sniff":
+        animDur = 1;
         break;
       case "refuse":
+        animDur = 0.95;
+        break;
       case "scold":
+        animDur = 0.9;
+        break;
       case "stubborn":
       case "sick":
-        animDur = 1;
+        animDur = 1.1;
         break;
       default:
         animDur = 1 + Math.random();
@@ -386,8 +428,9 @@ const RaccoonAnim = (() => {
   function applyTransform() {
     if (!wrap) return;
     const scaleX = facing < 0 ? -1 : 1;
-    wrap.style.transform = `translate(${poseX}px, ${poseY}px) scaleX(${scaleX})`;
+    wrap.style.transform = `translate(${poseX}px, ${poseY + headDip * 0.35}px) scaleX(${scaleX})`;
     wrap.dataset.anim = anim;
+    wrap.style.setProperty("--head-dip", String(headDip));
   }
 
   function tick(dt) {
@@ -456,31 +499,97 @@ const RaccoonAnim = (() => {
       }
       case "pop": {
         const u = Math.min(1, animT / animDur);
-        poseY = -Math.pow(u, 0.3) * 20;
+        poseY = -Math.pow(u, 0.3) * 22;
         if (animT >= animDur) {
           anim = "idle";
           poseY = 0;
+        }
+        break;
+      }
+      case "stretch": {
+        const u = Math.min(1, animT / animDur);
+        poseY = -Math.sin(u * Math.PI) * 6;
+        headDip = -Math.sin(u * Math.PI) * 4;
+        walkPhase += dt * 4;
+        if (animT >= animDur) {
+          anim = "idle";
+          poseY = 0;
+          headDip = 0;
         }
         break;
       }
       case "eat": {
-        poseY = Math.sin(t * 16) * 2;
+        const u = Math.min(1, animT / animDur);
+        if (u < 0.22) {
+          headDip = (u / 0.22) * 10;
+          poseY = (u / 0.22) * 3;
+        } else if (u < 0.78) {
+          headDip = 8 + Math.sin(t * 22) * 2.5;
+          poseY = 2 + Math.sin(t * 18) * 1.5;
+          walkPhase += dt * 10;
+        } else {
+          const settle = (u - 0.78) / 0.22;
+          headDip = 8 * (1 - settle);
+          poseY = 2 * (1 - settle);
+        }
+        if (foodEl) {
+          const reach = Math.min(1, u / 0.28);
+          const fade = 1 - Math.max(0, (u - 0.55) / 0.4);
+          foodEl.style.setProperty("--reach", String(reach));
+          foodEl.style.opacity = String(Math.max(0, fade));
+        }
         if (animT >= animDur) {
           anim = "idle";
           poseY = 0;
+          headDip = 0;
+          clearFoodProp();
+        }
+        break;
+      }
+      case "refuse": {
+        facing = Math.floor(t * 8) % 2 === 0 ? -1 : 1;
+        poseX += Math.sin(t * 20) * 1.1;
+        headDip = Math.sin(Math.min(1, animT / animDur) * Math.PI) * 4;
+        if (animT >= animDur) {
+          anim = "idle";
+          headDip = 0;
+        }
+        break;
+      }
+      case "scold": {
+        const u = Math.min(1, animT / animDur);
+        poseY = Math.sin(u * Math.PI) * 2;
+        headDip = 3 + Math.sin(t * 14) * 2;
+        if (animT >= animDur) {
+          anim = "idle";
+          headDip = 0;
+        }
+        break;
+      }
+      case "sniff": {
+        headDip = 6 + Math.sin(t * 10) * 2;
+        poseY = Math.sin(t * 3) * 1;
+        facing = Math.sin(t * 1.4) > 0 ? 1 : -1;
+        if (animT >= animDur) {
+          anim = "idle";
+          headDip = 0;
         }
         break;
       }
       case "stubborn":
-      case "refuse": {
-        poseX += Math.sin(t * 18) * 0.6;
+      case "sick": {
+        poseX += Math.sin(t * 16) * 0.55;
+        headDip = 2;
         if (animT >= animDur) anim = "idle";
         break;
       }
       default: {
-        poseY = Math.sin(t * 2.2) * 2;
-        const idleTarget = Math.sin(t * 0.35) * 8;
-        poseX += Math.sign(idleTarget - poseX) * Math.min(Math.abs(idleTarget - poseX), 10 * dt);
+        poseY = Math.sin(t * 2.4) * 2.2 + Math.sin(t * 5.1) * 0.6;
+        const idleTarget = Math.sin(t * 0.4) * 10 + Math.sin(t * 0.13) * 4;
+        poseX += Math.sign(idleTarget - poseX) * Math.min(Math.abs(idleTarget - poseX), 12 * dt);
+        headDip = Math.sin(t * 1.7) * 1.4;
+        walkPhase += dt * 1.2;
+        if (Math.floor(t * 2) % 11 === 0 && Math.random() < 0.02) facing *= -1;
         break;
       }
     }

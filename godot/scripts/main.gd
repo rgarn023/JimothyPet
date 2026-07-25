@@ -116,7 +116,7 @@ func _build_overlay_panel(title_text: String) -> Dictionary:
 
 
 func _build_forms_panel() -> void:
-	var built := _build_overlay_panel("Forms unlocked")
+	var built := _build_overlay_panel("Form paths")
 	_forms_panel = built.dim
 	_forms_list = built.list
 
@@ -172,34 +172,86 @@ func _refresh_forms_panel() -> void:
 	for c in _forms_list.get_children():
 		c.queue_free()
 
-	_add_form_section("Young kit", "young", YOUNG_FORMS)
-	_add_form_section("Teen kit", "teen", TEEN_FORMS)
-	_add_form_section("Adult", "adult", ADULT_FORMS)
+	var intro := Label.new()
+	intro.text = "Young → teen forks → adult flair (care vs neglect). Adults always stay short-spine Jimothy."
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	intro.add_theme_color_override("font_color", Color("9aab9c"))
+	intro.add_theme_font_size_override("font_size", 12)
+	_forms_list.add_child(intro)
 
-	var tip := Label.new()
-	tip.text = "Raise kits with different care to unlock more forms. Adults keep the short-spine Jimothy silhouette."
-	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.add_theme_color_override("font_color", Color("9aab9c"))
-	tip.add_theme_font_size_override("font_size", 12)
-	_forms_list.add_child(tip)
+	# young → [teen options] → adult good / neglect
+	var paths := [
+		["puff", ["dumpling", "scruff"]],
+		["looper", ["bounder", "nightlane"]],
+		["shadow", ["nightlane", "scruff"]],
+		["nub", ["bounder", "dumpling"]],
+	]
+	var teen_adult := {
+		"dumpling": ["saint", "ballard_blip"],
+		"bounder": ["alley_ghost", "legend"],
+		"nightlane": ["alley_ghost", "legend"],
+		"scruff": ["saint", "ballard_blip"],
+	}
+
+	for path in paths:
+		var young := str(path[0])
+		var teens: Array = path[1]
+		var head := Label.new()
+		head.text = _form_mark("young", young)
+		head.add_theme_color_override("font_color", Color("f0c57a"))
+		head.add_theme_font_size_override("font_size", 15)
+		_forms_list.add_child(head)
+		for teen in teens:
+			var adults: Array = teen_adult[str(teen)]
+			var row := Label.new()
+			row.text = "  → %s → care %s · neglect %s" % [
+				_form_mark("teen", str(teen)),
+				_form_mark("adult", str(adults[0])),
+				_form_mark("adult", str(adults[1])),
+			]
+			row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.add_theme_color_override("font_color", Color("eef5ea"))
+			row.add_theme_font_size_override("font_size", 12)
+			_forms_list.add_child(row)
+
+	var counts := Label.new()
+	counts.text = "Unlocked · Young %d/%d · Teen %d/%d · Adult %d/%d" % [
+		_unlocked_count("young", YOUNG_FORMS), YOUNG_FORMS.size(),
+		_unlocked_count("teen", TEEN_FORMS), TEEN_FORMS.size(),
+		_unlocked_count("adult", ADULT_FORMS), ADULT_FORMS.size(),
+	]
+	counts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	counts.add_theme_color_override("font_color", Color("9aab9c"))
+	counts.add_theme_font_size_override("font_size", 12)
+	_forms_list.add_child(counts)
 
 
-func _add_form_section(label: String, bucket: String, forms: Array) -> void:
-	var h := Label.new()
-	h.text = label
-	h.add_theme_color_override("font_color", Color("f0c57a"))
-	h.add_theme_font_size_override("font_size", 16)
-	_forms_list.add_child(h)
+func _unlocked_count(bucket: String, forms: Array) -> int:
+	var n := 0
 	for f in forms:
-		var unlocked := PetState.is_form_unlocked(bucket, str(f))
-		var row := Label.new()
-		var pretty := str(f).replace("_", " ").capitalize()
-		if bucket == "adult":
-			pretty = pretty.replace("Alley ghost", "Alley Ghost").replace("Ballard blip", "Ballard Blip")
-		row.text = ("✓  %s" % pretty) if unlocked else ("🔒  %s" % pretty)
-		row.add_theme_color_override("font_color", Color("eef5ea") if unlocked else Color(0.45, 0.5, 0.46))
-		row.add_theme_font_size_override("font_size", 14)
-		_forms_list.add_child(row)
+		if PetState.is_form_unlocked(bucket, str(f)):
+			n += 1
+	return n
+
+
+func _form_mark(bucket: String, form_id: String) -> String:
+	var unlocked := PetState.is_form_unlocked(bucket, form_id)
+	var pretty := form_id.replace("_", " ").capitalize()
+	pretty = pretty.replace("Alley ghost", "Alley Ghost").replace("Ballard blip", "Ballard Blip")
+	var current := false
+	match bucket:
+		"young":
+			current = PetState.stage not in ["bush", "baby"] and PetState.young_form == form_id
+		"teen":
+			current = PetState.teen_form == form_id
+		"adult":
+			current = PetState.adult_form == form_id
+	var mark := pretty
+	if current:
+		mark = "[%s]" % pretty
+	elif not unlocked:
+		mark = "·%s·" % pretty
+	return mark
 
 
 func _refresh_dev_panel() -> void:

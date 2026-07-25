@@ -519,7 +519,7 @@ text = "Dumpster Dive"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
 theme_override_font_sizes/font_size = 12
-text = "Night forage run — catch edible scraps, dodge spoiled waste. Burns energy."
+text = "Scraps fling out of the bin. Catch food, dodge spoil. Stand under the dumpster to dig."
 autowrap_mode = 3
 
 [node name="DiveStats" type="VBoxContainer" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader"]
@@ -549,7 +549,7 @@ size_flags_vertical = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
 theme_override_font_sizes/font_size = 12
-text = "Drag to move · ← → / A D"
+text = "Drag / ← → to move · stand under dumpster to dig"
 horizontal_alignment = 1
 
 [node name="BtnBail" type="Button" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox"]

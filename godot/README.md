@@ -28,7 +28,7 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - Satiety stops overfeeding; junk can upset his stomach
 - **Play:** Dumpster Dive night forage — burns energy, builds fitness
 - **Scold / Clean:** Discipline refusals; clear nest messes
-- **Forms unlocked:** gallery of variants discovered across kits
+- **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
 - **Sound:** looping night ambience (crickets / wind) + raccoon chitters, rustles, crunch, and ascend whoosh — toggle with **Sound: On/Off**
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes

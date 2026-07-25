@@ -543,6 +543,184 @@ button {
   50% { transform: translateY(3px); }
 }
 
+/* Eating — chew bob + food crumb prop */
+.raccoon-wrap[data-anim="eat"] .raccoon {
+  animation: chew-bob 0.18s ease-in-out infinite;
+  transform-origin: center 70%;
+}
+
+.raccoon-wrap[data-anim="stretch"] .raccoon {
+  animation: stretch-pose 1.05s ease-in-out;
+  transform-origin: center bottom;
+}
+
+.raccoon-wrap[data-anim="sniff"] .raccoon {
+  animation: sniff-nose 0.35s ease-in-out infinite alternate;
+}
+
+@keyframes chew-bob {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(2px) scaleY(0.97); }
+}
+
+@keyframes stretch-pose {
+  0%, 100% { transform: scaleY(1) translateY(0); }
+  45% { transform: scaleY(1.12) translateY(-4px); }
+}
+
+@keyframes sniff-nose {
+  from { transform: translateY(1px) rotate(-2deg); }
+  to { transform: translateY(3px) rotate(2deg); }
+}
+
+.eat-food {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 28px;
+  height: 20px;
+  margin-left: -6px;
+  pointer-events: none;
+  transform: translate(
+    calc((1 - var(--reach, 0)) * 18px),
+    calc((1 - var(--reach, 0)) * 16px - var(--reach, 0) * 28px)
+  );
+  transition: none;
+  z-index: 3;
+}
+
+.eat-food .crumb {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+}
+
+.eat-food .crumb.berry {
+  width: 10px;
+  height: 10px;
+  background: #6b5aa0;
+  left: 2px;
+  top: 4px;
+}
+.eat-food .crumb.berry.b2 {
+  left: 10px;
+  top: 1px;
+}
+.eat-food .crumb.crust {
+  width: 16px;
+  height: 10px;
+  border-radius: 3px;
+  background: #e0a04a;
+  left: 2px;
+  top: 4px;
+  box-shadow: inset 0 -2px 0 #c45c4a;
+}
+.eat-food .crumb.fish {
+  width: 16px;
+  height: 7px;
+  background: #a8c4d4;
+  left: 2px;
+  top: 6px;
+}
+.eat-food .crumb.bug {
+  width: 9px;
+  height: 6px;
+  background: #5a6b3a;
+  left: 6px;
+  top: 6px;
+}
+
+/* Form evolution paths */
+.modal-card.wide {
+  max-width: min(420px, 94vw);
+}
+
+.path-legend {
+  margin: 0 0 0.55rem;
+  color: var(--mist);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.path-tree {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.path-card {
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  background: rgba(20, 32, 24, 0.55);
+  border: 1px solid rgba(111, 191, 132, 0.18);
+}
+
+.path-young {
+  margin-bottom: 0.35rem;
+}
+
+.path-forks {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 0.35rem;
+  border-left: 2px solid rgba(240, 197, 122, 0.35);
+}
+
+.path-branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.4rem;
+  font-size: 0.78rem;
+}
+
+.path-arrow {
+  color: rgba(240, 197, 122, 0.7);
+}
+
+.path-adults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+}
+
+.path-care,
+.path-neglect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mist);
+  opacity: 0.85;
+}
+
+.path-node {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 171, 156, 0.28);
+  background: rgba(53, 87, 68, 0.45);
+  color: var(--mist);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.path-node.unlocked {
+  border-color: rgba(111, 191, 132, 0.45);
+  color: #eef5ea;
+}
+
+.path-node.locked {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.path-node.current {
+  border-color: var(--amber-soft);
+  box-shadow: 0 0 0 1px rgba(240, 197, 122, 0.35);
+  color: var(--amber-soft);
+}
+
 .stage-name {
   margin: 0.2rem 0 0;
   font-family: var(--font-display);

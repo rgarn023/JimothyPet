@@ -55,3 +55,8 @@ Satiety stops overfeeding; junk treats can make him sick. Baby kits and the bush
 ## Sound
 
 Night ambience (crickets / soft wind) loops in the background, with raccoon chitters, bush rustles, eating crunches, and an ascend whoosh. Use **Sound: On/Off** to mute; preference is saved.
+
+## Forms & Dumpster Dive
+
+- **Forms** shows every young → teen → adult path (care vs neglect forks). Unlocked nodes glow; this kit’s path is outlined.
+- **Dumpster Dive** is an alley rummage: food arcs out of the bin, Jimothy walks/chews on catch, and standing under the dumpster digs up a scrap.

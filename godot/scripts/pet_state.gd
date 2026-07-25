@@ -99,6 +99,8 @@ var forms_unlocked: Dictionary = {
 var dev_mode: bool = false
 ## When true, night ambience + raccoon SFX are muted (persists).
 var sound_muted: bool = false
+## Last successful food key — used by eat animation prop.
+var last_fed_food: String = "berries"
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
@@ -646,11 +648,13 @@ func try_feed(food_key: String) -> String:
 
 	if satiety >= 85.0:
 		speech.emit("He turns his nose away — still digesting.")
+		anim_impulse.emit("refuse")
 		state_changed.emit()
 		return "full"
 
 	if stubborn and food.type == "healthy":
 		speech.emit("Nope. He buries the %s under a leaf." % str(food.name).to_lower())
+		anim_impulse.emit("refuse")
 		state_changed.emit()
 		return "refused"
 
@@ -674,12 +678,14 @@ func try_feed(food_key: String) -> String:
 	weight += 0.35 if food.type == "treat" else 0.15
 	energy = clamp01(energy + (4.0 if food.type == "healthy" else 1.0))
 
+	last_fed_food = food_key
 	if food.type == "treat":
 		treat_streak += 1
 		if treat_streak >= 4:
 			sick = true
 			health = clamp01(health - 8.0)
 			speech.emit("Too much alley grease… he flops, queasy.")
+			anim_impulse.emit("sick")
 		else:
 			speech.emit("He stash-eats the %s." % food.name)
 			anim_impulse.emit("eat")
@@ -780,22 +786,29 @@ func apply_play_result(score: int, stars: int, completed: bool) -> void:
 
 func _pulse_ambient_anim() -> void:
 	if stubborn or sick:
-		_anim_cooldown = randf_range(2.5, 4.0)
+		_anim_cooldown = randf_range(2.2, 3.6)
 		anim_impulse.emit("stubborn" if stubborn else "sick")
 		return
 	var roll := randf()
 	var kind := "idle"
-	if energy > 55.0 and happy > 50.0 and roll < 0.35:
-		kind = "run" if fitness > 50.0 and roll < 0.15 else "walk"
-	elif roll < 0.55:
+	var peppy := young_form in ["looper", "nub"] or teen_form in ["bounder"] or fitness > 55.0
+	var sneaky := young_form == "shadow" or teen_form == "nightlane" or adult_form == "alley_ghost"
+	if energy > 55.0 and happy > 50.0 and roll < (0.42 if peppy else 0.32):
+		if peppy and roll < 0.18:
+			kind = "run" if fitness > 45.0 else "jump"
+		else:
+			kind = "walk"
+	elif roll < 0.5:
 		kind = "walk"
-	elif roll < 0.72:
-		kind = "jump"
-	elif roll < 0.82:
-		kind = "lope" if stage == "adult" else "walk"
+	elif roll < 0.66:
+		kind = "jump" if peppy else "sniff"
+	elif roll < 0.78:
+		kind = "lope" if stage == "adult" else ("stretch" if stage != "baby" else "sniff")
+	elif roll < 0.9:
+		kind = "sniff" if sneaky or stage == "baby" else "stretch"
 	else:
 		kind = "idle"
-	_anim_cooldown = randf_range(1.8, 4.5)
+	_anim_cooldown = randf_range(1.2, 3.2)
 	anim_impulse.emit(kind)
 
 

@@ -762,9 +762,9 @@
     $("messageModal").hidden = true;
   }
 
-  function pulseAnim(kind) {
-    if (window.RaccoonAnim) RaccoonAnim.play(kind);
-    animCooldown = randRange(1.8, 4.5);
+  function pulseAnim(kind, opts = {}) {
+    if (window.RaccoonAnim) RaccoonAnim.play(kind, opts);
+    animCooldown = randRange(1.2, 3.2);
   }
 
   function ambientAnim(dt) {
@@ -773,21 +773,31 @@
     if (animCooldown > 0) return;
 
     if (state.stubborn || state.sick) {
-      animCooldown = randRange(2.5, 4);
+      animCooldown = randRange(2.2, 3.6);
       pulseAnim(state.stubborn ? "stubborn" : "sick");
       return;
     }
 
+    const peppy =
+      ["looper", "nub"].includes(state.youngForm) ||
+      state.teenForm === "bounder" ||
+      state.fitness > 55;
+    const sneaky =
+      state.youngForm === "shadow" ||
+      state.teenForm === "nightlane" ||
+      state.adultForm === "alley_ghost";
     const roll = Math.random();
     let kind = "idle";
-    if (state.energy > 55 && state.happy > 50 && roll < 0.35) {
-      kind = state.fitness > 50 && roll < 0.15 ? "run" : "walk";
-    } else if (roll < 0.55) {
+    if (state.energy > 55 && state.happy > 50 && roll < (peppy ? 0.42 : 0.32)) {
+      kind = peppy && roll < 0.18 ? (state.fitness > 45 ? "run" : "jump") : "walk";
+    } else if (roll < 0.5) {
       kind = "walk";
-    } else if (roll < 0.72) {
-      kind = "jump";
-    } else if (roll < 0.82) {
-      kind = state.stage === "adult" ? "lope" : "walk";
+    } else if (roll < 0.66) {
+      kind = peppy ? "jump" : "sniff";
+    } else if (roll < 0.78) {
+      kind = state.stage === "adult" ? "lope" : state.stage !== "baby" ? "stretch" : "sniff";
+    } else if (roll < 0.9) {
+      kind = sneaky || state.stage === "baby" ? "sniff" : "stretch";
     } else {
       kind = "idle";
     }
@@ -886,27 +896,73 @@
     }
   }
 
+  function formPathsHtml() {
+    // Young → teen forks → adult (good care / neglect)
+    const paths = [
+      ["puff", ["dumpling", "scruff"]],
+      ["looper", ["bounder", "nightlane"]],
+      ["shadow", ["nightlane", "scruff"]],
+      ["nub", ["bounder", "dumpling"]],
+    ];
+    const teenAdult = {
+      dumpling: ["saint", "ballard_blip"],
+      bounder: ["alley_ghost", "legend"],
+      nightlane: ["alley_ghost", "legend"],
+      scruff: ["saint", "ballard_blip"],
+    };
+    const mark = (bucket, id) => {
+      const unlocked = isFormUnlocked(bucket, id);
+      const current =
+        (bucket === "young" && state.stage !== "bush" && state.stage !== "baby" && state.youngForm === id) ||
+        (bucket === "teen" && state.teenForm === id) ||
+        (bucket === "adult" && state.adultForm === id);
+      return `<span class="path-node ${unlocked ? "unlocked" : "locked"} ${
+        current ? "current" : ""
+      }" title="${unlocked ? "Unlocked" : "Not unlocked yet"}">${prettyForm(id)}</span>`;
+    };
+    return paths
+      .map(([young, teens]) => {
+        const teenBlocks = teens
+          .map((teen) => {
+            const [good, neglect] = teenAdult[teen];
+            return `<div class="path-branch">
+              ${mark("teen", teen)}
+              <span class="path-arrow">→</span>
+              <span class="path-adults">
+                <span class="path-care">care ${mark("adult", good)}</span>
+                <span class="path-neglect">neglect ${mark("adult", neglect)}</span>
+              </span>
+            </div>`;
+          })
+          .join("");
+        return `<div class="path-card">
+          <div class="path-young">${mark("young", young)}</div>
+          <div class="path-forks">${teenBlocks}</div>
+        </div>`;
+      })
+      .join("");
+  }
+
   function refreshFormsList() {
     const root = $("formsList");
     if (!root) return;
-    const sections = [
-      ["Young kit", "young", YOUNG_FORMS],
-      ["Teen kit", "teen", TEEN_FORMS],
+    const unlockedBits = [
+      ["Young", "young", YOUNG_FORMS],
+      ["Teen", "teen", TEEN_FORMS],
       ["Adult", "adult", ADULT_FORMS],
-    ];
-    root.innerHTML = sections
+    ]
       .map(([label, bucket, forms]) => {
-        const rows = forms
-          .map((f) => {
-            const unlocked = isFormUnlocked(bucket, f);
-            return `<div class="forms-row ${unlocked ? "" : "locked"}">${
-              unlocked ? "✓" : "🔒"
-            }  ${prettyForm(f)}</div>`;
-          })
-          .join("");
-        return `<div class="forms-section">${label}</div>${rows}`;
+        const got = forms.filter((f) => isFormUnlocked(bucket, f)).length;
+        return `${label} ${got}/${forms.length}`;
       })
-      .join("");
+      .join(" · ");
+    root.innerHTML = `
+      <div class="forms-section">Evolution paths</div>
+      <p class="path-legend">Young kit forks into teen shapes, then adult flair depends on care vs neglect. Adults always keep the short-spine Jimothy look.</p>
+      <div class="path-tree">${formPathsHtml()}</div>
+      <div class="forms-section">Unlocked · ${unlockedBits}</div>
+      <p class="path-legend">Bright nodes are unlocked. Amber outline marks this kit’s path.</p>
+    `;
   }
 
   function refreshDevStatus() {
@@ -930,6 +986,7 @@
 
     if (state.satiety >= 85) {
       say("He turns his nose away — still digesting.");
+      pulseAnim("refuse");
       sfx("refuse");
       closeFeed();
       render();
@@ -938,6 +995,7 @@
 
     if (state.stubborn && food.type === "healthy") {
       say(`Nope. He buries the ${food.name.toLowerCase()} under a leaf.`);
+      pulseAnim("refuse");
       sfx("refuse");
       closeFeed();
       render();
@@ -976,9 +1034,10 @@
         state.sick = true;
         state.health = clamp(state.health - 8);
         say("Too much alley grease… he flops, queasy.");
+        pulseAnim("sick");
       } else {
         say(`He stash-eats the ${food.name}.`);
-        pulseAnim("eat");
+        pulseAnim("eat", { food: foodKey });
         sfx("eat");
         bounceHappy();
       }
@@ -989,7 +1048,7 @@
       if (state.health > 40) state.sick = false;
       state.discipline = clamp(state.discipline + 1.5);
       say(`He forages the ${food.name} carefully.`);
-      pulseAnim("eat");
+      pulseAnim("eat", { food: foodKey });
       sfx("eat");
       bounceHappy();
     }

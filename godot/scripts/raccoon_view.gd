@@ -22,6 +22,9 @@ var _jump_peak: float = 0.0
 var _target_x: float = 0.0
 var _speed: float = 0.0
 var _eat_flash: float = 0.0
+var _eat_food: String = "berry"
+var _head_dip: float = 0.0
+var _body_squash: float = 1.0
 var _wing_span: float = 0.0
 var _fade: float = 1.0
 var _ascend_done_emitted: bool = false
@@ -44,10 +47,17 @@ func clear_ascend() -> void:
 	_pose_y = 0.0
 	_wing_span = 0.0
 	_fade = 1.0
+	_head_dip = 0.0
+	_body_squash = 1.0
 	_ascend_done_emitted = false
 	_speed = 0.0
 	modulate = Color(1, 1, 1, 1)
 	_sync_from_state()
+
+
+func play_eat(food_kind: String = "berry") -> void:
+	_eat_food = food_kind if food_kind != "" else "berry"
+	play_anim("eat")
 
 
 func _sync_from_state() -> void:
@@ -103,12 +113,25 @@ func play_anim(kind: String) -> void:
 			_jump_peak = randf_range(18.0, 36.0)
 			_facing = [-1.0, 1.0][randi() % 2]
 			_target_x = clampf(_pose_x + _facing * randf_range(20.0, 50.0), -70.0, 70.0)
-		"pop", "stretch":
-			_anim_dur = 0.8
+		"pop":
+			_anim_dur = 0.85
+			_body_squash = 1.0
+		"stretch":
+			_anim_dur = 1.05
+			_body_squash = 1.0
 		"eat":
-			_anim_dur = 0.9
+			_anim_dur = 1.15
 			_eat_flash = 1.0
-		"refuse", "scold", "stubborn", "sick":
+			_head_dip = 0.0
+			if PetState and PetState.last_fed_food != "":
+				_eat_food = PetState.last_fed_food
+		"refuse":
+			_anim_dur = 0.95
+		"scold":
+			_anim_dur = 0.9
+		"stubborn", "sick":
+			_anim_dur = 1.1
+		"sniff":
 			_anim_dur = 1.0
 		_:
 			_anim_dur = randf_range(1.0, 2.0)
@@ -118,7 +141,7 @@ func play_anim(kind: String) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_anim_t += delta
-	_eat_flash = maxf(0.0, _eat_flash - delta)
+	_eat_flash = maxf(0.0, _eat_flash - delta * 0.85)
 
 	if _anim == "ascend":
 		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
@@ -147,6 +170,8 @@ func _process(delta: float) -> void:
 			_pose_x = move_toward(_pose_x, _target_x, _speed * delta)
 			_walk_phase += delta * (_speed * 0.12)
 			_pose_y = absf(sin(_walk_phase)) * (3.0 if _anim == "walk" else 5.5)
+			_head_dip = sin(_walk_phase * 2.0) * 1.2
+			_body_squash = 1.0
 			if absf(_pose_x - _target_x) < 1.5 or _anim_t >= _anim_dur:
 				if randf() < 0.45 and _anim_t < _anim_dur:
 					_target_x = randf_range(-70.0, 70.0)
@@ -154,30 +179,92 @@ func _process(delta: float) -> void:
 				else:
 					_anim = "idle"
 					_pose_y = 0.0
+					_head_dip = 0.0
 		"jump":
 			var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_pose_y = -sin(u * PI) * _jump_peak
 			_pose_x = lerpf(_pose_x, _target_x, delta * 3.5)
+			_body_squash = 1.0 + sin(u * PI) * 0.08
 			if u >= 1.0:
 				_anim = "idle"
 				_pose_y = 0.0
+				_body_squash = 1.0
 		"pop":
-			_pose_y = -ease(_anim_t / _anim_dur, 0.3) * 20.0
+			var pu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_pose_y = -ease(pu, 0.3) * 22.0
+			_body_squash = 1.0 + (1.0 - pu) * 0.15
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_pose_y = 0.0
-		"eat":
-			_pose_y = sin(_t * 16.0) * 2.0
+				_body_squash = 1.0
+		"stretch":
+			var su := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_pose_y = -sin(su * PI) * 6.0
+			_body_squash = 1.0 + sin(su * PI) * 0.22
+			_head_dip = -sin(su * PI) * 4.0
+			_walk_phase += delta * 4.0
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
-		"stubborn", "refuse":
-			_pose_x += sin(_t * 18.0) * 0.6
+				_pose_y = 0.0
+				_body_squash = 1.0
+				_head_dip = 0.0
+		"eat":
+			var eu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			# Reach → chew → settle
+			if eu < 0.22:
+				_head_dip = lerpf(0.0, 10.0, eu / 0.22)
+				_pose_y = lerpf(0.0, 3.0, eu / 0.22)
+			elif eu < 0.78:
+				_head_dip = 8.0 + sin(_t * 22.0) * 2.5
+				_pose_y = 2.0 + sin(_t * 18.0) * 1.5
+				_walk_phase += delta * 10.0
+			else:
+				var settle := (eu - 0.78) / 0.22
+				_head_dip = lerpf(8.0, 0.0, settle)
+				_pose_y = lerpf(2.0, 0.0, settle)
+			_eat_flash = 1.0 - eu * 0.85
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+				_pose_y = 0.0
+		"refuse":
+			var ru := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_facing = -1.0 if int(_t * 8.0) % 2 == 0 else 1.0
+			_pose_x += sin(_t * 20.0) * 1.1
+			_head_dip = sin(ru * PI) * 4.0
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+		"scold":
+			var cu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_pose_y = sin(cu * PI) * 2.0
+			_head_dip = 3.0 + sin(_t * 14.0) * 2.0
+			_body_squash = 0.94
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+				_body_squash = 1.0
+		"sniff":
+			_head_dip = 6.0 + sin(_t * 10.0) * 2.0
+			_pose_y = sin(_t * 3.0) * 1.0
+			_facing = 1.0 if sin(_t * 1.4) > 0.0 else -1.0
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+		"stubborn", "sick":
+			_pose_x += sin(_t * 16.0) * 0.55
+			_head_dip = 2.0
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 		_:
-			_pose_y = sin(_t * 2.2) * 2.0
-			# Occasional idle weight-shift
-			_pose_x = move_toward(_pose_x, sin(_t * 0.35) * 8.0, 10.0 * delta)
+			# Livelier idle: bob, look around, tiny weight shifts
+			_pose_y = sin(_t * 2.4) * 2.2 + sin(_t * 5.1) * 0.6
+			_pose_x = move_toward(_pose_x, sin(_t * 0.4) * 10.0 + sin(_t * 0.13) * 4.0, 12.0 * delta)
+			_head_dip = sin(_t * 1.7) * 1.4
+			_body_squash = 1.0 + sin(_t * 2.4) * 0.02
+			_walk_phase += delta * 1.2
+			if int(_t * 2.0) % 11 == 0 and randf() < 0.02:
+				_facing *= -1.0
 
 	_pose_x = clampf(_pose_x, -75.0, 75.0)
 	queue_redraw()
@@ -215,7 +302,6 @@ func _draw() -> void:
 		var glow_a := (1.0 - _fade) * 0.35 + _wing_span * 0.25
 		_ellipse(c + Vector2(0, 10), Vector2(70, 40), Color(0.95, 0.88, 0.55, glow_a * 0.35))
 
-	# Mirror facing by flipping x offsets via scale trick in drawing
 	var face := _facing if _facing != 0.0 else 1.0
 	var old_mod := modulate
 	if _anim == "ascend":
@@ -224,22 +310,47 @@ func _draw() -> void:
 	if _anim == "ascend" and _wing_span > 0.05:
 		_draw_wings(c, face, _wing_span)
 
+	# Head dip nudges the silhouette down while chewing / sniffing.
+	var draw_c := c + Vector2(0, _head_dip * 0.45)
+
 	match stage:
 		"baby":
-			_draw_baby(c, face)
+			_draw_baby(draw_c, face)
 		"young":
-			_draw_young(c, face)
+			_draw_young(draw_c, face)
 		"teen":
-			_draw_teen(c, face)
+			_draw_teen(draw_c, face)
 		"adult":
-			_draw_adult(c, face)
+			_draw_adult(draw_c, face)
 		_:
-			_draw_baby(c, face)
+			_draw_baby(draw_c, face)
 
-	if _eat_flash > 0.0:
-		_ellipse(c + Vector2(0, 10), Vector2(8, 4), Color(0.88, 0.63, 0.29, _eat_flash * 0.5))
+	if _anim == "eat" and _eat_flash > 0.05:
+		_draw_food_prop(c, face, clampf(_anim_t / _anim_dur, 0.0, 1.0))
 
 	modulate = old_mod
+
+
+func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
+	# Food arcs from paws up to muzzle, then fades while chewing.
+	var reach := smoothstep(0.0, 0.28, u)
+	var fade := 1.0 - smoothstep(0.55, 0.95, u)
+	var paw := c + Vector2(14.0 * face, 18.0)
+	var mouth := c + Vector2(2.0 * face, -2.0 + _head_dip)
+	var p := paw.lerp(mouth, reach)
+	p += Vector2(sin(u * PI) * -6.0 * face, -sin(reach * PI) * 10.0)
+	var a := fade * 0.95
+	match _eat_food:
+		"pizza", "fries":
+			_ellipse(p, Vector2(7, 4), Color(0.88, 0.63, 0.29, a))
+			draw_line(p + Vector2(-5, -1), p + Vector2(5, -1), Color(0.77, 0.36, 0.29, a), 2.0)
+		"fish":
+			_ellipse(p, Vector2(8, 3.5), Color(0.66, 0.77, 0.83, a))
+		"crickets":
+			_ellipse(p, Vector2(5, 3), Color(0.42, 0.48, 0.28, a))
+		_:
+			_ellipse(p + Vector2(-3, 0), Vector2(4.5, 4.5), Color(0.42, 0.35, 0.63, a))
+			_ellipse(p + Vector2(3, -1), Vector2(4.5, 4.5), Color(0.42, 0.35, 0.63, a))
 
 
 func _draw_wings(c: Vector2, face: float, span: float) -> void:

@@ -167,7 +167,7 @@
         <header class="game-header">
           <div>
             <h2 id="gameTitle">Dumpster Dive</h2>
-            <p>Night forage run — catch edible scraps, dodge spoiled waste. Burns energy.</p>
+            <p>Rummage the alley dumpster — scraps fly out of the bin. Catch food, dodge spoil. Stand under the dumpster to dig.</p>
           </div>
           <div class="game-score">
             <span>Score <strong id="gameScore">0</strong></span>
@@ -175,7 +175,7 @@
           </div>
         </header>
         <canvas id="gameCanvas" width="360" height="480" aria-label="Dumpster Dive game"></canvas>
-        <p class="game-help">Drag / tap to move · ← → or A D on keyboard</p>
+        <p class="game-help">Drag / ← → to move · stand under the dumpster to dig</p>
         <button type="button" class="modal-close" id="gameClose">Bail Out</button>
       </div>
     </div>
@@ -189,9 +189,12 @@
     </div>
 
     <div class="modal" id="formsModal" hidden>
-      <div class="modal-card" role="dialog" aria-labelledby="formsTitle">
-        <h2 id="formsTitle">Forms unlocked</h2>
-        <p class="modal-copy">Variants you’ve discovered across kits. Locked forms appear as you raise more Jimothys.</p>
+      <div class="modal-card wide" role="dialog" aria-labelledby="formsTitle">
+        <h2 id="formsTitle">Form paths</h2>
+        <p class="modal-copy">
+          Every young kit can branch into two teen shapes. Adult flair then splits by care vs neglect —
+          but he always stays short-spine Jimothy.
+        </p>
         <div id="formsList" class="forms-list"></div>
         <button type="button" class="modal-close" id="formsClose">Close</button>
       </div>
