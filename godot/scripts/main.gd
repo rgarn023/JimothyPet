@@ -18,16 +18,18 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var hint_label: Label = %HintLabel
 @onready var raccoon: Control = %RaccoonView
 @onready var mess_mark: Control = %MessMark
-@onready var btn_feed: Button = %BtnFeed
-@onready var btn_play: Button = %BtnPlay
-@onready var btn_scold: Button = %BtnScold
+@onready var btn_action: Button = %BtnAction
 @onready var btn_clean: Button = %BtnClean
-@onready var btn_heal: Button = %BtnHeal
-@onready var btn_ambience: Button = %BtnAmbience
-@onready var btn_sfx: Button = %BtnSfx
+@onready var btn_sound: Button = %BtnSound
 @onready var btn_alerts: Button = %BtnAlerts
 @onready var btn_forms: Button = %BtnForms
 @onready var btn_reset: Button = %BtnReset
+var btn_feed: Button
+var btn_play: Button
+var btn_scold: Button
+var btn_heal: Button
+var btn_ambience: Button
+var btn_sfx: Button
 @onready var utility_row: HBoxContainer = $Margin/VBox/UtilityRow
 @onready var brand_label: Label = $Margin/VBox/Brand
 @onready var feed_panel: Control = %FeedPanel
@@ -48,6 +50,8 @@ var _dev_stat_labels: Dictionary = {}
 var _play_pick_panel: ColorRect
 var _dice: ColorRect
 var _reset_panel: ColorRect
+var _action_panel: ColorRect
+var _sound_panel: ColorRect
 var _brand_tap_times: Array[float] = []
 
 
@@ -66,6 +70,8 @@ func _ready() -> void:
 	_build_play_pick_panel()
 	_build_dice_panel()
 	_build_reset_panel()
+	_build_action_panel()
+	_build_sound_panel()
 	_wire_brand_secret()
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
@@ -505,7 +511,7 @@ func _build_reset_panel() -> void:
 	vbox.add_child(title)
 
 	var body := Label.new()
-	body.text = "Starts a new rustling bush. Unlocked forms stay."
+	body.text = "Are you sure you want to proceed? Starts a new rustling bush. Unlocked forms stay."
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_color_override("font_color", Color("9aab9c"))
@@ -523,10 +529,113 @@ func _build_reset_panel() -> void:
 	row.add_child(cancel)
 
 	var ok := Button.new()
-	ok.text = "Reset"
+	ok.text = "Yes, reset"
 	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ok.pressed.connect(_confirm_reset)
 	row.add_child(ok)
+
+
+func _build_menu_panel(title_text: String) -> Dictionary:
+	var dim := ColorRect.new()
+	dim.visible = false
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.03, 0.05, 0.04, 0.72)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+
+	var card := PanelContainer.new()
+	card.set_anchors_preset(Control.PRESET_CENTER)
+	card.offset_left = -150
+	card.offset_right = 150
+	card.offset_top = -150
+	card.offset_bottom = 150
+	dim.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	card.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+
+	var title := Label.new()
+	title.text = title_text
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color("f0c57a"))
+	title.add_theme_font_size_override("font_size", 20)
+	vbox.add_child(title)
+
+	return {"dim": dim, "vbox": vbox}
+
+
+func _build_action_panel() -> void:
+	var built := _build_menu_panel("Actions")
+	_action_panel = built.dim
+	var vbox: VBoxContainer = built.vbox
+
+	btn_feed = Button.new()
+	btn_feed.text = "Feed"
+	btn_feed.pressed.connect(_on_feed_pressed)
+	vbox.add_child(btn_feed)
+
+	btn_play = Button.new()
+	btn_play.text = "Play"
+	btn_play.pressed.connect(_on_play_pressed)
+	vbox.add_child(btn_play)
+
+	btn_scold = Button.new()
+	btn_scold.text = "Scold"
+	btn_scold.disabled = true
+	btn_scold.tooltip_text = "Scold him when he’s acting up"
+	btn_scold.pressed.connect(_on_scold_pressed)
+	vbox.add_child(btn_scold)
+
+	btn_heal = Button.new()
+	btn_heal.text = "Heal"
+	btn_heal.disabled = true
+	btn_heal.tooltip_text = "Heal him when he’s sick"
+	btn_heal.pressed.connect(_on_heal_pressed)
+	vbox.add_child(btn_heal)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func(): _action_panel.visible = false)
+	vbox.add_child(close)
+
+
+func _build_sound_panel() -> void:
+	var built := _build_menu_panel("Sound")
+	_sound_panel = built.dim
+	var vbox: VBoxContainer = built.vbox
+
+	var copy := Label.new()
+	copy.text = "Toggle background ambience and Jimothy’s raccoon sounds."
+	copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_theme_color_override("font_color", Color("9aab9c"))
+	copy.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(copy)
+
+	btn_ambience = Button.new()
+	btn_ambience.text = "BG: On"
+	btn_ambience.tooltip_text = "Night background ambience"
+	btn_ambience.pressed.connect(_on_ambience_pressed)
+	vbox.add_child(btn_ambience)
+
+	btn_sfx = Button.new()
+	btn_sfx.text = "Jimothy: On"
+	btn_sfx.tooltip_text = "Jimothy raccoon sounds"
+	btn_sfx.pressed.connect(_on_sfx_pressed)
+	vbox.add_child(btn_sfx)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func(): _sound_panel.visible = false)
+	vbox.add_child(close)
 
 
 func _refresh() -> void:
@@ -557,12 +666,17 @@ func _refresh() -> void:
 		alert_banner.modulate = Color("f0b4a8") if alert.get("danger", false) else Color("f0c57a")
 
 	var can_care := PetState.alive and PetState.stage != "bush" and not PetState.ascending
-	btn_feed.disabled = not can_care
-	btn_play.disabled = not PetState.alive or PetState.stage in ["bush", "baby"] or PetState.ascending
-	btn_scold.disabled = not (PetState.alive and PetState.stubborn)
+	var can_scold := PetState.alive and PetState.stubborn
+	var can_heal := PetState.alive and PetState.sick and PetState.stage != "bush" and not PetState.ascending
+	if btn_feed:
+		btn_feed.disabled = not can_care
+	if btn_play:
+		btn_play.disabled = not PetState.alive or PetState.stage in ["bush", "baby"] or PetState.ascending
+	if btn_scold:
+		btn_scold.disabled = not can_scold
 	btn_clean.disabled = not (PetState.alive and PetState.has_mess)
 	if btn_heal:
-		btn_heal.disabled = not (PetState.alive and PetState.sick and PetState.stage != "bush" and not PetState.ascending)
+		btn_heal.disabled = not can_heal
 	_refresh_sound_buttons()
 	_refresh_dev_panel()
 
@@ -573,9 +687,9 @@ func _refresh() -> void:
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
 	elif PetState.sick:
-		hint_label.text = "He’s under the weather — use Heal when you can."
+		hint_label.text = "He’s under the weather — open Action → Heal."
 	elif PetState.stubborn:
-		hint_label.text = "He’s acting up — Scold is ready."
+		hint_label.text = "He’s acting up — open Action → Scold."
 	elif PetState.stage == "baby":
 		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for a full night run yet."
 	else:
@@ -723,6 +837,17 @@ func _on_forms_pressed() -> void:
 	_forms_panel.visible = true
 
 
+func _on_action_pressed() -> void:
+	if _action_panel:
+		_action_panel.visible = true
+
+
+func _on_sound_pressed() -> void:
+	_refresh_sound_buttons()
+	if _sound_panel:
+		_sound_panel.visible = true
+
+
 func _on_reset_pressed() -> void:
 	if _reset_panel:
 		_reset_panel.visible = true
@@ -748,8 +873,10 @@ func _on_dev_pressed() -> void:
 
 
 func _on_feed_pressed() -> void:
-	if btn_feed.disabled:
+	if btn_feed and btn_feed.disabled:
 		return
+	if _action_panel:
+		_action_panel.visible = false
 	feed_panel.visible = true
 
 
@@ -827,8 +954,10 @@ func _build_dice_panel() -> void:
 
 
 func _on_play_pressed() -> void:
-	if btn_play.disabled:
+	if btn_play and btn_play.disabled:
 		return
+	if _action_panel:
+		_action_panel.visible = false
 	if PetState.can_start_play(true) != "ok":
 		return
 	_play_pick_panel.visible = true
@@ -868,6 +997,8 @@ func _on_dice_finished(correct: bool, roll: int, _guess: String) -> void:
 
 func _on_scold_pressed() -> void:
 	PetState.discipline_pet()
+	if _action_panel:
+		_action_panel.visible = false
 
 
 func _on_clean_pressed() -> void:
@@ -878,6 +1009,8 @@ func _on_clean_pressed() -> void:
 
 func _on_heal_pressed() -> void:
 	PetState.treat_illness()
+	if _action_panel:
+		_action_panel.visible = false
 
 
 func _on_message_ok() -> void:

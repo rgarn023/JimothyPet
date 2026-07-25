@@ -90,12 +90,20 @@ var treat_streak: int = 0
 var healthy_meals: int = 0
 var play_sessions: int = 0
 var energy: float = 80.0
+## Unix-ms timestamps of illness onsets in the rolling 24h window (max 2).
+var illness_events: Array = []
+## Unix-ms timestamps of acting-out onsets in the rolling 24h window (max 3).
+var tantrum_events: Array = []
 ## Lifetime unlocks across kits (persists through reset).
 var forms_unlocked: Dictionary = {
 	"young": {},
 	"teen": {},
 	"adult": {},
 }
+
+const DAY_MS := 86400000
+const MAX_ILLNESS_PER_DAY := 2
+const MAX_TANTRUM_PER_DAY := 3
 var dev_mode: bool = false
 ## Secret gesture unlocks the Dev button (persists).
 var dev_unlocked: bool = false
@@ -190,6 +198,8 @@ func _reset_defaults() -> void:
 	healthy_meals = 0
 	play_sessions = 0
 	energy = 80.0
+	illness_events = []
+	tantrum_events = []
 
 
 func reset_pet() -> void:
@@ -533,6 +543,65 @@ func sync_realtime(announce_death: bool = true) -> int:
 	return elapsed
 
 
+func _prune_day_events(arr: Array, now_ms: int = -1) -> Array:
+	var now := now_ms if now_ms >= 0 else int(Time.get_unix_time_from_system() * 1000.0)
+	var out: Array = []
+	for t in arr:
+		if typeof(t) in [TYPE_INT, TYPE_FLOAT] and now - int(t) < DAY_MS:
+			out.append(int(t))
+	return out
+
+
+func _illness_daily_rate() -> float:
+	var h := clampf(health, 0.0, 100.0)
+	var rate := 0.035 + pow((100.0 - h) / 100.0, 1.35) * 1.5
+	if has_mess:
+		rate *= 1.45
+	if hunger < 25.0:
+		rate *= 1.35
+	if treat_streak >= 2:
+		rate *= 1.15 + float(treat_streak) * 0.12
+	return minf(rate, 2.1)
+
+
+func _tantrum_daily_rate() -> float:
+	var d := clampf(discipline, 0.0, 100.0)
+	return minf(0.05 + pow((100.0 - d) / 100.0, 1.25) * 2.4, 3.1)
+
+
+func try_become_sick(announce: bool = true) -> bool:
+	if not alive or ascending or sick or stage == "bush":
+		return false
+	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	illness_events = _prune_day_events(illness_events, now)
+	if illness_events.size() >= MAX_ILLNESS_PER_DAY:
+		return false
+	sick = true
+	illness_events.append(now)
+	if announce:
+		speech.emit("He’s feeling queasy…")
+		anim_impulse.emit("sick")
+	return true
+
+
+func try_become_stubborn(reason: String, announce: bool = true, penalty: float = 5400.0) -> bool:
+	if not alive or ascending or stubborn or stage in ["bush", "baby"]:
+		return false
+	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	tantrum_events = _prune_day_events(tantrum_events, now)
+	if tantrum_events.size() >= MAX_TANTRUM_PER_DAY:
+		return false
+	stubborn = true
+	stubborn_reason = reason if reason != "" else "acting up"
+	tantrum_events.append(now)
+	care_mistakes += 1
+	lifespan_penalty += penalty
+	if announce:
+		speech.emit("He’s %s. Scold him." % stubborn_reason)
+		anim_impulse.emit("stubborn")
+	return true
+
+
 func apply_decay(seconds: float) -> void:
 	if not alive:
 		state_changed.emit()
@@ -542,32 +611,35 @@ func apply_decay(seconds: float) -> void:
 	var hunger_rate := 0.0028 if stage != "bush" else 0.0
 	var happy_rate := 0.0022 if stage != "bush" else 0.0
 	var energy_rate := 0.0015 if stage != "bush" else 0.0
+	var discipline_rate := 0.00016 if stage not in ["bush", "baby"] else 0.0
 
 	hunger = clamp01(hunger - hunger_rate * seconds)
 	happy = clamp01(happy - happy_rate * seconds)
 	energy = clamp01(energy - energy_rate * seconds)
+	discipline = clamp01(discipline - discipline_rate * seconds)
 	satiety = maxf(0.0, satiety - 0.02 * seconds)
 	age_sec += seconds
 
+	# Health drains mainly from waste, hunger, and junk streak — kept slow.
 	if has_mess:
-		health = clamp01(health - 0.0012 * seconds)
-		happy = clamp01(happy - 0.001 * seconds)
+		health = clamp01(health - 0.00055 * seconds)
+		happy = clamp01(happy - 0.0007 * seconds)
 	if hunger < 20.0 and stage != "bush":
-		health = clamp01(health - 0.0025 * seconds)
-		happy = clamp01(happy - 0.0015 * seconds)
-	if happy < 15.0 and stage != "bush":
-		health = clamp01(health - 0.001 * seconds)
+		health = clamp01(health - 0.00095 * seconds)
+		happy = clamp01(happy - 0.001 * seconds)
 	if treat_streak > 3:
-		health = clamp01(health - 0.0008 * seconds)
-		sick = true
+		health = clamp01(health - 0.0004 * seconds)
+	if sick:
+		health = clamp01(health - 0.00025 * seconds)
 	if energy < 15.0:
 		happy = clamp01(happy - 0.0005 * seconds)
 
 	_apply_neglect_penalty(seconds)
 
-	if stage != "bush" and not has_mess and randf() < seconds * 0.00025:
+	if stage != "bush" and not has_mess and randf() < seconds * 0.00018:
 		has_mess = true
 
+	_maybe_illness(seconds)
 	_maybe_tantrum(seconds)
 	_evolve_if_needed()
 
@@ -582,24 +654,31 @@ func apply_decay(seconds: float) -> void:
 	state_changed.emit()
 
 
+func _maybe_illness(seconds: float) -> void:
+	if stage in ["bush", "baby"] or sick or not alive:
+		return
+	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	illness_events = _prune_day_events(illness_events, now)
+	if illness_events.size() >= MAX_ILLNESS_PER_DAY:
+		return
+	var chance := (_illness_daily_rate() / 86400.0) * seconds
+	if randf() >= minf(0.35, chance):
+		return
+	try_become_sick(true)
+
+
 func _maybe_tantrum(seconds: float) -> void:
 	if stage in ["bush", "baby"] or stubborn or not alive:
 		return
-	# Acts up on his own — Scold lights up without needing feed/play first.
-	var chance := (0.0007 + (100.0 - discipline) * 0.000014) * seconds
-	if hunger < 30.0:
-		chance *= 1.4
-	if happy < 25.0:
-		chance *= 1.25
-	if randf() >= minf(0.92, chance):
+	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	tantrum_events = _prune_day_events(tantrum_events, now)
+	if tantrum_events.size() >= MAX_TANTRUM_PER_DAY:
+		return
+	var chance := (_tantrum_daily_rate() / 86400.0) * seconds
+	if randf() >= minf(0.4, chance):
 		return
 	var reasons := ["acting up", "needs a firm word", "pushing boundaries"]
-	stubborn = true
-	stubborn_reason = reasons[randi() % reasons.size()]
-	care_mistakes += 1
-	lifespan_penalty += 5400.0  # ~1.5 hours shaved per unresolved chaos streak
-	speech.emit("He’s %s. Scold him." % stubborn_reason)
-	anim_impulse.emit("stubborn")
+	try_become_stubborn(reasons[randi() % reasons.size()], true, 5400.0)
 
 
 func _evolve_if_needed() -> void:
@@ -745,10 +824,7 @@ func try_feed(food_key: String) -> String:
 
 	var discipline_factor := (100.0 - discipline) / 100.0
 	if food.type == "healthy" and randf() < float(food.refuse) * (0.4 + discipline_factor):
-		stubborn = true
-		stubborn_reason = "refuses a proper meal"
-		care_mistakes += 1
-		lifespan_penalty += 3600.0
+		try_become_stubborn("refuses a proper meal", false, 3600.0)
 		speech.emit("Jimothy bats the %s away!" % str(food.name).to_lower())
 		anim_impulse.emit("refuse")
 		state_changed.emit()
@@ -766,9 +842,10 @@ func try_feed(food_key: String) -> String:
 	last_fed_food = food_key
 	if food.type == "treat":
 		treat_streak += 1
-		if treat_streak >= 4:
-			sick = true
-			health = clamp01(health - 8.0)
+		if treat_streak >= 3:
+			health = clamp01(health - (2.0 + float(treat_streak)))
+		if treat_streak >= 4 and try_become_sick(false):
+			health = clamp01(health - 6.0)
 			speech.emit("Too much alley grease… he flops, queasy.")
 			anim_impulse.emit("sick")
 		else:
@@ -904,14 +981,13 @@ func can_start_play(roll_stubborn: bool = false) -> String:
 		state_changed.emit()
 		return "stubborn"
 	# Only roll stubborn when opening the picker — not again when launching a game.
-	if roll_stubborn and not stubborn and discipline < 35.0 and randf() < 0.3:
-		stubborn = true
-		stubborn_reason = "refuses to exercise"
-		care_mistakes += 1
-		speech.emit("He flops dramatically. Absolutely not chasing trash.")
-		state_changed.emit()
-		save_game()
-		return "stubborn"
+	if roll_stubborn and not stubborn and discipline < 35.0 and randf() < 0.22:
+		if try_become_stubborn("refuses to exercise", false, 3600.0):
+			speech.emit("He flops dramatically. Absolutely not chasing trash.")
+			anim_impulse.emit("stubborn")
+			state_changed.emit()
+			save_game()
+			return "stubborn"
 	return "ok"
 
 
@@ -1030,6 +1106,8 @@ func to_dict() -> Dictionary:
 		"healthy_meals": healthy_meals,
 		"play_sessions": play_sessions,
 		"energy": energy,
+		"illness_events": illness_events,
+		"tantrum_events": tantrum_events,
 		"forms_unlocked": forms_unlocked,
 		"dev_mode": false,
 		"sound_muted": sound_muted,
@@ -1079,6 +1157,10 @@ func from_dict(d: Dictionary) -> void:
 	healthy_meals = int(d.get("healthy_meals", 0))
 	play_sessions = int(d.get("play_sessions", 0))
 	energy = float(d.get("energy", 80.0))
+	var ie = d.get("illness_events", [])
+	illness_events = _prune_day_events(ie if typeof(ie) == TYPE_ARRAY else [])
+	var te = d.get("tantrum_events", [])
+	tantrum_events = _prune_day_events(te if typeof(te) == TYPE_ARRAY else [])
 	var fu = d.get("forms_unlocked", {})
 	if typeof(fu) == TYPE_DICTIONARY:
 		forms_unlocked = fu

@@ -96,25 +96,13 @@
           </div>
 
           <nav class="controls" aria-label="Care buttons">
-            <button type="button" class="ctrl" id="btnFeed" data-action="feed">
+            <button type="button" class="ctrl" id="btnAction" title="Feed, Play, Scold, Heal">
               <span class="ctrl-icon" aria-hidden="true"></span>
-              <span>Feed</span>
-            </button>
-            <button type="button" class="ctrl" id="btnPlay" data-action="play">
-              <span class="ctrl-icon" aria-hidden="true"></span>
-              <span>Play</span>
-            </button>
-            <button type="button" class="ctrl" id="btnDiscipline" data-action="discipline" disabled title="Scold him when he’s acting up">
-              <span class="ctrl-icon" aria-hidden="true"></span>
-              <span>Scold</span>
+              <span>Action</span>
             </button>
             <button type="button" class="ctrl" id="btnClean" data-action="clean" disabled>
               <span class="ctrl-icon" aria-hidden="true"></span>
               <span>Clean</span>
-            </button>
-            <button type="button" class="ctrl" id="btnHeal" data-action="heal" disabled title="Heal him when he’s sick">
-              <span class="ctrl-icon" aria-hidden="true"></span>
-              <span>Heal</span>
             </button>
           </nav>
         </div>
@@ -122,13 +110,49 @@
 
       <p class="hint" id="hint">Tap Jimothy (or the bush) for reactions. Something’s waking in the leaves…</p>
       <div class="utility-row">
-        <button type="button" class="utility-btn" id="btnAmbience" aria-pressed="true" title="Night background ambience">BG: On</button>
-        <button type="button" class="utility-btn" id="btnSfx" aria-pressed="true" title="Jimothy raccoon sounds">Jimothy: On</button>
+        <button type="button" class="utility-btn" id="btnSound" title="Background and Jimothy sounds">Sound</button>
         <button type="button" class="utility-btn" id="btnAlerts" aria-pressed="false" title="Care notifications">Alerts: Off</button>
         <button type="button" class="utility-btn" id="btnForms">Forms</button>
         <button type="button" class="utility-btn" id="btnReset" title="Start a new bush (keeps unlocked forms)">Reset</button>
       </div>
     </main>
+
+    <div class="modal" id="actionModal" hidden>
+      <div class="modal-card compact" role="dialog" aria-labelledby="actionTitle">
+        <h2 id="actionTitle">Actions</h2>
+        <div class="menu-list">
+          <button type="button" class="menu-btn" id="btnFeed">
+            <span class="menu-icon" aria-hidden="true"></span>
+            <span>Feed</span>
+          </button>
+          <button type="button" class="menu-btn" id="btnPlay">
+            <span class="menu-icon" aria-hidden="true"></span>
+            <span>Play</span>
+          </button>
+          <button type="button" class="menu-btn" id="btnDiscipline" disabled title="Scold him when he’s acting up">
+            <span class="menu-icon" aria-hidden="true"></span>
+            <span>Scold</span>
+          </button>
+          <button type="button" class="menu-btn" id="btnHeal" disabled title="Heal him when he’s sick">
+            <span class="menu-icon" aria-hidden="true"></span>
+            <span>Heal</span>
+          </button>
+        </div>
+        <button type="button" class="modal-close" id="actionClose">Close</button>
+      </div>
+    </div>
+
+    <div class="modal" id="soundModal" hidden>
+      <div class="modal-card compact" role="dialog" aria-labelledby="soundTitle">
+        <h2 id="soundTitle">Sound</h2>
+        <p class="modal-copy">Toggle background ambience and Jimothy’s raccoon sounds.</p>
+        <div class="menu-list">
+          <button type="button" class="menu-btn" id="btnAmbience" aria-pressed="true" title="Night background ambience">BG: On</button>
+          <button type="button" class="menu-btn" id="btnSfx" aria-pressed="true" title="Jimothy raccoon sounds">Jimothy: On</button>
+        </div>
+        <button type="button" class="modal-close" id="soundClose">Close</button>
+      </div>
+    </div>
 
     <div class="modal" id="feedModal" hidden>
       <div class="modal-card" role="dialog" aria-labelledby="feedTitle">
@@ -234,10 +258,10 @@
     <div class="modal" id="resetModal" hidden>
       <div class="modal-card compact" role="dialog" aria-labelledby="resetTitle" aria-describedby="resetBody">
         <h2 id="resetTitle">Reset Jimothy?</h2>
-        <p class="modal-copy" id="resetBody">Starts a new rustling bush. Unlocked forms stay.</p>
+        <p class="modal-copy" id="resetBody">Are you sure you want to proceed? Starts a new rustling bush. Unlocked forms stay.</p>
         <div class="modal-actions">
           <button type="button" class="utility-btn" id="resetCancel">Cancel</button>
-          <button type="button" class="primary-btn danger" id="resetConfirm">Reset</button>
+          <button type="button" class="primary-btn danger" id="resetConfirm">Yes, reset</button>
         </div>
       </div>
     </div>

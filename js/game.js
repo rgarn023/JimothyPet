@@ -104,6 +104,10 @@
     healthyMeals: 0,
     playSessions: 0,
     energy: 80,
+    /** Timestamps (ms) of illness onsets in the rolling 24h window. Max 2. */
+    illnessEvents: [],
+    /** Timestamps (ms) of acting-out onsets in the rolling 24h window. Max 3. */
+    tantrumEvents: [],
     formsUnlocked: { young: {}, teen: {}, adult: {} },
     devMode: false,
     soundMuted: false,
@@ -111,6 +115,10 @@
     sfxMuted: false,
     alertsEnabled: false,
   };
+
+  const DAY_MS = 86400000;
+  const MAX_ILLNESS_PER_DAY = 2;
+  const MAX_TANTRUM_PER_DAY = 3;
 
   const YOUNG_FORMS = ["puff", "looper", "shadow", "nub"];
   const TEEN_FORMS = ["dumpling", "bounder", "nightlane", "scruff"];
@@ -446,6 +454,8 @@
       healthyMeals: 0,
       playSessions: 0,
       energy: 80,
+      illnessEvents: [],
+      tantrumEvents: [],
       formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
       devMode: false,
       soundMuted: !!state.soundMuted,
@@ -565,6 +575,12 @@
       if (state.ambienceMuted == null) state.ambienceMuted = !!state.soundMuted;
       if (state.sfxMuted == null) state.sfxMuted = !!state.soundMuted;
       if (state.alertsEnabled == null) state.alertsEnabled = false;
+      state.illnessEvents = pruneDayEvents(
+        Array.isArray(state.illnessEvents) ? state.illnessEvents : []
+      );
+      state.tantrumEvents = pruneDayEvents(
+        Array.isArray(state.tantrumEvents) ? state.tantrumEvents : []
+      );
       unlockCurrentForm();
       syncRealtime({ announceDeath: false });
       return true;
@@ -713,33 +729,93 @@
     save();
   }
 
+  function pruneDayEvents(arr, now = nowMs()) {
+    return (arr || []).filter((t) => typeof t === "number" && now - t < DAY_MS);
+  }
+
+  function illnessDailyRate() {
+    const h = clamp(state.health, 0, 100);
+    // Rare baseline even when well cared for; health is the main driver.
+    let rate = 0.035 + Math.pow((100 - h) / 100, 1.35) * 1.5;
+    if (state.hasMess) rate *= 1.45;
+    if (state.hunger < 25) rate *= 1.35;
+    if (state.treatStreak >= 2) rate *= 1.15 + state.treatStreak * 0.12;
+    return Math.min(rate, 2.1);
+  }
+
+  function tantrumDailyRate() {
+    const d = clamp(state.discipline, 0, 100);
+    return Math.min(0.05 + Math.pow((100 - d) / 100, 1.25) * 2.4, 3.1);
+  }
+
+  /** Returns true if illness started. Respects max 2 / 24h. */
+  function tryBecomeSick({ announce = true } = {}) {
+    if (!state.alive || state.ascending || state.sick || state.stage === "bush") {
+      return false;
+    }
+    const now = nowMs();
+    state.illnessEvents = pruneDayEvents(state.illnessEvents, now);
+    if (state.illnessEvents.length >= MAX_ILLNESS_PER_DAY) return false;
+    state.sick = true;
+    state.illnessEvents.push(now);
+    if (announce) {
+      say("He’s feeling queasy…");
+      pulseAnim("sick");
+      sfx("sick");
+    }
+    return true;
+  }
+
+  /** Returns true if a new acting-out started. Respects max 3 / 24h. */
+  function tryBecomeStubborn(reason, { announce = true, penalty = 5400 } = {}) {
+    if (!state.alive || state.ascending || state.stubborn) return false;
+    if (state.stage === "bush" || state.stage === "baby") return false;
+    const now = nowMs();
+    state.tantrumEvents = pruneDayEvents(state.tantrumEvents, now);
+    if (state.tantrumEvents.length >= MAX_TANTRUM_PER_DAY) return false;
+    state.stubborn = true;
+    state.stubbornReason = reason || "acting up";
+    state.tantrumEvents.push(now);
+    state.careMistakes += 1;
+    state.lifespanPenalty = (state.lifespanPenalty || 0) + penalty;
+    if (announce) {
+      say(`He’s ${state.stubbornReason}. Scold him.`);
+      pulseAnim("stubborn");
+      sfx("stubborn");
+    }
+    return true;
+  }
+
   function applyDecay(seconds) {
     if (!state.alive) return;
 
     const hungerRate = state.stage !== "bush" ? 0.0028 : 0;
     const happyRate = state.stage !== "bush" ? 0.0022 : 0;
     const energyRate = state.stage !== "bush" ? 0.0015 : 0;
+    // Slow discipline fade — acting-out odds rise as it falls.
+    const disciplineRate = state.stage !== "bush" && state.stage !== "baby" ? 0.00016 : 0;
 
     state.hunger = clamp(state.hunger - hungerRate * seconds);
     state.happy = clamp(state.happy - happyRate * seconds);
     state.energy = clamp(state.energy - energyRate * seconds);
+    state.discipline = clamp(state.discipline - disciplineRate * seconds);
     state.satiety = Math.max(0, state.satiety - 0.02 * seconds);
     state.ageSec += seconds;
 
+    // Health drains mainly from waste, hunger, and junk streak — kept slow.
     if (state.hasMess) {
-      state.health = clamp(state.health - 0.0012 * seconds);
-      state.happy = clamp(state.happy - 0.001 * seconds);
+      state.health = clamp(state.health - 0.00055 * seconds);
+      state.happy = clamp(state.happy - 0.0007 * seconds);
     }
     if (state.hunger < 20 && state.stage !== "bush") {
-      state.health = clamp(state.health - 0.0025 * seconds);
-      state.happy = clamp(state.happy - 0.0015 * seconds);
-    }
-    if (state.happy < 15 && state.stage !== "bush") {
-      state.health = clamp(state.health - 0.001 * seconds);
+      state.health = clamp(state.health - 0.00095 * seconds);
+      state.happy = clamp(state.happy - 0.001 * seconds);
     }
     if (state.treatStreak > 3) {
-      state.health = clamp(state.health - 0.0008 * seconds);
-      state.sick = true;
+      state.health = clamp(state.health - 0.0004 * seconds);
+    }
+    if (state.sick) {
+      state.health = clamp(state.health - 0.00025 * seconds);
     }
     if (state.energy < 15) {
       state.happy = clamp(state.happy - 0.0005 * seconds);
@@ -747,10 +823,11 @@
 
     applyNeglectPenalty(seconds);
 
-    if (state.stage !== "bush" && !state.hasMess && Math.random() < seconds * 0.00025) {
+    if (state.stage !== "bush" && !state.hasMess && Math.random() < seconds * 0.00018) {
       state.hasMess = true;
     }
 
+    maybeIllness(seconds);
     maybeTantrum(seconds);
     evolveIfNeeded();
 
@@ -766,24 +843,32 @@
     }
   }
 
+  function maybeIllness(seconds) {
+    if (state.stage === "bush" || state.stage === "baby" || state.sick || !state.alive) {
+      return false;
+    }
+    const now = nowMs();
+    state.illnessEvents = pruneDayEvents(state.illnessEvents, now);
+    if (state.illnessEvents.length >= MAX_ILLNESS_PER_DAY) return false;
+    const chance = (illnessDailyRate() / 86400) * seconds;
+    if (Math.random() >= Math.min(0.35, chance)) return false;
+    return tryBecomeSick({ announce: true });
+  }
+
   function maybeTantrum(seconds) {
     if (state.stage === "bush" || state.stage === "baby" || state.stubborn || !state.alive) {
       return false;
     }
-    // Acts up on his own — Scold lights up without needing feed/play first.
-    let chance = (0.0007 + (100 - state.discipline) * 0.000014) * seconds;
-    if (state.hunger < 30) chance *= 1.4;
-    if (state.happy < 25) chance *= 1.25;
-    if (Math.random() >= Math.min(0.92, chance)) return false;
+    const now = nowMs();
+    state.tantrumEvents = pruneDayEvents(state.tantrumEvents, now);
+    if (state.tantrumEvents.length >= MAX_TANTRUM_PER_DAY) return false;
+    const chance = (tantrumDailyRate() / 86400) * seconds;
+    if (Math.random() >= Math.min(0.4, chance)) return false;
     const reasons = ["acting up", "needs a firm word", "pushing boundaries"];
-    state.stubborn = true;
-    state.stubbornReason = reasons[Math.floor(Math.random() * reasons.length)];
-    state.careMistakes += 1;
-    state.lifespanPenalty = (state.lifespanPenalty || 0) + 5400;
-    say(`He’s ${state.stubbornReason}. Scold him.`);
-    pulseAnim("stubborn");
-    sfx("stubborn");
-    return true;
+    return tryBecomeStubborn(reasons[Math.floor(Math.random() * reasons.length)], {
+      announce: true,
+      penalty: 5400,
+    });
   }
 
   function evolveIfNeeded() {
@@ -1064,18 +1149,26 @@
     }
 
     const canCare = state.alive && state.stage !== "bush" && !state.ascending;
-    $("btnDiscipline").disabled = !(state.alive && state.stubborn);
+    const canScold = !!(state.alive && state.stubborn);
+    const canHeal = !!(state.alive && state.sick && state.stage !== "bush" && !state.ascending);
+    if ($("btnDiscipline")) {
+      $("btnDiscipline").disabled = !canScold;
+      $("btnDiscipline").classList.toggle("needs-attention", canScold);
+    }
     $("btnClean").disabled = !(state.alive && state.hasMess);
     if ($("btnHeal")) {
-      $("btnHeal").disabled = !(state.alive && state.sick && state.stage !== "bush");
-      $("btnHeal").classList.toggle("needs-attention", state.sick && state.alive);
+      $("btnHeal").disabled = !canHeal;
+      $("btnHeal").classList.toggle("needs-attention", canHeal);
     }
-    $("btnFeed").disabled = !canCare;
-    $("btnPlay").disabled =
-      !state.alive || state.ascending || state.stage === "bush" || state.stage === "baby";
-
-    $("btnDiscipline").classList.toggle("needs-attention", state.stubborn && state.alive);
+    if ($("btnFeed")) $("btnFeed").disabled = !canCare;
+    if ($("btnPlay")) {
+      $("btnPlay").disabled =
+        !state.alive || state.ascending || state.stage === "bush" || state.stage === "baby";
+    }
     $("btnClean").classList.toggle("needs-attention", state.hasMess && state.alive);
+    if ($("btnAction")) {
+      $("btnAction").classList.toggle("needs-attention", canScold || canHeal);
+    }
 
     refreshDevButton();
 
@@ -1087,9 +1180,9 @@
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
     } else if (state.sick) {
-      $("hint").textContent = "He’s under the weather — use Heal when you can.";
+      $("hint").textContent = "He’s under the weather — open Action → Heal.";
     } else if (state.stubborn) {
-      $("hint").textContent = "He’s acting up — Scold is ready.";
+      $("hint").textContent = "He’s acting up — open Action → Scold.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
         "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
@@ -1240,8 +1333,26 @@
     syncDevMeters();
   }
 
+  function closeActionMenu() {
+    if ($("actionModal")) $("actionModal").hidden = true;
+  }
+
+  function openActionMenu() {
+    if ($("actionModal")) $("actionModal").hidden = false;
+  }
+
+  function closeSoundMenu() {
+    if ($("soundModal")) $("soundModal").hidden = true;
+  }
+
+  function openSoundMenu() {
+    refreshSoundButtons();
+    if ($("soundModal")) $("soundModal").hidden = false;
+  }
+
   function openFeed() {
-    if (!state.alive || state.stage === "bush") return;
+    if (!state.alive || state.stage === "bush" || state.ascending) return;
+    closeActionMenu();
     $("feedModal").hidden = false;
   }
 
@@ -1276,10 +1387,7 @@
       food.type === "healthy" &&
       Math.random() < food.refuse * (0.4 + disciplineFactor)
     ) {
-      state.stubborn = true;
-      state.stubbornReason = "refuses a proper meal";
-      state.careMistakes += 1;
-      state.lifespanPenalty = (state.lifespanPenalty || 0) + 3600;
+      tryBecomeStubborn("refuses a proper meal", { announce: false, penalty: 3600 });
       say(`Jimothy bats the ${food.name.toLowerCase()} away!`);
       pulseAnim("refuse");
       sfx("refuse");
@@ -1299,11 +1407,15 @@
 
     if (food.type === "treat") {
       state.treatStreak += 1;
-      if (state.treatStreak >= 4) {
-        state.sick = true;
-        state.health = clamp(state.health - 8);
+      // Junk taxes health; illness is roll/cap based, not automatic forever.
+      if (state.treatStreak >= 3) {
+        state.health = clamp(state.health - (2 + state.treatStreak));
+      }
+      if (state.treatStreak >= 4 && tryBecomeSick({ announce: false })) {
+        state.health = clamp(state.health - 6);
         say("Too much alley grease… he flops, queasy.");
         pulseAnim("sick");
+        sfx("sick");
       } else {
         say(`He stash-eats the ${food.name}.`);
         pulseAnim("eat", { food: foodKey });
@@ -1345,6 +1457,7 @@
     say("A firm chitter. He listens… for now.");
     pulseAnim("scold");
     sfx("scold");
+    closeActionMenu();
     render();
     save();
   }
@@ -1376,6 +1489,7 @@
     say("You soothe his tummy. Warmth returns to his ears.");
     pulseAnim("heal");
     sfx("heal");
+    closeActionMenu();
     render();
     save();
   }
@@ -1399,19 +1513,21 @@
       return "stubborn";
     }
     // Only roll stubborn when opening the picker — not again when launching a game.
-    if (rollStubborn && !state.stubborn && state.discipline < 35 && Math.random() < 0.3) {
-      state.stubborn = true;
-      state.stubbornReason = "refuses to exercise";
-      state.careMistakes += 1;
-      say("He flops dramatically. Absolutely not chasing trash.");
-      render();
-      save();
-      return "stubborn";
+    if (rollStubborn && !state.stubborn && state.discipline < 35 && Math.random() < 0.22) {
+      if (tryBecomeStubborn("refuses to exercise", { announce: false, penalty: 3600 })) {
+        say("He flops dramatically. Absolutely not chasing trash.");
+        pulseAnim("stubborn");
+        sfx("stubborn");
+        render();
+        save();
+        return "stubborn";
+      }
     }
     return "ok";
   }
 
   function openPlayPicker() {
+    closeActionMenu();
     if (canStartPlay({ rollStubborn: true }) !== "ok") return;
     $("playPickModal").hidden = false;
   }
@@ -1697,13 +1813,20 @@
   }
 
   function wireIcons() {
-    $("btnFeed").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.feed;
-    $("btnPlay").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.play;
-    $("btnDiscipline").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.scold;
-    $("btnClean").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.clean;
-    if ($("btnHeal") && $("btnHeal").querySelector(".ctrl-icon")) {
-      $("btnHeal").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.heal;
+    if ($("btnAction") && $("btnAction").querySelector(".ctrl-icon")) {
+      $("btnAction").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.action;
     }
+    $("btnClean").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.clean;
+    const setMenuIcon = (id, icon) => {
+      const el = $(id);
+      if (!el) return;
+      const slot = el.querySelector(".menu-icon") || el.querySelector(".ctrl-icon");
+      if (slot) slot.innerHTML = icon;
+    };
+    setMenuIcon("btnFeed", RaccoonArt.icons.feed);
+    setMenuIcon("btnPlay", RaccoonArt.icons.play);
+    setMenuIcon("btnDiscipline", RaccoonArt.icons.scold);
+    setMenuIcon("btnHeal", RaccoonArt.icons.heal);
 
     document.querySelectorAll(".food-btn").forEach((btn) => {
       const key = btn.dataset.food;
@@ -1713,8 +1836,22 @@
   }
 
   function bind() {
-    $("btnFeed").addEventListener("click", openFeed);
-    $("btnPlay").addEventListener("click", openPlayPicker);
+    if ($("btnAction")) $("btnAction").addEventListener("click", openActionMenu);
+    if ($("actionClose")) $("actionClose").addEventListener("click", closeActionMenu);
+    if ($("actionModal")) {
+      $("actionModal").addEventListener("click", (e) => {
+        if (e.target === $("actionModal")) closeActionMenu();
+      });
+    }
+    if ($("btnSound")) $("btnSound").addEventListener("click", openSoundMenu);
+    if ($("soundClose")) $("soundClose").addEventListener("click", closeSoundMenu);
+    if ($("soundModal")) {
+      $("soundModal").addEventListener("click", (e) => {
+        if (e.target === $("soundModal")) closeSoundMenu();
+      });
+    }
+    if ($("btnFeed")) $("btnFeed").addEventListener("click", openFeed);
+    if ($("btnPlay")) $("btnPlay").addEventListener("click", openPlayPicker);
     if ($("playPickClose")) $("playPickClose").addEventListener("click", closePlayPicker);
     if ($("pickDumpster")) $("pickDumpster").addEventListener("click", openGame);
     if ($("pickDice")) $("pickDice").addEventListener("click", openDiceGame);
@@ -1732,7 +1869,7 @@
       brand.addEventListener("click", onBrandSecretTap);
       brand.style.cursor = "default";
     }
-    $("btnDiscipline").addEventListener("click", discipline);
+    if ($("btnDiscipline")) $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
     if ($("btnHeal")) $("btnHeal").addEventListener("click", treatIllness);
     const wrap = $("raccoonWrap");

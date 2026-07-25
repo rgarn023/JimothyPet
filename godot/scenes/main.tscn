@@ -268,25 +268,12 @@ autowrap_mode = 3
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="BtnFeed" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
+[node name="BtnAction" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Feed"
-
-[node name="BtnPlay" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Play"
-
-[node name="BtnScold" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-disabled = true
-tooltip_text = "Scold him when he’s acting up"
-text = "Scold"
+tooltip_text = "Feed, Play, Scold, Heal"
+text = "Action"
 
 [node name="BtnClean" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
 unique_name_in_owner = true
@@ -294,14 +281,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 disabled = true
 text = "Clean"
-
-[node name="BtnHeal" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-disabled = true
-tooltip_text = "Heal him when he’s sick"
-text = "Heal"
 
 [node name="HintLabel" type="Label" parent="Margin/VBox"]
 unique_name_in_owner = true
@@ -316,19 +295,12 @@ autowrap_mode = 3
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="BtnAmbience" type="Button" parent="Margin/VBox/UtilityRow"]
+[node name="BtnSound" type="Button" parent="Margin/VBox/UtilityRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-tooltip_text = "Night background ambience"
-text = "BG: On"
-
-[node name="BtnSfx" type="Button" parent="Margin/VBox/UtilityRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Jimothy raccoon sounds"
-text = "Jimothy: On"
+tooltip_text = "Background and Jimothy sounds"
+text = "Sound"
 
 [node name="BtnAlerts" type="Button" parent="Margin/VBox/UtilityRow"]
 unique_name_in_owner = true
@@ -580,13 +552,9 @@ horizontal_alignment = 1
 layout_mode = 2
 text = "Bail Out"
 
-[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnFeed" to="." method="_on_feed_pressed"]
-[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnPlay" to="." method="_on_play_pressed"]
-[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnScold" to="." method="_on_scold_pressed"]
+[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnAction" to="." method="_on_action_pressed"]
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnClean" to="." method="_on_clean_pressed"]
-[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnHeal" to="." method="_on_heal_pressed"]
-[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnAmbience" to="." method="_on_ambience_pressed"]
-[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnSfx" to="." method="_on_sfx_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnSound" to="." method="_on_sound_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnAlerts" to="." method="_on_alerts_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnForms" to="." method="_on_forms_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnReset" to="." method="_on_reset_pressed"]
