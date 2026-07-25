@@ -125,6 +125,8 @@
   };
 
   let wasSleeping = false;
+  /** Session-only Dev override: "" | "sleep" | "awake". */
+  let devSleepOverride = "";
 
   const DAY_MS = 86400000;
   const MAX_ILLNESS_PER_DAY = 2;
@@ -382,6 +384,8 @@
 
   function isSleeping() {
     if (!state.alive || state.ascending || state.stage === "bush") return false;
+    if (devSleepOverride === "sleep") return true;
+    if (devSleepOverride === "awake") return false;
     return !!state.lightsOff || isInSleepWindow();
   }
 
@@ -533,6 +537,7 @@
     });
     state.youngForm = pickYoungForm(state.genes);
     wasSleeping = false;
+    devSleepOverride = "";
     if ($("messageOk")) $("messageOk").textContent = "OK";
   }
 
@@ -1549,7 +1554,7 @@
   function refreshDevStatus() {
     const el = $("devStatus");
     if (!el) return;
-    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Waste: ${state.messCount}/${MAX_MESS} · Sick: ${state.sick ? "yes" : "no"} · Stubborn: ${state.stubborn ? "yes" : "no"} · ${stageLabel()} · ${formatAge()}`;
+    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Waste: ${state.messCount}/${MAX_MESS} · Sick: ${state.sick ? "yes" : "no"} · Stubborn: ${state.stubborn ? "yes" : "no"} · Sleep: ${isSleeping() ? "yes" : "no"} · ${stageLabel()} · ${formatAge()}`;
     const toggle = $("devToggle");
     if (toggle) toggle.textContent = state.devMode ? "Dev Mode: On" : "Dev Mode: Off";
     syncDevMeters();
@@ -1991,6 +1996,33 @@
     refreshDevStatus();
   }
 
+  function setDevSleep(on) {
+    if (!devUnlocked) return;
+    if (on) {
+      if (state.stage === "bush" && state.devMode) {
+        devSkipTo("baby");
+      }
+      if (!state.alive || state.ascending || state.stage === "bush") {
+        say("Dev: need a living kit (not bush) to sleep.");
+        refreshDevStatus();
+        return;
+      }
+      devSleepOverride = "sleep";
+      state.lightsOff = true;
+      pulseAnim("fallAsleep");
+      say("Dev: put to sleep.");
+    } else {
+      devSleepOverride = "awake";
+      state.lightsOff = false;
+      pulseAnim("stretch");
+      sfx("stretch");
+      say("Dev: woke up.");
+    }
+    render();
+    save({ touchTick: false });
+    refreshDevStatus();
+  }
+
   let lastArtKey = "";
 
   function artProfile() {
@@ -2214,6 +2246,8 @@
     if ($("devSickOff")) $("devSickOff").addEventListener("click", () => setDevSick(false));
     if ($("devStubbornOn")) $("devStubbornOn").addEventListener("click", () => setDevStubborn(true));
     if ($("devStubbornOff")) $("devStubbornOff").addEventListener("click", () => setDevStubborn(false));
+    if ($("devSleepOn")) $("devSleepOn").addEventListener("click", () => setDevSleep(true));
+    if ($("devSleepOff")) $("devSleepOff").addEventListener("click", () => setDevSleep(false));
     document.querySelectorAll("[data-dev-stat]").forEach((input) => {
       input.addEventListener("input", () => applyDevStat(input.dataset.devStat, input.value));
     });

@@ -221,6 +221,15 @@ func _build_dev_panel() -> void:
 	stub_off.pressed.connect(func(): PetState.dev_set_stubborn(false); _refresh_dev_panel())
 	list.add_child(stub_off)
 
+	var sleep_on := Button.new()
+	sleep_on.text = "Put to sleep"
+	sleep_on.pressed.connect(func(): PetState.dev_set_sleep(true); _refresh_dev_panel())
+	list.add_child(sleep_on)
+	var sleep_off := Button.new()
+	sleep_off.text = "Wake up"
+	sleep_off.pressed.connect(func(): PetState.dev_set_sleep(false); _refresh_dev_panel())
+	list.add_child(sleep_off)
+
 	var meters_note := Label.new()
 	meters_note.text = "Meters — tap − / + (hold values for testing)."
 	meters_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -428,11 +437,12 @@ func _form_mark(bucket: String, form_id: String) -> String:
 
 func _refresh_dev_panel() -> void:
 	if _dev_status:
-		_dev_status.text = "Dev Mode: %s · Waste: %s · Sick: %s · Stubborn: %s\nStage: %s · %s" % [
+		_dev_status.text = "Dev Mode: %s · Waste: %s · Sick: %s · Stubborn: %s · Sleep: %s\nStage: %s · %s" % [
 			"ON" if PetState.dev_mode else "OFF",
 			"%d/%d" % [PetState.mess_count, PetState.MAX_MESS],
 			"yes" if PetState.sick else "no",
 			"yes" if PetState.stubborn else "no",
+			"yes" if PetState.is_sleeping() else "no",
 			PetState.stage_label(),
 			_format_age(PetState.age_sec),
 		]

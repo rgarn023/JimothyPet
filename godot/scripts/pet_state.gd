@@ -132,6 +132,8 @@ var schedule_set: bool = false
 ## Manual lights-off puts him to bed even outside sleep hours.
 var lights_off: bool = false
 var _was_sleeping: bool = false
+## Session-only Dev override: "" | "sleep" | "awake".
+var dev_sleep_override: String = ""
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
@@ -238,6 +240,7 @@ func reset_pet() -> void:
 	sleep_hour = keep_sleep
 	schedule_set = false
 	lights_off = false
+	dev_sleep_override = ""
 	_was_sleeping = false
 	save_game()
 	speech.emit("A roadside bush shivers… something’s in there.")
@@ -261,6 +264,10 @@ func is_in_sleep_window() -> bool:
 
 func is_sleeping() -> bool:
 	if not alive or ascending or stage == "bush":
+		return false
+	if dev_sleep_override == "sleep":
+		return true
+	if dev_sleep_override == "awake":
 		return false
 	return lights_off or is_in_sleep_window()
 
@@ -401,6 +408,28 @@ func dev_set_stubborn(on: bool) -> void:
 		return
 	stubborn = on and alive
 	stubborn_reason = "dev override" if stubborn else ""
+	state_changed.emit()
+	save_game()
+
+
+func dev_set_sleep(on: bool) -> void:
+	if not dev_unlocked:
+		return
+	if on:
+		if stage == "bush" and dev_mode:
+			dev_skip_to("baby")
+		if not alive or ascending or stage == "bush":
+			speech.emit("Dev: need a living kit (not bush) to sleep.")
+			return
+		dev_sleep_override = "sleep"
+		lights_off = true
+		anim_impulse.emit("fallAsleep")
+		speech.emit("Dev: put to sleep.")
+	else:
+		dev_sleep_override = "awake"
+		lights_off = false
+		anim_impulse.emit("stretch")
+		speech.emit("Dev: woke up.")
 	state_changed.emit()
 	save_game()
 
