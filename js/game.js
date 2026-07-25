@@ -12,6 +12,7 @@
   const TEEN_SEC_MAX = 259200; // 72 hours
   const ADULT_SEC_MIN = 864000; // 10 days
   const ADULT_SEC_MAX = 1728000; // 20 days
+  const ADULT_SEC_FLOOR = 86400; // neglect can shorten, not below 1 adult day
 
   const FOOD = {
     berries: {
@@ -81,6 +82,8 @@
     adultForm: "",
     teenDuration: TEEN_SEC_MIN,
     adultDuration: ADULT_SEC_MIN,
+    lifespanPenalty: 0,
+    deathReason: "",
     genes: {},
     hunger: 70,
     happy: 70,
@@ -96,6 +99,7 @@
     hasMess: false,
     sick: false,
     alive: true,
+    ascending: false,
     treatStreak: 0,
     healthyMeals: 0,
     playSessions: 0,
@@ -205,8 +209,60 @@
   function teenEnd() {
     return youngEnd() + state.teenDuration;
   }
+  function effectiveAdultSpan() {
+    return Math.max(ADULT_SEC_FLOOR, state.adultDuration - (state.lifespanPenalty || 0));
+  }
+
   function lifeEnd() {
-    return teenEnd() + state.adultDuration;
+    return teenEnd() + effectiveAdultSpan();
+  }
+
+  function applyNeglectPenalty(seconds) {
+    if (state.stage === "bush" || !state.alive) return;
+    let rate = 0;
+    if (state.hunger < 25) rate += 2.2;
+    if (state.happy < 20) rate += 1.4;
+    if (state.health < 35) rate += 2.8;
+    if (state.hasMess) rate += 0.8;
+    if (state.sick) rate += 1.6;
+    if (state.discipline < 25) rate += 0.4;
+    state.lifespanPenalty = (state.lifespanPenalty || 0) + rate * seconds;
+  }
+
+  function endLife(reason) {
+    if (state.ascending) return;
+    state.alive = false;
+    state.ascending = true;
+    state.deathReason = reason;
+    state.stubborn = false;
+    if (reason === "lifespan") {
+      say("His time is done. Wings catch the moonlight…");
+    } else if (reason === "neglect") {
+      say("Poor care wore him thin. Wings unfold anyway…");
+    } else {
+      say("Jimothy’s life is over. He rises into the sky…");
+    }
+    pulseAnim("ascend");
+    render();
+    save();
+    // Offer new kit after ascension animation finishes
+    setTimeout(() => {
+      state.ascending = false;
+      save();
+      const why =
+        reason === "neglect"
+          ? "Poor care shortened his time."
+          : reason === "lifespan"
+            ? "He lived out his cryptid span."
+            : "His story has ended.";
+      showMessage(
+        "Jimothy’s life is over",
+        `${why} He grew wings and rose into the sky. Raise another kit?`
+      );
+      $("messageOk").textContent = "Raise another kit";
+      $("messageOk").dataset.reset = "1";
+      render();
+    }, 4200);
   }
 
   function stageLabel() {
@@ -227,6 +283,7 @@
   }
 
   function stageName() {
+    if (state.ascending) return "Ascending…";
     if (!state.alive) return "Gone to the night…";
     switch (state.stage) {
       case "bush":
@@ -269,6 +326,8 @@
       adultForm: "",
       teenDuration: randRange(TEEN_SEC_MIN, TEEN_SEC_MAX),
       adultDuration: randRange(ADULT_SEC_MIN, ADULT_SEC_MAX),
+      lifespanPenalty: 0,
+      deathReason: "",
       hunger: 70,
       happy: 70,
       health: 100,
@@ -283,12 +342,14 @@
       hasMess: false,
       sick: false,
       alive: true,
+      ascending: false,
       treatStreak: 0,
       healthyMeals: 0,
       playSessions: 0,
       energy: 80,
     });
     state.youngForm = pickYoungForm(state.genes);
+    if ($("messageOk")) $("messageOk").textContent = "OK";
   }
 
   function load() {
@@ -325,16 +386,10 @@
     const now = nowMs();
     const last = state.lastTick || now;
     const elapsed = Math.max(0, Math.floor((now - last) / 1000));
-    const wasAlive = state.alive;
     if (elapsed > 0 && state.alive) applyDecay(elapsed);
     state.lastTick = now;
-    if (announceDeath && wasAlive && !state.alive) {
-      showMessage(
-        "Gone to the night…",
-        "His cycle ended (lifespan or care). Start a new rustling bush?"
-      );
-      $("messageOk").dataset.reset = "1";
-    }
+    // Death path handled by endLife → ascension → raise-another-kit prompt
+    void announceDeath;
     return elapsed;
   }
 
@@ -347,6 +402,8 @@
   }
 
   function applyDecay(seconds) {
+    if (!state.alive) return;
+
     const hungerRate = state.stage !== "bush" ? 0.0028 : 0;
     const happyRate = state.stage !== "bush" ? 0.0022 : 0;
     const energyRate = state.stage !== "bush" ? 0.0015 : 0;
@@ -376,6 +433,8 @@
       state.happy = clamp(state.happy - 0.0005 * seconds);
     }
 
+    applyNeglectPenalty(seconds);
+
     if (state.stage !== "bush" && !state.hasMess && Math.random() < seconds * 0.00025) {
       state.hasMess = true;
     }
@@ -384,14 +443,14 @@
     evolveIfNeeded();
 
     if (state.stage === "adult" && state.ageSec >= lifeEnd()) {
-      state.alive = false;
-      say("Jimothy melts back into the night… cryptid business.");
+      const shortened = (state.lifespanPenalty || 0) > state.adultDuration * 0.15;
+      endLife(shortened ? "neglect" : "lifespan");
     } else if (
       state.health <= 0 ||
       (state.hunger <= 0 && state.happy <= 0 && state.stage !== "bush")
     ) {
-      state.alive = false;
       state.health = 0;
+      endLife("neglect");
     }
   }
 
@@ -406,6 +465,7 @@
       state.stubbornReason =
         Math.random() < 0.5 ? "refuses a proper meal" : "refuses to exercise";
       state.careMistakes += 1;
+      state.lifespanPenalty = (state.lifespanPenalty || 0) + 5400;
     }
   }
 
@@ -448,7 +508,21 @@
       state.stage = "adult";
       const teen = state.teenForm || pickTeenForm(state.youngForm, state.genes);
       state.adultForm = pickAdultForm(teen);
-      state.adultDuration = randRange(ADULT_SEC_MIN, ADULT_SEC_MAX);
+      const careQ = Math.max(
+        0,
+        Math.min(
+          1,
+          state.careScore * 0.04 +
+            state.healthyMeals * 0.03 +
+            state.fitness * 0.004 -
+            state.careMistakes * 0.05
+        )
+      );
+      state.adultDuration = ADULT_SEC_MIN + (ADULT_SEC_MAX - ADULT_SEC_MIN) * careQ;
+      state.adultDuration = Math.max(
+        ADULT_SEC_FLOOR,
+        state.adultDuration - (state.lifespanPenalty || 0) * 0.35
+      );
       state.weight = 11 + state.fitness * 0.03;
       state.genes.legginess = clamp(state.genes.legginess * 0.5 + 0.55, 0, 1);
       state.genes.roundness = clamp(state.genes.roundness * 0.4 + 0.65, 0, 1);
@@ -456,7 +530,7 @@
       pulseAnim("lope");
       showMessage(
         "Adult Cryptid!",
-        `${adultFormTitle()} Jimothy — short-spine legend look. He’ll stick around ~10–20 days.`
+        `${adultFormTitle()} Jimothy — care well and he may linger longer; neglect shortens his sky-bound days.`
       );
     }
 
@@ -464,8 +538,11 @@
   }
 
   function alertText() {
+    if (state.ascending) {
+      return { text: "Jimothy grows wings and rises into the sky…", danger: false };
+    }
     if (!state.alive) {
-      return { text: "The cryptid has moved on… start a new bush?", danger: true };
+      return { text: "His life is over. You can raise another kit.", danger: true };
     }
     if (state.stage === "bush") {
       return { text: "The bush is rustling. Wait — something’s waking.", danger: false };
@@ -539,7 +616,7 @@
   }
 
   function ambientAnim(dt) {
-    if (!state.alive || state.stage === "bush") return;
+    if (!state.alive || state.ascending || state.stage === "bush") return;
     animCooldown -= dt;
     if (animCooldown > 0) return;
 
@@ -579,16 +656,20 @@
     const wrap = $("raccoonWrap");
     wrap.classList.toggle("stubborn", state.stubborn && state.alive);
     wrap.classList.toggle("sick", state.sick && state.alive);
+    wrap.classList.toggle("ascending", !!state.ascending);
 
     const raccoon = $("raccoon");
-    raccoon.dataset.stage = state.alive ? state.stage : "gone";
-    raccoon.dataset.mood = !state.alive
-      ? "gone"
-      : state.stubborn
-        ? "stubborn"
-        : state.sick
-          ? "sick"
-          : "idle";
+    const showBody = state.alive || state.ascending;
+    raccoon.dataset.stage = showBody ? state.stage : "gone";
+    raccoon.dataset.mood = state.ascending
+      ? "ascend"
+      : !state.alive
+        ? "gone"
+        : state.stubborn
+          ? "stubborn"
+          : state.sick
+            ? "sick"
+            : "idle";
     raccoon.dataset.form =
       state.stage === "adult"
         ? state.adultForm
@@ -598,15 +679,16 @@
             ? state.youngForm
             : "";
 
-    raccoon.innerHTML = state.alive
+    raccoon.innerHTML = showBody
       ? RaccoonArt.render(formProfile())
       : RaccoonArt.render({ stage: "bush", ageSec: 0, genes: {} });
 
     if (window.RaccoonAnim) {
       RaccoonAnim.sync({
-        stage: state.alive ? state.stage : "bush",
+        stage: showBody ? state.stage : "bush",
         ageSec: state.ageSec,
-        alive: state.alive,
+        alive: showBody,
+        ascending: !!state.ascending,
       });
     }
 
@@ -622,21 +704,24 @@
       banner.hidden = true;
     }
 
-    const canCare = state.alive && state.stage !== "bush";
+    const canCare = state.alive && state.stage !== "bush" && !state.ascending;
     $("btnDiscipline").disabled = !(state.alive && state.stubborn);
     $("btnClean").disabled = !(state.alive && state.hasMess);
     $("btnFeed").disabled = !canCare;
-    $("btnPlay").disabled = !state.alive || state.stage === "bush" || state.stage === "baby";
+    $("btnPlay").disabled =
+      !state.alive || state.ascending || state.stage === "bush" || state.stage === "baby";
 
     $("btnDiscipline").classList.toggle("needs-attention", state.stubborn && state.alive);
     $("btnClean").classList.toggle("needs-attention", state.hasMess && state.alive);
 
-    if (state.stage === "bush") {
+    if (state.ascending) {
+      $("hint").textContent = "Watch… Jimothy grows wings and rises into the sky.";
+    } else if (state.stage === "bush") {
       $("hint").textContent =
         "Watch the bush. In about a minute, a baby kit may pop out.";
     } else if (!state.alive) {
       $("hint").textContent =
-        "Real-time life cycle complete (or neglect). A new bush can begin.";
+        "His cryptid life is complete. You can raise another kit.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
         "Too tiny for a full night run — feed him forage and let him wobble.";
@@ -681,6 +766,7 @@
       state.stubborn = true;
       state.stubbornReason = "refuses a proper meal";
       state.careMistakes += 1;
+      state.lifespanPenalty = (state.lifespanPenalty || 0) + 3600;
       say(`Jimothy bats the ${food.name.toLowerCase()} away!`);
       pulseAnim("refuse");
       closeFeed();
@@ -838,13 +924,6 @@
       return;
     }
     applyDecay(1);
-    if (!state.alive) {
-      showMessage(
-        "Gone to the night…",
-        "His cycle ended (lifespan or care). Start a new rustling bush?"
-      );
-      $("messageOk").dataset.reset = "1";
-    }
     render();
     save();
   }
@@ -906,12 +985,19 @@
     save({ touchTick: false });
     if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
     render();
-    if (!state.alive) {
-      showMessage(
-        "Gone to the night…",
-        "Jimothy finished his cryptid cycle. Start a new rustling bush?"
-      );
-      $("messageOk").dataset.reset = "1";
+    if (!state.alive && !state.ascending) {
+      state.ascending = true;
+      pulseAnim("ascend");
+      setTimeout(() => {
+        state.ascending = false;
+        showMessage(
+          "Jimothy’s life is over",
+          "He grew wings and rose into the sky.\n\nRaise another kit?"
+        );
+        $("messageOk").textContent = "Raise another kit";
+        $("messageOk").dataset.reset = "1";
+        render();
+      }, 4200);
     }
     tickHandle = setInterval(onTick, TICK_MS);
     lastAnimPulse = performance.now();
@@ -956,6 +1042,7 @@
       return elapsed;
     },
     reset: resetPet,
+    endLife,
     FOOD,
   };
 })();

@@ -34,7 +34,8 @@ npm start
 | **Young kit** | +1 hour (form variance begins) |
 | **Teen kit** | +24 hours (form steers adult) |
 | **Adult Jimothy** | +24–72 hours more (short-spine viral look, variant flair) |
-| **Lifespan** | Adult lasts ~10–20 days |
+| **Lifespan** | Adult lasts ~10–20 days — neglect / poor care shortens it |
+| **Finale** | Wings + sky ascension, then **Raise another kit** |
 
 Young/teen forms (`puff` / `looper` / `shadow` / `nub` → `dumpling` / `bounder` / `nightlane` / `scruff`) influence adult flair (**Saint**, **Legend**, **Alley Ghost**, **Ballard Blip**) while keeping the short-spine silhouette.
 

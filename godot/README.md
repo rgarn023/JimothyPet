@@ -17,7 +17,8 @@ Your **midnight cryptid** — a real-time Tamagotchi-style pet configured for **
 | **Young kit** | +1 hour (form variance begins) |
 | **Teen kit** | +24 hours (form steers adult) |
 | **Adult Jimothy** | +24–72 hours more (short-spine viral look, variant flair) |
-| **Lifespan** | Adult lasts ~10–20 days |
+| **Lifespan** | Adult lasts ~10–20 days (neglect shortens this) |
+| **Finale** | Wings grow, he rises into the sky → **Raise another kit** |
 
 Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, scruff) influence the adult flair (Saint, Legend, Alley Ghost, Ballard Blip) while keeping the internet-famous short-spine silhouette.
 

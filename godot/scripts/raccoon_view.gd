@@ -1,6 +1,8 @@
 extends Control
 ## Animated Jimothy — bush rustle, walk/run/jump, form variance, adult short-spine look.
 
+signal ascend_finished
+
 var stage: String = "bush"
 var young_form: String = "puff"
 var teen_form: String = "bounder"
@@ -20,6 +22,9 @@ var _jump_peak: float = 0.0
 var _target_x: float = 0.0
 var _speed: float = 0.0
 var _eat_flash: float = 0.0
+var _wing_span: float = 0.0
+var _fade: float = 1.0
+var _ascend_done_emitted: bool = false
 
 
 func _ready() -> void:
@@ -27,6 +32,8 @@ func _ready() -> void:
 		PetState.anim_impulse.connect(play_anim)
 		PetState.state_changed.connect(_sync_from_state)
 		_sync_from_state()
+		if PetState.ascending or not PetState.alive:
+			play_anim("ascend")
 
 
 func _sync_from_state() -> void:
@@ -36,7 +43,9 @@ func _sync_from_state() -> void:
 	teen_form = str(p.teen_form)
 	adult_form = str(p.adult_form)
 	genes = p.genes if typeof(p.genes) == TYPE_DICTIONARY else {}
-	if PetState.stubborn:
+	if PetState.ascending or _anim == "ascend":
+		mood = "ascend"
+	elif PetState.stubborn:
 		mood = "stubborn"
 	elif PetState.sick:
 		mood = "sick"
@@ -55,6 +64,12 @@ func play_anim(kind: String) -> void:
 	_anim = kind
 	_anim_t = 0.0
 	match kind:
+		"ascend":
+			_anim_dur = 4.2
+			_wing_span = 0.0
+			_fade = 1.0
+			_ascend_done_emitted = false
+			_speed = 0.0
 		"run":
 			_anim_dur = randf_range(1.4, 2.4)
 			_speed = randf_range(90.0, 140.0)
@@ -90,6 +105,18 @@ func _process(delta: float) -> void:
 	_t += delta
 	_anim_t += delta
 	_eat_flash = maxf(0.0, _eat_flash - delta)
+
+	if _anim == "ascend":
+		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+		_wing_span = smoothstep(0.0, 0.45, u)
+		_pose_y = -u * 160.0 - sin(u * PI) * 12.0
+		_pose_x = sin(_t * 1.6) * (8.0 * (1.0 - u * 0.5))
+		_fade = 1.0 - smoothstep(0.55, 1.0, u)
+		queue_redraw()
+		if u >= 1.0 and not _ascend_done_emitted:
+			_ascend_done_emitted = true
+			ascend_finished.emit()
+		return
 
 	if stage == "bush":
 		_pose_x = sin(_t * 9.0) * 2.0 + sin(_t * 3.3) * 1.5
@@ -164,12 +191,24 @@ func _fur() -> Color:
 
 func _draw() -> void:
 	var c := size * 0.5 + Vector2(_pose_x, _pose_y)
-	if stage == "bush":
+	if stage == "bush" and _anim != "ascend":
 		_draw_bush(size * 0.5)
 		return
 
+	# Soft sky glow during ascent
+	if _anim == "ascend":
+		var glow_a := (1.0 - _fade) * 0.35 + _wing_span * 0.25
+		_ellipse(c + Vector2(0, 10), Vector2(70, 40), Color(0.95, 0.88, 0.55, glow_a * 0.35))
+
 	# Mirror facing by flipping x offsets via scale trick in drawing
 	var face := _facing if _facing != 0.0 else 1.0
+	var old_mod := modulate
+	if _anim == "ascend":
+		modulate = Color(1, 1, 1, _fade)
+
+	if _anim == "ascend" and _wing_span > 0.05:
+		_draw_wings(c, face, _wing_span)
+
 	match stage:
 		"baby":
 			_draw_baby(c, face)
@@ -184,6 +223,42 @@ func _draw() -> void:
 
 	if _eat_flash > 0.0:
 		_ellipse(c + Vector2(0, 10), Vector2(8, 4), Color(0.88, 0.63, 0.29, _eat_flash * 0.5))
+
+	modulate = old_mod
+
+
+func _draw_wings(c: Vector2, face: float, span: float) -> void:
+	var spread := 28.0 + span * 46.0
+	var flap := sin(_t * 7.0) * (6.0 + span * 10.0)
+	var wing_col := Color(0.92, 0.9, 0.82, 0.55 + span * 0.35)
+	var edge := Color(0.85, 0.78, 0.45, 0.4 + span * 0.4)
+	# Left wing
+	var l := PackedVector2Array([
+		c + Vector2(-8, -4),
+		c + Vector2(-spread * 0.55, -18 + flap),
+		c + Vector2(-spread, -2 + flap * 0.4),
+		c + Vector2(-spread * 0.6, 14),
+		c + Vector2(-10, 6),
+	])
+	draw_colored_polygon(l, wing_col)
+	draw_polyline(l, edge, 1.5, true)
+	# Right wing
+	var r := PackedVector2Array([
+		c + Vector2(8, -4),
+		c + Vector2(spread * 0.55, -18 - flap),
+		c + Vector2(spread, -2 - flap * 0.4),
+		c + Vector2(spread * 0.6, 14),
+		c + Vector2(10, 6),
+	])
+	draw_colored_polygon(r, wing_col)
+	draw_polyline(r, edge, 1.5, true)
+	# Tiny sparkles
+	for i in 4:
+		var sx := sin(_t * 3.0 + i * 1.7) * spread * 0.7
+		var sy := -20.0 - i * 8.0 - span * 20.0
+		draw_circle(c + Vector2(sx, sy), 1.6, Color(1, 0.95, 0.7, 0.35 + span * 0.4))
+	if face < 0.0:
+		pass
 
 
 func _draw_bush(c: Vector2) -> void:

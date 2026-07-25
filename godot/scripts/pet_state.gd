@@ -5,7 +5,7 @@ signal state_changed
 signal speech(text: String)
 signal stage_changed(stage: String)
 signal anim_impulse(kind: String)
-signal pet_died
+signal pet_died(reason: String)
 signal needs_reset
 
 const SAVE_PATH := "user://jimothy_save_v2.json"
@@ -18,6 +18,7 @@ const TEEN_SEC_MIN := 86400.0     # 24 hours
 const TEEN_SEC_MAX := 259200.0    # 72 hours
 const ADULT_SEC_MIN := 864000.0   # 10 days
 const ADULT_SEC_MAX := 1728000.0  # 20 days
+const ADULT_SEC_FLOOR := 86400.0  # neglect can shorten life, but not below 1 day as adult
 
 const FOOD := {
 	"berries": {
@@ -66,7 +67,9 @@ var teen_form: String = "bounder"
 var adult_form: String = "saint"
 var teen_duration: float = TEEN_SEC_MIN
 var adult_duration: float = ADULT_SEC_MIN
+var lifespan_penalty: float = 0.0
 var genes: Dictionary = {}
+var death_reason: String = ""
 
 var hunger: float = 70.0
 var happy: float = 70.0
@@ -82,6 +85,7 @@ var stubborn_reason: String = ""
 var has_mess: bool = false
 var sick: bool = false
 var alive: bool = true
+var ascending: bool = false
 var treat_streak: int = 0
 var healthy_meals: int = 0
 var play_sessions: int = 0
@@ -106,11 +110,9 @@ func _process(delta: float) -> void:
 			_tick_accum -= 1.0
 			apply_decay(1.0)
 			if not alive:
-				pet_died.emit()
-				needs_reset.emit()
 				break
 		_anim_cooldown -= delta
-		if _anim_cooldown <= 0.0 and stage != "bush":
+		if _anim_cooldown <= 0.0 and stage != "bush" and alive and not ascending:
 			_pulse_ambient_anim()
 	_save_accum += delta
 	if _save_accum >= 5.0:
@@ -142,6 +144,8 @@ func _reset_defaults() -> void:
 	adult_form = ""
 	teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
 	adult_duration = randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)
+	lifespan_penalty = 0.0
+	death_reason = ""
 	hunger = 70.0
 	happy = 70.0
 	health = 100.0
@@ -156,6 +160,7 @@ func _reset_defaults() -> void:
 	has_mess = false
 	sick = false
 	alive = true
+	ascending = false
 	treat_streak = 0
 	healthy_meals = 0
 	play_sessions = 0
@@ -245,8 +250,60 @@ func teen_end() -> float:
 	return young_end() + teen_duration
 
 
+func effective_adult_span() -> float:
+	# Neglect / poor care shortens the adult chapter.
+	var span := adult_duration - lifespan_penalty
+	return maxf(ADULT_SEC_FLOOR, span)
+
+
 func life_end() -> float:
-	return teen_end() + adult_duration
+	return teen_end() + effective_adult_span()
+
+
+func remaining_life_sec() -> float:
+	if stage != "adult" or not alive:
+		return 0.0
+	return maxf(0.0, life_end() - age_sec)
+
+
+func _apply_neglect_penalty(seconds: float) -> void:
+	if stage == "bush" or not alive:
+		return
+	var rate := 0.0
+	if hunger < 25.0:
+		rate += 2.2
+	if happy < 20.0:
+		rate += 1.4
+	if health < 35.0:
+		rate += 2.8
+	if has_mess:
+		rate += 0.8
+	if sick:
+		rate += 1.6
+	if discipline < 25.0:
+		rate += 0.4
+	# Mistakes carve larger chunks off the eventual / current lifespan.
+	lifespan_penalty += rate * seconds
+
+
+func end_life(reason: String) -> void:
+	if not alive and ascending:
+		return
+	alive = false
+	ascending = true
+	death_reason = reason
+	stubborn = false
+	anim_impulse.emit("ascend")
+	match reason:
+		"lifespan":
+			speech.emit("His time is done. Wings catch the moonlight…")
+		"neglect":
+			speech.emit("Poor care wore him thin. Wings unfold anyway…")
+		_:
+			speech.emit("Jimothy’s life is over. He rises into the sky…")
+	pet_died.emit(reason)
+	state_changed.emit()
+	save_game()
 
 
 func sync_realtime(announce_death: bool = true) -> int:
@@ -256,13 +313,17 @@ func sync_realtime(announce_death: bool = true) -> int:
 	if elapsed > 0 and alive:
 		apply_decay(float(elapsed))
 	last_tick = now
-	if announce_death and was_alive and not alive:
-		pet_died.emit()
-		needs_reset.emit()
+	if announce_death and was_alive and not alive and not ascending:
+		# Offline death still triggers ascension path via end_life inside apply_decay.
+		pass
 	return elapsed
 
 
 func apply_decay(seconds: float) -> void:
+	if not alive:
+		state_changed.emit()
+		return
+
 	# Slower, more pet-like drain over real hours/days.
 	var hunger_rate := 0.0028 if stage != "bush" else 0.0
 	var happy_rate := 0.0022 if stage != "bush" else 0.0
@@ -288,19 +349,21 @@ func apply_decay(seconds: float) -> void:
 	if energy < 15.0:
 		happy = clamp01(happy - 0.0005 * seconds)
 
+	_apply_neglect_penalty(seconds)
+
 	if stage != "bush" and not has_mess and randf() < seconds * 0.00025:
 		has_mess = true
 
 	_maybe_tantrum(seconds)
 	_evolve_if_needed()
 
-	# Natural lifespan end after adult window.
+	# Natural / care-shortened lifespan end after adult window.
 	if stage == "adult" and age_sec >= life_end():
-		alive = false
-		speech.emit("Jimothy melts back into the night… cryptid business.")
+		var shortened := lifespan_penalty > adult_duration * 0.15
+		end_life("neglect" if shortened else "lifespan")
 	elif health <= 0.0 or (hunger <= 0.0 and happy <= 0.0 and stage != "bush"):
-		alive = false
 		health = 0.0
+		end_life("neglect")
 
 	state_changed.emit()
 
@@ -315,6 +378,7 @@ func _maybe_tantrum(seconds: float) -> void:
 		stubborn = true
 		stubborn_reason = "refuses a proper meal" if randf() < 0.5 else "refuses to exercise"
 		care_mistakes += 1
+		lifespan_penalty += 5400.0  # ~1.5 hours shaved per unresolved chaos streak
 
 
 func _evolve_if_needed() -> void:
@@ -345,7 +409,15 @@ func _evolve_if_needed() -> void:
 	elif stage == "teen" and age_sec >= teen_end():
 		stage = "adult"
 		adult_form = _pick_adult_form(teen_form if teen_form != "" else _pick_teen_form(young_form, genes))
-		adult_duration = randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)
+		# Better care → longer adult life; neglect already in lifespan_penalty.
+		var care_q := clampf(
+			(float(care_score) * 0.04 + float(healthy_meals) * 0.03 + fitness * 0.004)
+			- float(care_mistakes) * 0.05,
+			0.0,
+			1.0
+		)
+		adult_duration = lerpf(ADULT_SEC_MIN, ADULT_SEC_MAX, care_q)
+		adult_duration = maxf(ADULT_SEC_FLOOR, adult_duration - lifespan_penalty * 0.35)
 		weight = 11.0 + fitness * 0.03
 		# Nudge genes toward short-spine Jimothy silhouette
 		genes.legginess = clampf(float(genes.legginess) * 0.5 + 0.55, 0.0, 1.0)
@@ -369,6 +441,8 @@ func stage_label() -> String:
 
 
 func stage_name() -> String:
+	if ascending:
+		return "Ascending…"
 	if not alive:
 		return "Gone to the night…"
 	match stage:
@@ -401,8 +475,10 @@ func form_profile() -> Dictionary:
 
 
 func alert_text() -> Dictionary:
+	if ascending:
+		return {"text": "Jimothy grows wings and rises into the sky…", "danger": false}
 	if not alive:
-		return {"text": "The cryptid has moved on… start a new bush?", "danger": true}
+		return {"text": "His life is over. You can raise another kit.", "danger": true}
 	if stage == "bush":
 		return {"text": "The bush is rustling. Wait — something’s waking.", "danger": false}
 	if sick:
@@ -446,6 +522,7 @@ func try_feed(food_key: String) -> String:
 		stubborn = true
 		stubborn_reason = "refuses a proper meal"
 		care_mistakes += 1
+		lifespan_penalty += 3600.0
 		speech.emit("Jimothy bats the %s away!" % str(food.name).to_lower())
 		anim_impulse.emit("refuse")
 		state_changed.emit()
@@ -596,6 +673,9 @@ func to_dict() -> Dictionary:
 		"adult_form": adult_form,
 		"teen_duration": teen_duration,
 		"adult_duration": adult_duration,
+		"lifespan_penalty": lifespan_penalty,
+		"death_reason": death_reason,
+		"ascending": ascending,
 		"genes": genes,
 		"hunger": hunger,
 		"happy": happy,
@@ -635,6 +715,8 @@ func from_dict(d: Dictionary) -> void:
 		adult_form = "legend"
 	teen_duration = float(d.get("teen_duration", randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)))
 	adult_duration = float(d.get("adult_duration", randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)))
+	lifespan_penalty = float(d.get("lifespan_penalty", 0.0))
+	death_reason = str(d.get("death_reason", ""))
 	var g = d.get("genes", {})
 	genes = g if typeof(g) == TYPE_DICTIONARY else _roll_genes()
 	hunger = float(d.get("hunger", 70.0))
@@ -651,10 +733,14 @@ func from_dict(d: Dictionary) -> void:
 	has_mess = bool(d.get("has_mess", false))
 	sick = bool(d.get("sick", false))
 	alive = bool(d.get("alive", true))
+	ascending = bool(d.get("ascending", false))
 	treat_streak = int(d.get("treat_streak", 0))
 	healthy_meals = int(d.get("healthy_meals", 0))
 	play_sessions = int(d.get("play_sessions", 0))
 	energy = float(d.get("energy", 80.0))
+	# If save left him dead mid-ascension, finish the UI flow on load.
+	if not alive and not ascending:
+		ascending = true
 
 
 func save_game() -> void:

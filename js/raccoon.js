@@ -293,11 +293,28 @@ const RaccoonAnim = (() => {
   function sync(info) {
     stage = info.stage || "bush";
     ageSec = info.ageSec || 0;
-    alive = info.alive !== false;
+    alive = info.alive !== false || !!info.ascending;
     if (wrap) {
-      wrap.classList.toggle("is-bush", stage === "bush" && alive);
+      wrap.classList.toggle("is-bush", stage === "bush" && alive && anim !== "ascend");
+      wrap.classList.toggle("ascending", anim === "ascend" || !!info.ascending);
       wrap.dataset.anim = anim;
     }
+  }
+
+  function ensureWings() {
+    if (!wrap) return;
+    let wings = wrap.querySelector(".ascend-wings");
+    if (!wings) {
+      wings = document.createElement("div");
+      wings.className = "ascend-wings";
+      wings.innerHTML = `
+        <svg viewBox="0 0 160 80" aria-hidden="true">
+          <path class="wing left" d="M80 40 C50 10 20 20 8 38 C30 44 50 50 78 44 Z" />
+          <path class="wing right" d="M80 40 C110 10 140 20 152 38 C130 44 110 50 82 44 Z" />
+        </svg>`;
+      wrap.appendChild(wings);
+    }
+    return wings;
   }
 
   function play(kind) {
@@ -307,6 +324,11 @@ const RaccoonAnim = (() => {
     wrap.dataset.anim = anim;
 
     switch (kind) {
+      case "ascend":
+        animDur = 4.2;
+        ensureWings();
+        wrap.classList.add("ascending");
+        break;
       case "run":
         animDur = 1.4 + Math.random() * 1;
         speed = 90 + Math.random() * 50;
@@ -353,20 +375,32 @@ const RaccoonAnim = (() => {
   }
 
   function tick(dt) {
-    if (!wrap || !alive) return;
+    if (!wrap) return;
+    if (!alive && anim !== "ascend") return;
     t += dt;
     animT += dt;
 
+    if (anim === "ascend") {
+      const u = Math.min(1, animT / animDur);
+      const wingSpan = Math.min(1, u / 0.45);
+      poseY = -u * 160 - Math.sin(u * Math.PI) * 12;
+      poseX = Math.sin(t * 1.6) * (8 * (1 - u * 0.5));
+      facing = 1;
+      wrap.style.opacity = String(1 - Math.max(0, (u - 0.55) / 0.45));
+      const wings = ensureWings();
+      if (wings) wings.style.setProperty("--wing-span", String(wingSpan));
+      wrap.classList.add("ascending");
+      applyTransform();
+      return;
+    }
+
+    wrap.style.opacity = "1";
     if (stage === "bush") {
       poseX = Math.sin(t * 9) * 2 + Math.sin(t * 3.3) * 1.5;
       poseY = Math.sin(t * 7) * 1.5;
       facing = 1;
       wrap.classList.add("is-bush");
       applyTransform();
-      // Re-render glints occasionally as bush ages
-      if (raccoon && Math.floor(ageSec) % 5 === 0 && animT < dt * 2) {
-        /* keep SVG; age updates on render() */
-      }
       return;
     }
 
