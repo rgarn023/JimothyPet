@@ -206,15 +206,7 @@
         <h2 id="diceTitle">High or Low</h2>
         <p class="modal-copy" id="diceStatus">Guess High (11–20) or Low (1–10), then watch the d20 tumble.</p>
         <div class="dice-stage" id="diceStage" data-state="ready">
-          <div class="d20-shadow"></div>
-          <div class="d20" id="d20" aria-live="polite">
-            <div class="d20-facet a"></div>
-            <div class="d20-facet b"></div>
-            <div class="d20-facet c"></div>
-            <div class="d20-core">
-              <span class="d20-num" id="d20Num">?</span>
-            </div>
-          </div>
+          <canvas id="d20Canvas" width="220" height="220" aria-label="3D d20"></canvas>
         </div>
         <div class="dice-picks" id="dicePicks">
           <button type="button" class="primary-btn dice-pick low" id="diceLow">Low · 1–10</button>

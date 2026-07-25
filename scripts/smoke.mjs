@@ -102,9 +102,13 @@ await page.waitForSelector("#playPickModal:not([hidden])");
 await page.click("#pickDice", { force: true });
 await page.waitForSelector("#diceModal:not([hidden])");
 await page.click("#diceHigh", { force: true });
-await page.waitForFunction(() => document.getElementById("d20")?.classList.contains("landed"), {
-  timeout: 5000,
-});
+await page.waitForFunction(
+  () => {
+    const stage = document.getElementById("diceStage");
+    return stage && (stage.dataset.state === "win" || stage.dataset.state === "lose");
+  },
+  { timeout: 6000 }
+);
 await page.screenshot({
   path: "/opt/cursor/artifacts/screenshots/jimothy-dice.png",
 });
