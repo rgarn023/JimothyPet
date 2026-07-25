@@ -2,17 +2,22 @@ import { chromium } from "playwright-core";
 
 const base = process.env.BASE_URL || "http://127.0.0.1:8080/";
 
-const kitState = {
-  bornAt: Date.now() - 60000,
+const youngState = {
+  bornAt: Date.now() - 2 * 60 * 60 * 1000,
   lastTick: Date.now(),
-  ageSec: 60,
-  stage: "kit",
-  adultVariant: "noble",
+  ageSec: 2 * 60 * 60,
+  stage: "young",
+  youngForm: "puff",
+  teenForm: "",
+  adultForm: "",
+  genes: { fluff: 0.6, pep: 0.4, mask: 0.5, legginess: 0.4, roundness: 0.6 },
   hunger: 50,
   happy: 50,
   health: 90,
   discipline: 40,
-  weight: 5,
+  fitness: 40,
+  satiety: 0,
+  weight: 1,
   careScore: 2,
   careMistakes: 0,
   stubborn: false,
@@ -20,10 +25,15 @@ const kitState = {
   hasMess: true,
   sick: false,
   alive: true,
-  sleep: false,
+  ascending: false,
   treatStreak: 0,
   healthyMeals: 1,
   playSessions: 0,
+  energy: 70,
+  formsUnlocked: { young: { puff: true }, teen: {}, adult: {} },
+  devMode: false,
+  soundMuted: true,
+  alertsEnabled: false,
 };
 
 const browser = await chromium.launch({
@@ -46,8 +56,8 @@ page.on("response", (res) => {
 });
 
 await page.addInitScript((state) => {
-  localStorage.setItem("jimothy-pet-v1", JSON.stringify(state));
-}, kitState);
+  localStorage.setItem("jimothy-pet-v2", JSON.stringify(state));
+}, youngState);
 
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForSelector("#raccoon svg");
@@ -58,6 +68,9 @@ const stage = await page.locator("#stageChip").textContent();
 const stageName = await page.locator("#stageName").textContent();
 const feedDisabled = await page.locator("#btnFeed").isDisabled();
 const cleanDisabled = await page.locator("#btnClean").isDisabled();
+const floatGone = (await page.locator("#btnFloat").count()) === 0;
+const alertsPresent = (await page.locator("#btnAlerts").count()) === 1;
+const notifyPresent = await page.evaluate(() => typeof window.JimothyNotify !== "undefined");
 
 await page.screenshot({
   path: "/opt/cursor/artifacts/screenshots/jimothy-kit.png",
@@ -133,10 +146,13 @@ const summary = {
   brand: brand?.trim(),
   stage: stage?.trim(),
   stageName: stageName?.trim(),
-  feedEnabledOnKit: !feedDisabled,
+  feedEnabledOnYoung: !feedDisabled,
   cleanEnabledWithMess: !cleanDisabled,
   cleanDisabledAfterClean: cleanDisabledAfter,
   scoldDisabledAfterDiscipline: scoldDisabledAfter,
+  floatGone,
+  alertsPresent,
+  notifyPresent,
   realtime,
   manifestOk,
   errors,
@@ -144,11 +160,14 @@ const summary = {
 summary.ok =
   errors.length === 0 &&
   summary.brand === "Jimothy" &&
-  summary.stage === "Kit" &&
-  summary.feedEnabledOnKit &&
+  summary.stage === "Young Kit" &&
+  summary.feedEnabledOnYoung &&
   summary.cleanEnabledWithMess &&
   summary.cleanDisabledAfterClean &&
   summary.scoldDisabledAfterDiscipline &&
+  summary.floatGone &&
+  summary.alertsPresent &&
+  summary.notifyPresent &&
   summary.realtime.uncapped &&
   summary.realtime.hungerDropped &&
   summary.manifestOk;
