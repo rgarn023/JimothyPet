@@ -6,7 +6,7 @@ config_version=5
 [application]
 
 config/name="Jimothy"
-config/description="Tamagotchi-style virtual pet starring Jimothy the raccoon. Tracks real time. Exportable to Android and web."
+config/description="Tamagotchi-style midnight cryptid pet starring Jimothy. Real-time growth from bush to adult. Exportable to Android and web."
 config/version="1.0.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")

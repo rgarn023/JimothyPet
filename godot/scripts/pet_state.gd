@@ -1,37 +1,79 @@
 extends Node
-## Jimothy pet brain — save/load, real-time decay, growth, care actions.
+## Jimothy — real-time cryptid care, bush start, form variance → adult Jimothy look.
 
 signal state_changed
 signal speech(text: String)
 signal stage_changed(stage: String)
+signal anim_impulse(kind: String)
 signal pet_died
 signal needs_reset
 
-const SAVE_PATH := "user://jimothy_save.json"
+const SAVE_PATH := "user://jimothy_save_v2.json"
 
-const STAGE_AGE := {
-	"egg": 45,
-	"hatchling": 90,
-	"kit": 150,
-	"teen": 210,
-}
+# Real-time stage lengths (seconds).
+const BUSH_SEC := 60.0
+const BABY_SEC := 3600.0          # 1 hour
+const YOUNG_SEC := 86400.0        # 24 hours
+const TEEN_SEC_MIN := 86400.0     # 24 hours
+const TEEN_SEC_MAX := 259200.0    # 72 hours
+const ADULT_SEC_MIN := 864000.0   # 10 days
+const ADULT_SEC_MAX := 1728000.0  # 20 days
 
 const FOOD := {
-	"berries": {"name": "Berry Bundle", "type": "healthy", "hunger": 28, "happy": 4, "health": 8, "refuse": 0.35},
-	"acorns": {"name": "Crunchy Acorns", "type": "healthy", "hunger": 24, "happy": 6, "health": 6, "refuse": 0.3},
-	"pizza": {"name": "Pizza Crust", "type": "treat", "hunger": 12, "happy": 22, "health": -2, "refuse": 0.05},
-	"fries": {"name": "Dumpster Fries", "type": "treat", "hunger": 10, "happy": 26, "health": -4, "refuse": 0.08},
+	"berries": {
+		"name": "Wild Berries",
+		"type": "healthy",
+		"hunger": 18, "happy": 3, "health": 6, "fitness": 0,
+		"satiety": 22, "refuse": 0.22,
+		"blurb": "Tart forest berries — light, clean fuel.",
+	},
+	"crickets": {
+		"name": "Night Crickets",
+		"type": "healthy",
+		"hunger": 16, "happy": 2, "health": 5, "fitness": 1,
+		"satiety": 20, "refuse": 0.28,
+		"blurb": "Crunchy protein. Kits need this to grow strong legs.",
+	},
+	"fish": {
+		"name": "Stream Fish Bits",
+		"type": "healthy",
+		"hunger": 24, "happy": 4, "health": 8, "fitness": 1,
+		"satiety": 30, "refuse": 0.18,
+		"blurb": "Rich scraps from the creek — fills him up properly.",
+	},
+	"pizza": {
+		"name": "Pizza Crust",
+		"type": "treat",
+		"hunger": 10, "happy": 16, "health": -3, "fitness": -1,
+		"satiety": 14, "refuse": 0.04,
+		"blurb": "Greasy alley treasure. Mood up, tummy pays later.",
+	},
+	"fries": {
+		"name": "Dumpster Fries",
+		"type": "treat",
+		"hunger": 9, "happy": 18, "health": -4, "fitness": -1,
+		"satiety": 12, "refuse": 0.06,
+		"blurb": "Salty chaos. Fine sometimes — not a meal plan.",
+	},
 }
 
 var born_at: int = 0
 var last_tick: int = 0
 var age_sec: float = 0.0
-var stage: String = "egg"
-var adult_variant: String = "noble"
-var hunger: float = 80.0
-var happy: float = 80.0
+var stage: String = "bush"
+var young_form: String = "puff"
+var teen_form: String = "bounder"
+var adult_form: String = "saint"
+var teen_duration: float = TEEN_SEC_MIN
+var adult_duration: float = ADULT_SEC_MIN
+var genes: Dictionary = {}
+
+var hunger: float = 70.0
+var happy: float = 70.0
 var health: float = 100.0
-var discipline: float = 55.0
+var discipline: float = 50.0
+var fitness: float = 40.0
+var satiety: float = 0.0
 var weight: float = 1.0
 var care_score: int = 0
 var care_mistakes: int = 0
@@ -43,9 +85,11 @@ var alive: bool = true
 var treat_streak: int = 0
 var healthy_meals: int = 0
 var play_sessions: int = 0
+var energy: float = 80.0
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
+var _anim_cooldown: float = 0.0
 
 
 func _ready() -> void:
@@ -65,6 +109,9 @@ func _process(delta: float) -> void:
 				pet_died.emit()
 				needs_reset.emit()
 				break
+		_anim_cooldown -= delta
+		if _anim_cooldown <= 0.0 and stage != "bush":
+			_pulse_ambient_anim()
 	_save_accum += delta
 	if _save_accum >= 5.0:
 		_save_accum = 0.0
@@ -88,13 +135,20 @@ func _reset_defaults() -> void:
 	born_at = now
 	last_tick = now
 	age_sec = 0.0
-	stage = "egg"
-	adult_variant = "noble"
-	hunger = 80.0
-	happy = 80.0
+	stage = "bush"
+	genes = _roll_genes()
+	young_form = _pick_young_form(genes)
+	teen_form = ""
+	adult_form = ""
+	teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
+	adult_duration = randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)
+	hunger = 70.0
+	happy = 70.0
 	health = 100.0
-	discipline = 55.0
-	weight = 1.0
+	discipline = 50.0
+	fitness = 40.0
+	satiety = 0.0
+	weight = 0.8
 	care_score = 0
 	care_mistakes = 0
 	stubborn = false
@@ -105,12 +159,13 @@ func _reset_defaults() -> void:
 	treat_streak = 0
 	healthy_meals = 0
 	play_sessions = 0
+	energy = 80.0
 
 
 func reset_pet() -> void:
 	_reset_defaults()
 	save_game()
-	speech.emit("A warm egg. Something wiggles inside…")
+	speech.emit("A roadside bush shivers… something’s in there.")
 	stage_changed.emit(stage)
 	state_changed.emit()
 
@@ -121,6 +176,77 @@ func _now() -> int:
 
 func clamp01(n: float) -> float:
 	return clampf(n, 0.0, 100.0)
+
+
+func _roll_genes() -> Dictionary:
+	return {
+		"roundness": randf(),
+		"legginess": randf(),
+		"fluff": randf(),
+		"mask": randf(),
+		"pep": randf(),
+		"gray": randf(),
+		"ear_flare": randf(),
+	}
+
+
+func _pick_young_form(g: Dictionary) -> String:
+	# Early silhouette variance that steers later teen/adult flair.
+	if float(g.roundness) > 0.62 and float(g.fluff) > 0.45:
+		return "puff"
+	if float(g.legginess) > 0.6 and float(g.pep) > 0.4:
+		return "looper"
+	if float(g.mask) > 0.65:
+		return "shadow"
+	return "nub"
+
+
+func _pick_teen_form(young: String, g: Dictionary) -> String:
+	match young:
+		"puff":
+			return "dumpling" if float(g.fluff) > 0.5 else "scruff"
+		"looper":
+			return "bounder" if float(g.pep) > 0.45 else "nightlane"
+		"shadow":
+			return "nightlane" if float(g.mask) > 0.5 else "scruff"
+		_:
+			return "bounder" if float(g.legginess) > 0.5 else "dumpling"
+
+
+func _pick_adult_form(teen: String) -> String:
+	var good := care_score >= 10 and care_mistakes <= 8 and healthy_meals >= 4 and fitness >= 45.0
+	# Always short-spine Jimothy; flair differs.
+	match teen:
+		"dumpling":
+			return "saint" if good else "ballard_blip"
+		"bounder":
+			return "legend" if not good else "alley_ghost"
+		"nightlane":
+			return "alley_ghost" if good else "legend"
+		"scruff":
+			return "ballard_blip" if not good else "saint"
+		_:
+			return "saint" if good else "legend"
+
+
+func bush_end() -> float:
+	return BUSH_SEC
+
+
+func baby_end() -> float:
+	return BUSH_SEC + BABY_SEC
+
+
+func young_end() -> float:
+	return baby_end() + YOUNG_SEC
+
+
+func teen_end() -> float:
+	return young_end() + teen_duration
+
+
+func life_end() -> float:
+	return teen_end() + adult_duration
 
 
 func sync_realtime(announce_death: bool = true) -> int:
@@ -137,41 +263,57 @@ func sync_realtime(announce_death: bool = true) -> int:
 
 
 func apply_decay(seconds: float) -> void:
-	hunger = clamp01(hunger - 0.045 * seconds)
-	happy = clamp01(happy - 0.035 * seconds)
+	# Slower, more pet-like drain over real hours/days.
+	var hunger_rate := 0.0028 if stage != "bush" else 0.0
+	var happy_rate := 0.0022 if stage != "bush" else 0.0
+	var energy_rate := 0.0015 if stage != "bush" else 0.0
+
+	hunger = clamp01(hunger - hunger_rate * seconds)
+	happy = clamp01(happy - happy_rate * seconds)
+	energy = clamp01(energy - energy_rate * seconds)
+	satiety = maxf(0.0, satiety - 0.02 * seconds)
 	age_sec += seconds
 
 	if has_mess:
-		health = clamp01(health - 0.02 * seconds)
-		happy = clamp01(happy - 0.015 * seconds)
-	if hunger < 20.0:
-		health = clamp01(health - 0.04 * seconds)
-		happy = clamp01(happy - 0.02 * seconds)
-	if happy < 15.0:
-		health = clamp01(health - 0.02 * seconds)
+		health = clamp01(health - 0.0012 * seconds)
+		happy = clamp01(happy - 0.001 * seconds)
+	if hunger < 20.0 and stage != "bush":
+		health = clamp01(health - 0.0025 * seconds)
+		happy = clamp01(happy - 0.0015 * seconds)
+	if happy < 15.0 and stage != "bush":
+		health = clamp01(health - 0.001 * seconds)
 	if treat_streak > 3:
-		health = clamp01(health - 0.01 * seconds)
+		health = clamp01(health - 0.0008 * seconds)
+		sick = true
+	if energy < 15.0:
+		happy = clamp01(happy - 0.0005 * seconds)
 
-	if not has_mess and stage != "egg" and randf() < seconds * 0.004:
+	if stage != "bush" and not has_mess and randf() < seconds * 0.00025:
 		has_mess = true
 
 	_maybe_tantrum(seconds)
+	_evolve_if_needed()
 
-	if health <= 0.0 or (hunger <= 0.0 and happy <= 0.0):
+	# Natural lifespan end after adult window.
+	if stage == "adult" and age_sec >= life_end():
+		alive = false
+		speech.emit("Jimothy melts back into the night… cryptid business.")
+	elif health <= 0.0 or (hunger <= 0.0 and happy <= 0.0 and stage != "bush"):
 		alive = false
 		health = 0.0
 
-	_evolve_if_needed()
 	state_changed.emit()
 
 
 func _maybe_tantrum(seconds: float) -> void:
-	if stage == "egg" or stubborn or not alive:
+	if stage in ["bush", "baby"] or stubborn or not alive:
 		return
-	var chance := (0.002 + (100.0 - discipline) * 0.00004 + (0.002 if hunger < 35.0 else 0.0)) * seconds
+	var chance := (0.00015 + (100.0 - discipline) * 0.000002) * seconds
+	if hunger < 30.0:
+		chance *= 1.4
 	if randf() < chance:
 		stubborn = true
-		stubborn_reason = "refuses healthy food" if randf() < 0.5 else "refuses to exercise"
+		stubborn_reason = "refuses a proper meal" if randf() < 0.5 else "refuses to exercise"
 		care_mistakes += 1
 
 
@@ -179,32 +321,37 @@ func _evolve_if_needed() -> void:
 	if not alive:
 		return
 	var prev := stage
-	var egg_end := float(STAGE_AGE.egg)
-	var hatch_end := egg_end + float(STAGE_AGE.hatchling)
-	var kit_end := hatch_end + float(STAGE_AGE.kit)
-	var teen_end := kit_end + float(STAGE_AGE.teen)
 
-	if stage == "egg" and age_sec >= egg_end:
-		stage = "hatchling"
-		weight = 2.0
-		speech.emit("Crack! Peep Jimothy hatched!")
-	elif stage == "hatchling" and age_sec >= hatch_end:
-		stage = "kit"
-		weight = 5.0
-		speech.emit("Jimothy grew into a kit!")
-	elif stage == "kit" and age_sec >= kit_end:
+	if stage == "bush" and age_sec >= bush_end():
+		stage = "baby"
+		weight = 1.2
+		happy = clamp01(happy + 10.0)
+		speech.emit("The bush explodes in leaves — baby kit Jimothy!")
+		anim_impulse.emit("pop")
+	elif stage == "baby" and age_sec >= baby_end():
+		stage = "young"
+		young_form = _pick_young_form(genes)
+		weight = 3.5
+		speech.emit("He’s a young kit now — form: %s." % young_form.capitalize())
+		anim_impulse.emit("stretch")
+	elif stage == "young" and age_sec >= young_end():
 		stage = "teen"
-		weight = 9.0
-		speech.emit("Teen Jimothy! Attitude unlocked.")
-	elif stage == "teen" and age_sec >= teen_end:
+		teen_form = _pick_teen_form(young_form, genes)
+		weight = 7.0
+		# Teen duration already rolled; may re-roll lightly for variance
+		teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
+		speech.emit("Teen kit era. He’s turning into a %s." % teen_form)
+		anim_impulse.emit("run")
+	elif stage == "teen" and age_sec >= teen_end():
 		stage = "adult"
-		weight = 14.0
-		var good_care := care_score >= 8 and care_mistakes <= 6 and healthy_meals >= 3 and discipline >= 45.0
-		adult_variant = "noble" if good_care else "rascal"
-		if good_care:
-			speech.emit("Behold — Saint Jimothy, short-spine legend!")
-		else:
-			speech.emit("Behold — Legend Jimothy, Ballard’s dumpster cryptid!")
+		adult_form = _pick_adult_form(teen_form if teen_form != "" else _pick_teen_form(young_form, genes))
+		adult_duration = randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)
+		weight = 11.0 + fitness * 0.03
+		# Nudge genes toward short-spine Jimothy silhouette
+		genes.legginess = clampf(float(genes.legginess) * 0.5 + 0.55, 0.0, 1.0)
+		genes.roundness = clampf(float(genes.roundness) * 0.4 + 0.65, 0.0, 1.0)
+		speech.emit("Fully grown — %s Jimothy, midnight cryptid." % adult_form_title())
+		anim_impulse.emit("lope")
 
 	if prev != stage:
 		stage_changed.emit(stage)
@@ -213,63 +360,94 @@ func _evolve_if_needed() -> void:
 
 func stage_label() -> String:
 	match stage:
-		"egg": return "Egg"
-		"hatchling": return "Hatchling"
-		"kit": return "Kit"
-		"teen": return "Teen"
+		"bush": return "Bush"
+		"baby": return "Baby Kit"
+		"young": return "Young Kit"
+		"teen": return "Teen Kit"
 		"adult": return "Adult"
 		_: return stage.capitalize()
 
 
 func stage_name() -> String:
 	if not alive:
-		return "Gone to the woods…"
+		return "Gone to the night…"
 	match stage:
-		"egg": return "Mystery Egg"
-		"hatchling": return "Peep Jimothy"
-		"kit": return "Kit Jimothy"
-		"teen": return "Teen Jimothy"
-		"adult":
-			return "Saint Jimothy" if adult_variant == "noble" else "Legend Jimothy"
+		"bush": return "Rustling Bush"
+		"baby": return "Baby Kit Jimothy"
+		"young": return "%s Young Kit" % young_form.capitalize()
+		"teen": return "%s Teen Kit" % (teen_form.capitalize() if teen_form != "" else "Mystery")
+		"adult": return "%s Jimothy" % adult_form_title()
 		_: return "Jimothy"
+
+
+func adult_form_title() -> String:
+	match adult_form:
+		"saint": return "Saint"
+		"legend": return "Legend"
+		"alley_ghost": return "Alley Ghost"
+		"ballard_blip": return "Ballard Blip"
+		_: return "Cryptid"
+
+
+func form_profile() -> Dictionary:
+	return {
+		"stage": stage,
+		"young_form": young_form,
+		"teen_form": teen_form,
+		"adult_form": adult_form,
+		"genes": genes.duplicate(),
+		"fitness": fitness,
+	}
 
 
 func alert_text() -> Dictionary:
 	if not alive:
-		return {"text": "Jimothy needs a new life…", "danger": true}
+		return {"text": "The cryptid has moved on… start a new bush?", "danger": true}
+	if stage == "bush":
+		return {"text": "The bush is rustling. Wait — something’s waking.", "danger": false}
 	if sick:
-		return {"text": "Jimothy feels queasy from too many treats.", "danger": true}
+		return {"text": "Upset stomach from too much junk food.", "danger": true}
 	if stubborn:
-		return {"text": "Acting up — %s. Use Scold." % stubborn_reason, "danger": true}
+		return {"text": "Acting up — %s. Scold him." % stubborn_reason, "danger": true}
 	if has_mess:
-		return {"text": "There's a mess. Clean it up!", "danger": false}
+		return {"text": "He’s marked the nest. Clean it up.", "danger": false}
+	if energy < 20.0:
+		return {"text": "Winded. Let him rest before more exercise.", "danger": false}
+	if satiety > 75.0:
+		return {"text": "Full belly — forcing food won’t help.", "danger": false}
 	if hunger < 25.0:
-		return {"text": "Jimothy is starving for snacks.", "danger": true}
+		return {"text": "He’s hunting for a real meal.", "danger": true}
 	if happy < 25.0:
-		return {"text": "Jimothy is bored. Try Dumpster Dive.", "danger": false}
+		return {"text": "Restless cryptid energy. Try a night run (Play).", "danger": false}
 	if health < 30.0:
-		return {"text": "Health is low — feed healthy meals.", "danger": true}
+		return {"text": "He’s run-down — skip treats, offer fish or berries.", "danger": true}
 	return {}
 
 
 func try_feed(food_key: String) -> String:
-	if not alive or stage == "egg":
+	if not alive or stage == "bush":
 		return ""
 	if not FOOD.has(food_key):
 		return ""
 	var food: Dictionary = FOOD[food_key]
 
+	if satiety >= 85.0:
+		speech.emit("He turns his nose away — still digesting.")
+		state_changed.emit()
+		return "full"
+
 	if stubborn and food.type == "healthy":
-		speech.emit("Nope! Paws crossed. He refuses the healthy meal.")
+		speech.emit("Nope. He buries the %s under a leaf." % str(food.name).to_lower())
 		state_changed.emit()
 		return "refused"
 
 	var discipline_factor := (100.0 - discipline) / 100.0
-	if food.type == "healthy" and randf() < float(food.refuse) * (0.45 + discipline_factor):
+	if food.type == "healthy" and randf() < float(food.refuse) * (0.4 + discipline_factor):
 		stubborn = true
-		stubborn_reason = "refuses healthy food"
+		stubborn_reason = "refuses a proper meal"
 		care_mistakes += 1
-		speech.emit("Jimothy pushes away the %s!" % str(food.name).to_lower())
+		speech.emit("Jimothy bats the %s away!" % str(food.name).to_lower())
+		anim_impulse.emit("refuse")
 		state_changed.emit()
 		save_game()
 		return "refused"
@@ -277,23 +455,28 @@ func try_feed(food_key: String) -> String:
 	hunger = clamp01(hunger + float(food.hunger))
 	happy = clamp01(happy + float(food.happy))
 	health = clamp01(health + float(food.health))
-	weight += 0.4 if food.type == "treat" else 0.2
+	fitness = clamp01(fitness + float(food.fitness))
+	satiety = clamp01(satiety + float(food.satiety))
+	weight += 0.35 if food.type == "treat" else 0.15
+	energy = clamp01(energy + (4.0 if food.type == "healthy" else 1.0))
 
 	if food.type == "treat":
 		treat_streak += 1
 		if treat_streak >= 4:
 			sick = true
-			health = clamp01(health - 10.0)
-			speech.emit("Too many treats… Jimothy looks green around the mask.")
+			health = clamp01(health - 8.0)
+			speech.emit("Too much alley grease… he flops, queasy.")
 		else:
-			speech.emit("Nom nom — %s!" % food.name)
+			speech.emit("He stash-eats the %s." % food.name)
+			anim_impulse.emit("eat")
 	else:
 		treat_streak = 0
 		healthy_meals += 1
 		care_score += 1
-		sick = false
-		discipline = clamp01(discipline + 2.0)
-		speech.emit("Crunch — %s. Good choice." % food.name)
+		sick = false if health > 40.0 else sick
+		discipline = clamp01(discipline + 1.5)
+		speech.emit("He forages the %s carefully." % food.name)
+		anim_impulse.emit("eat")
 
 	state_changed.emit()
 	save_game()
@@ -305,10 +488,11 @@ func discipline_pet() -> void:
 		return
 	stubborn = false
 	stubborn_reason = ""
-	discipline = clamp01(discipline + 12.0)
-	happy = clamp01(happy - 6.0)
+	discipline = clamp01(discipline + 10.0)
+	happy = clamp01(happy - 5.0)
 	care_score += 1
-	speech.emit("Hey! Listen up, bandit. …okay, okay.")
+	speech.emit("A firm chitter. He listens… for now.")
+	anim_impulse.emit("scold")
 	state_changed.emit()
 	save_game()
 
@@ -317,26 +501,33 @@ func clean_mess() -> void:
 	if not alive or not has_mess:
 		return
 	has_mess = false
-	happy = clamp01(happy + 4.0)
-	health = clamp01(health + 3.0)
+	happy = clamp01(happy + 3.0)
+	health = clamp01(health + 2.0)
 	care_score += 1
-	speech.emit("All tidy. Whiskers gleam.")
+	speech.emit("Nest cleared. He sniffs approval.")
 	state_changed.emit()
 	save_game()
 
 
 func can_start_play() -> String:
-	if not alive or stage == "egg":
+	if not alive or stage in ["bush", "baby"]:
+		if stage == "baby":
+			speech.emit("Too tiny for a full dumpster run — let him wobble first.")
+		state_changed.emit()
 		return "blocked"
+	if energy < 18.0:
+		speech.emit("He’s wiped. Rest a bit, then try again.")
+		state_changed.emit()
+		return "tired"
 	if stubborn and stubborn_reason.contains("exercise"):
-		speech.emit("He plants his paws. No dumpster diving until you scold him.")
+		speech.emit("He plants his paws. No night run until you scold him.")
 		state_changed.emit()
 		return "stubborn"
-	if not stubborn and discipline < 40.0 and randf() < 0.35:
+	if not stubborn and discipline < 35.0 and randf() < 0.3:
 		stubborn = true
 		stubborn_reason = "refuses to exercise"
 		care_mistakes += 1
-		speech.emit("Jimothy flops over. Absolutely not playing.")
+		speech.emit("He flops dramatically. Absolutely not chasing trash.")
 		state_changed.emit()
 		save_game()
 		return "stubborn"
@@ -347,23 +538,51 @@ func apply_play_result(score: int, stars: int, completed: bool) -> void:
 	if not alive:
 		return
 	if not completed and score == 0:
-		speech.emit("Maybe later, alley cat.")
+		speech.emit("He peeks from the alley and bails.")
 		return
 	play_sessions += 1
-	happy = clamp01(happy + 10.0 + stars * 6.0)
-	hunger = clamp01(hunger - 6.0)
-	health = clamp01(health + 4.0 + stars)
-	discipline = clamp01(discipline + 3.0)
+	var burn := 8.0 + stars * 3.0
+	happy = clamp01(happy + 8.0 + stars * 5.0)
+	hunger = clamp01(hunger - burn * 0.7)
+	energy = clamp01(energy - (20.0 + stars * 4.0))
+	health = clamp01(health + 2.0 + stars)
+	fitness = clamp01(fitness + 3.0 + stars * 2.0)
+	discipline = clamp01(discipline + 2.0)
 	care_score += 2 if stars > 0 else 1
-	weight = maxf(1.0, weight - 0.15 * stars)
+	weight = maxf(1.0, weight - 0.12 * stars)
+	# Fitness nudges leg gene for later adult silhouette
+	genes.legginess = clampf(float(genes.legginess) + stars * 0.01, 0.0, 1.0)
 	if stars >= 3:
-		speech.emit("Legendary dive! Shiny treasures secured.")
+		speech.emit("A legendary night lope — treasure secured.")
+		anim_impulse.emit("run")
 	elif stars >= 1:
-		speech.emit("Nice dive — score %d." % score)
+		speech.emit("Solid forage run. Score %d." % score)
+		anim_impulse.emit("walk")
 	else:
-		speech.emit("A sleepy dive. Score %d." % score)
+		speech.emit("A sleepy shuffle. Score %d." % score)
 	state_changed.emit()
 	save_game()
+
+
+func _pulse_ambient_anim() -> void:
+	if stubborn or sick:
+		_anim_cooldown = randf_range(2.5, 4.0)
+		anim_impulse.emit("stubborn" if stubborn else "sick")
+		return
+	var roll := randf()
+	var kind := "idle"
+	if energy > 55.0 and happy > 50.0 and roll < 0.35:
+		kind = "run" if fitness > 50.0 and roll < 0.15 else "walk"
+	elif roll < 0.55:
+		kind = "walk"
+	elif roll < 0.72:
+		kind = "jump"
+	elif roll < 0.82:
+		kind = "lope" if stage == "adult" else "walk"
+	else:
+		kind = "idle"
+	_anim_cooldown = randf_range(1.8, 4.5)
+	anim_impulse.emit(kind)
 
 
 func to_dict() -> Dictionary:
@@ -372,11 +591,18 @@ func to_dict() -> Dictionary:
 		"last_tick": last_tick,
 		"age_sec": age_sec,
 		"stage": stage,
-		"adult_variant": adult_variant,
+		"young_form": young_form,
+		"teen_form": teen_form,
+		"adult_form": adult_form,
+		"teen_duration": teen_duration,
+		"adult_duration": adult_duration,
+		"genes": genes,
 		"hunger": hunger,
 		"happy": happy,
 		"health": health,
 		"discipline": discipline,
+		"fitness": fitness,
+		"satiety": satiety,
 		"weight": weight,
 		"care_score": care_score,
 		"care_mistakes": care_mistakes,
@@ -388,6 +614,7 @@ func to_dict() -> Dictionary:
 		"treat_streak": treat_streak,
 		"healthy_meals": healthy_meals,
 		"play_sessions": play_sessions,
+		"energy": energy,
 	}
 
 
@@ -395,12 +622,27 @@ func from_dict(d: Dictionary) -> void:
 	born_at = int(d.get("born_at", _now()))
 	last_tick = int(d.get("last_tick", _now()))
 	age_sec = float(d.get("age_sec", 0.0))
-	stage = str(d.get("stage", "egg"))
-	adult_variant = str(d.get("adult_variant", "noble"))
-	hunger = float(d.get("hunger", 80.0))
-	happy = float(d.get("happy", 80.0))
+	stage = str(d.get("stage", "bush"))
+	# Migrate ancient egg saves
+	if stage in ["egg", "hatchling", "kit"]:
+		stage = "bush" if stage == "egg" else "baby"
+	young_form = str(d.get("young_form", "puff"))
+	teen_form = str(d.get("teen_form", ""))
+	adult_form = str(d.get("adult_form", str(d.get("adult_variant", ""))))
+	if adult_form in ["noble", ""]:
+		adult_form = "saint"
+	elif adult_form == "rascal":
+		adult_form = "legend"
+	teen_duration = float(d.get("teen_duration", randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)))
+	adult_duration = float(d.get("adult_duration", randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)))
+	var g = d.get("genes", {})
+	genes = g if typeof(g) == TYPE_DICTIONARY else _roll_genes()
+	hunger = float(d.get("hunger", 70.0))
+	happy = float(d.get("happy", 70.0))
 	health = float(d.get("health", 100.0))
-	discipline = float(d.get("discipline", 55.0))
+	discipline = float(d.get("discipline", 50.0))
+	fitness = float(d.get("fitness", 40.0))
+	satiety = float(d.get("satiety", 0.0))
 	weight = float(d.get("weight", 1.0))
 	care_score = int(d.get("care_score", 0))
 	care_mistakes = int(d.get("care_mistakes", 0))
@@ -412,6 +654,7 @@ func from_dict(d: Dictionary) -> void:
 	treat_streak = int(d.get("treat_streak", 0))
 	healthy_meals = int(d.get("healthy_meals", 0))
 	play_sessions = int(d.get("play_sessions", 0))
+	energy = float(d.get("energy", 80.0))
 
 
 func save_game() -> void:
@@ -424,13 +667,12 @@ func save_game() -> void:
 
 func load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
-		speech.emit("A warm egg. Something wiggles inside…")
+		speech.emit("A roadside bush shivers… something’s in there.")
 		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file == null:
 		return
-	var text := file.get_as_text()
-	var data = JSON.parse_string(text)
+	var data = JSON.parse_string(file.get_as_text())
 	if typeof(data) != TYPE_DICTIONARY:
 		return
 	from_dict(data)

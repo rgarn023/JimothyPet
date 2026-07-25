@@ -32,12 +32,13 @@ func _ready() -> void:
 	PetState.speech.connect(_on_speech)
 	PetState.needs_reset.connect(_on_needs_reset)
 	PetState.pet_died.connect(_on_pet_died)
+	PetState.stage_changed.connect(_on_stage_changed)
 	dumpster.finished.connect(_on_dive_finished)
 	feed_panel.visible = false
 	message_panel.visible = false
 	_refresh()
 	if not PetState.alive:
-		_show_message("Jimothy wandered off…", "Your last raccoon headed back to the woods. Start a new egg?")
+		_show_message("Gone to the night…", "Jimothy finished his cryptid cycle. Start a new rustling bush?")
 
 
 func _process(_delta: float) -> void:
@@ -58,7 +59,7 @@ func _refresh() -> void:
 		mood = "stubborn"
 	elif PetState.sick:
 		mood = "sick"
-	raccoon.set_look(PetState.stage, PetState.adult_variant, mood)
+	raccoon.set_look(PetState.stage, PetState.adult_form, mood)
 	mess_mark.visible = PetState.has_mess and PetState.alive
 
 	var alert: Dictionary = PetState.alert_text()
@@ -69,41 +70,60 @@ func _refresh() -> void:
 		alert_banner.text = str(alert.text)
 		alert_banner.modulate = Color("f0b4a8") if alert.get("danger", false) else Color("f0c57a")
 
-	btn_feed.disabled = not PetState.alive or PetState.stage == "egg"
-	btn_play.disabled = not PetState.alive or PetState.stage == "egg"
+	var can_care := PetState.alive and PetState.stage != "bush"
+	btn_feed.disabled = not can_care
+	btn_play.disabled = not PetState.alive or PetState.stage in ["bush", "baby"]
 	btn_scold.disabled = not (PetState.alive and PetState.stubborn)
 	btn_clean.disabled = not (PetState.alive and PetState.has_mess)
 
-	if PetState.stage == "egg":
-		hint_label.text = "The egg is warming… it will hatch on its own."
+	if PetState.stage == "bush":
+		hint_label.text = "Watch the bush. In about a minute, a baby kit may pop out."
 	elif not PetState.alive:
-		hint_label.text = "Care carefully next time — healthy meals and play raise his path."
+		hint_label.text = "Real-time life cycle complete (or neglect). A new bush can begin."
 	else:
-		hint_label.text = "Feed treats or healthy meals, play Dumpster Dive, and scold him if he acts up."
+		hint_label.text = "Feed real forage or junk, run Dumpster Dive for exercise, scold when he digs in."
 
 
 func _format_age(sec: float) -> String:
-	var m := int(sec) / 60
-	var s := int(sec) % 60
-	if m <= 0:
-		return "Age %ds" % s
-	return "Age %dm" % m
+	var s := int(sec)
+	var days := s / 86400
+	var hours := (s % 86400) / 3600
+	var mins := (s % 3600) / 60
+	if days > 0:
+		return "Age %dd %dh" % [days, hours]
+	if hours > 0:
+		return "Age %dh %dm" % [hours, mins]
+	if mins > 0:
+		return "Age %dm" % mins
+	return "Age %ds" % s
 
 
 func _on_speech(text: String) -> void:
 	speech_label.visible = true
 	speech_label.text = text
-	if _speech_timer:
-		# previous timer ignored; label refreshed
-		pass
-	_speech_timer = get_tree().create_timer(2.6)
+	_speech_timer = get_tree().create_timer(2.8)
 	_speech_timer.timeout.connect(func():
 		speech_label.visible = false
 	, CONNECT_ONE_SHOT)
 
 
+func _on_stage_changed(stage: String) -> void:
+	match stage:
+		"baby":
+			_show_message("Baby Kit!", "Jimothy burst from the bush. Keep him fed — young kit in ~1 hour.")
+		"young":
+			_show_message("Young Kit!", "Form: %s. His teen/adult path is already leaning this way." % PetState.young_form.capitalize())
+		"teen":
+			_show_message("Teen Kit!", "Form: %s. Adult Jimothy arrives in 1–3 real days." % PetState.teen_form.capitalize())
+		"adult":
+			_show_message(
+				"Adult Cryptid!",
+				"%s Jimothy — short-spine legend look. He’ll stick around ~10–20 days." % PetState.adult_form_title()
+			)
+
+
 func _on_needs_reset() -> void:
-	_show_message("Jimothy wandered off…", "Time kept moving while you were away. Start a new egg?")
+	_show_message("Gone to the night…", "His cycle ended (lifespan or care). Start a new rustling bush?")
 
 
 func _on_pet_died() -> void:
