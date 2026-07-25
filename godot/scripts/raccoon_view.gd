@@ -765,9 +765,10 @@ func _draw_bush(c: Vector2) -> void:
 		p.x += rustle * 0.1 if p.x < 0.0 else rustle2 * 0.1
 		_draw_oval_leaf(c + p, float(L[2]), float(L[3]), mid[i % mid.size()], float((i * 13) % 40) - 20.0)
 	for i in 5:
-		var under := [
+		var under_pts: Array[Vector2] = [
 			Vector2(-36, 36), Vector2(-8, 42), Vector2(20, 36), Vector2(-26, 14), Vector2(14, 12)
-		][i]
+		]
+		var under: Vector2 = under_pts[i]
 		_draw_oval_leaf(c + under, 12.0, 8.0, deep[i % deep.size()], float(i * 9))
 	# Tip leaves for ragged bushy edge
 	var tips: Array = [

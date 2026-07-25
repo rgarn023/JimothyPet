@@ -347,9 +347,9 @@ func _on_die_draw() -> void:
 		edge.a = 0.5 if not (_landed and int(f.num) == _result) else 0.9
 		_die.draw_polyline(poly + PackedVector2Array([poly[0]]), edge, 1.4 if int(f.num) != _result else 2.2, true)
 
-		var mx := (f.pts[0].x + f.pts[1].x + f.pts[2].x) / 3.0
-		var my := (f.pts[0].y + f.pts[1].y + f.pts[2].y) / 3.0
-		var font_size := int(11.0 + maxf(0.0, f.n.z) * 10.0)
+		var mx: float = (float(f.pts[0].x) + float(f.pts[1].x) + float(f.pts[2].x)) / 3.0
+		var my: float = (float(f.pts[0].y) + float(f.pts[1].y) + float(f.pts[2].y)) / 3.0
+		var font_size: int = int(11.0 + maxf(0.0, float(f.n.z)) * 10.0)
 		var num_col := Color("f0c57a")
 		if _landed and int(f.num) == _result:
 			num_col = Color("eef5ea") if _correct else Color("fff0ec")
