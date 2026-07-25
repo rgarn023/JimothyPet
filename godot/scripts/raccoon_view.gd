@@ -10,6 +10,13 @@ var adult_form: String = "saint"
 var genes: Dictionary = {}
 var mood: String = "idle"
 
+## Dive / mini-game avatar: side-form only, no clearing, no pet input.
+var avatar_mode: bool = false
+var avatar_face: float = 1.0
+var avatar_walk: float = 0.0
+var avatar_chew: float = 0.0
+var avatar_scale: float = 0.62
+
 var _t: float = 0.0
 var _pose_x: float = 0.0
 var _pose_y: float = 0.0
@@ -37,6 +44,12 @@ const SIDE_ANIMS := ["walk", "run", "lope", "jump", "hop", "sniff"]
 
 
 func _ready() -> void:
+	if avatar_mode:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if PetState:
+			PetState.state_changed.connect(_sync_from_state)
+			_sync_from_state()
+		return
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(_on_gui_input)
 	if PetState:
@@ -46,6 +59,21 @@ func _ready() -> void:
 		# Only resume an in-progress ascension — never replay for a dead save.
 		if PetState.ascending and not PetState.alive:
 			play_anim("ascend")
+
+
+func configure_as_avatar(scale: float = 0.62) -> void:
+	avatar_mode = true
+	avatar_scale = scale
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	custom_minimum_size = Vector2(120, 110)
+	size = Vector2(120, 110)
+
+
+func set_avatar_pose(face: float, walk: float, chew: float = 0.0) -> void:
+	avatar_face = -1.0 if face < 0.0 else 1.0
+	avatar_walk = walk
+	avatar_chew = chew
+	queue_redraw()
 
 
 func _on_gui_input(event: InputEvent) -> void:
@@ -464,6 +492,9 @@ func _fur() -> Color:
 
 
 func _draw() -> void:
+	if avatar_mode:
+		_draw_avatar()
+		return
 	_draw_clearing()
 	var c := size * 0.5 + Vector2(_pose_x, _pose_y)
 	if stage == "bush" and _anim != "ascend":
@@ -505,6 +536,33 @@ func _draw() -> void:
 		_draw_food_prop(c, face, clampf(_anim_t / _anim_dur, 0.0, 1.0))
 
 	modulate = old_mod
+
+
+func _draw_avatar() -> void:
+	# Side silhouette of the live form for Dumpster Dive (and similar).
+	var c := size * 0.5
+	var face := avatar_face if avatar_face != 0.0 else 1.0
+	var old_walk := _walk_phase
+	var old_anim := _anim
+	_walk_phase = avatar_walk
+	_anim = "walk"
+	draw_set_transform(c, 0.0, Vector2(avatar_scale, avatar_scale))
+	match stage:
+		"baby":
+			_draw_baby(Vector2.ZERO, face)
+		"young":
+			_draw_young(Vector2.ZERO, face)
+		"teen":
+			_draw_teen(Vector2.ZERO, face)
+		"adult":
+			_draw_adult(Vector2.ZERO, face)
+		_:
+			_draw_young(Vector2.ZERO, face)
+	if avatar_chew > 0.0:
+		draw_circle(Vector2(16.0 * face, 2.0), 3.2, Color(0.88, 0.63, 0.29, 0.78))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_walk_phase = old_walk
+	_anim = old_anim
 
 
 func _draw_front(c: Vector2) -> void:

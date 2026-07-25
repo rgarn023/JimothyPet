@@ -1,6 +1,8 @@
 extends Control
 ## Alley rummage mini-game — scraps fling out of the dumpster.
 
+const RaccoonViewScript = preload("res://scripts/raccoon_view.gd")
+
 signal finished(score: int, stars: int, completed: bool)
 
 const GOOD := [
@@ -26,6 +28,7 @@ var lid_open := 0.0
 var chew_t := 0.0
 var _pointer_down := false
 var dumpster := Rect2(60, 70, 240, 78)
+var _avatar: Control
 
 @onready var score_label: Label = %ScoreLabel
 @onready var time_label: Label = %TimeLabel
@@ -50,11 +53,37 @@ func start_game() -> void:
 	player_facing = 1.0
 	player_x = playfield.size.x * 0.5 if playfield.size.x > 0 else 180.0
 	_layout_dumpster()
+	_ensure_avatar()
 	running = true
 	visible = true
 	set_process(true)
 	_update_hud()
+	_sync_avatar()
 	playfield.queue_redraw()
+
+
+func _ensure_avatar() -> void:
+	if _avatar != null and is_instance_valid(_avatar):
+		_avatar.visible = true
+		if _avatar.has_method("_sync_from_state"):
+			_avatar.call("_sync_from_state")
+		return
+	_avatar = RaccoonViewScript.new()
+	_avatar.configure_as_avatar(0.62)
+	playfield.add_child(_avatar)
+	_avatar.visible = true
+
+
+func _sync_avatar() -> void:
+	if _avatar == null or not is_instance_valid(_avatar):
+		return
+	var h := playfield.size.y if playfield.size.y > 0.0 else 360.0
+	var bob := sin(walk_phase) * 2.0 if chew_t <= 0.0 else sin(Time.get_ticks_msec() * 0.04) * 2.0
+	# Feet of scaled side-art sit on the alley ground line.
+	_avatar.position = Vector2(player_x - _avatar.size.x * 0.5, h - 82.0 - _avatar.size.y * 0.5 + bob)
+	if _avatar.has_method("set_avatar_pose"):
+		_avatar.set_avatar_pose(player_facing, walk_phase, chew_t)
+	_avatar.visible = running
 
 
 func bail_out() -> void:
@@ -72,6 +101,8 @@ func _end(completed: bool) -> void:
 	running = false
 	set_process(false)
 	visible = false
+	if _avatar != null and is_instance_valid(_avatar):
+		_avatar.visible = false
 	var stars := 0
 	if score >= 18:
 		stars = 3
@@ -153,6 +184,7 @@ func _process(delta: float) -> void:
 		walk_phase += delta * 2.0
 
 	player_x = clampf(player_x, 26.0, maxf(26.0, playfield.size.x - 26.0))
+	_sync_avatar()
 
 	var gravity := 210.0
 	var ground := playfield.size.y - 54.0
@@ -257,8 +289,7 @@ func _on_playfield_draw() -> void:
 		_draw_item(pf, item)
 	for f in fx:
 		_draw_fx(pf, f)
-
-	_draw_player(pf, Vector2(player_x, h - 58))
+	# Player is a live RaccoonView avatar child (current Jimothy form).
 
 
 func _draw_dumpster(pf: Control) -> void:
@@ -310,27 +341,6 @@ func _draw_fx(pf: Control, f: Dictionary) -> void:
 		_:
 			_draw_ellipse(pf, p + Vector2(-3, 0), Vector2(2.5, 2.5), Color(0.88, 0.63, 0.29, 0.45 * a))
 			_draw_ellipse(pf, p + Vector2(3, 1), Vector2(2, 2), Color(0.88, 0.63, 0.29, 0.45 * a))
-
-
-func _draw_player(pf: Control, pos: Vector2) -> void:
-	var kick := sin(walk_phase) * (1.0 if chew_t > 0.0 else 3.5)
-	var bob := sin(walk_phase) * 2.0 if chew_t <= 0.0 else sin(Time.get_ticks_msec() * 0.04) * 2.0
-	var face := player_facing if player_facing != 0.0 else 1.0
-	var p := pos + Vector2(0, bob)
-	# Legs with walk kick (mirrored by facing via x scale of offsets)
-	pf.draw_line(p + Vector2(-12 * face, 0), p + Vector2(-18 * face, 16 + kick), Color("4f4f58"), 5.0)
-	pf.draw_line(p + Vector2(-4 * face, 2), p + Vector2(-6 * face, 18 - kick), Color("4f4f58"), 5.0)
-	pf.draw_line(p + Vector2(4 * face, 2), p + Vector2(6 * face, 18 + kick * 0.8), Color("4f4f58"), 5.0)
-	pf.draw_line(p + Vector2(12 * face, 0), p + Vector2(18 * face, 16 - kick * 0.8), Color("4f4f58"), 5.0)
-	var body_y := -4.0 + (2.0 if chew_t > 0.0 else 0.0)
-	_draw_ellipse(pf, p + Vector2(0, body_y), Vector2(20, 17), Color("6a6a74"))
-	_draw_ellipse(pf, p + Vector2(0, -6), Vector2(14, 8), Color("1c1c22"))
-	pf.draw_circle(p + Vector2(-5, -7), 2.6, Color("f7f3e8"))
-	pf.draw_circle(p + Vector2(5, -7), 2.6, Color("f7f3e8"))
-	pf.draw_circle(p + Vector2(-4.5, -6.5), 1.2, Color("121214"))
-	pf.draw_circle(p + Vector2(5.5, -6.5), 1.2, Color("121214"))
-	if chew_t > 0.0:
-		pf.draw_circle(p + Vector2(8 * face, 2), 3.0, Color(0.88, 0.63, 0.29, 0.75))
 
 
 func _draw_ellipse(pf: Control, center: Vector2, radii: Vector2, color: Color) -> void:

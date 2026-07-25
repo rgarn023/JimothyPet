@@ -1343,7 +1343,7 @@
     if (canStartPlay({ rollStubborn: false }) !== "ok") return;
     sfx("play");
     $("gameModal").hidden = false;
-    DumpsterDive.start(onGameDone);
+    DumpsterDive.start(onGameDone, { ...formProfile(), view: "side" });
   }
 
   function openDiceGame() {

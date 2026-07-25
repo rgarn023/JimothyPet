@@ -25,6 +25,9 @@ const DumpsterDive = (() => {
   let lidOpen = 0;
   let chewT = 0;
   let dumpster = { x: 0, y: 0, w: 0, h: 0 };
+  let formProfile = null;
+  let formImg = null;
+  let formImgUrl = "";
 
   const PLAYER_W = 52;
   const GOOD = [
@@ -40,7 +43,32 @@ const DumpsterDive = (() => {
     return document.getElementById(id);
   }
 
-  function start(doneCallback) {
+  function bakeFormArt(profile) {
+    formProfile = profile || formProfile || { stage: "young", youngForm: "puff", view: "side" };
+    if (formImgUrl) {
+      URL.revokeObjectURL(formImgUrl);
+      formImgUrl = "";
+    }
+    formImg = null;
+    if (!window.RaccoonArt || typeof RaccoonArt.render !== "function") return;
+    const svg = RaccoonArt.render({
+      ...formProfile,
+      view: "side",
+      smiling: false,
+    });
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    formImgUrl = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      formImg = img;
+    };
+    img.onerror = () => {
+      formImg = null;
+    };
+    img.src = formImgUrl;
+  }
+
+  function start(doneCallback, profile) {
     canvas = $("gameCanvas");
     ctx = canvas.getContext("2d");
     onDone = doneCallback;
@@ -59,6 +87,7 @@ const DumpsterDive = (() => {
     playerX = width / 2;
     playerFacing = 1;
     dumpster = { x: width * 0.18, y: 70, w: width * 0.64, h: 78 };
+    bakeFormArt(profile || { stage: "young", youngForm: "puff", view: "side" });
     running = true;
     $("gameScore").textContent = "0";
     $("gameTime").textContent = "22";
@@ -71,6 +100,11 @@ const DumpsterDive = (() => {
     running = false;
     unbind();
     cancelAnimationFrame(rafId);
+    if (formImgUrl) {
+      URL.revokeObjectURL(formImgUrl);
+      formImgUrl = "";
+    }
+    formImg = null;
     const result = {
       score,
       completed: Boolean(completed),
@@ -440,67 +474,37 @@ const DumpsterDive = (() => {
   }
 
   function drawPlayer(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(playerFacing, 1);
-    const kick = Math.sin(walkPhase) * (chewT > 0 ? 1 : 3.5);
     const bob = chewT > 0 ? Math.sin(performance.now() / 40) * 2 : Math.abs(Math.sin(walkPhase)) * 2;
-    ctx.translate(0, bob);
+    const kickTilt = Math.sin(walkPhase) * (chewT > 0 ? 0.02 : 0.06);
+    ctx.save();
+    ctx.translate(x, y + bob);
+    ctx.scale(playerFacing < 0 ? -1 : 1, 1);
+    ctx.rotate(kickTilt);
 
-    ctx.strokeStyle = "#4f4f58";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-12, 0);
-    ctx.lineTo(-18, 16 + kick);
-    ctx.moveTo(-4, 2);
-    ctx.lineTo(-6, 18 - kick);
-    ctx.moveTo(4, 2);
-    ctx.lineTo(6, 18 + kick * 0.8);
-    ctx.moveTo(12, 0);
-    ctx.lineTo(18, 16 - kick * 0.8);
-    ctx.stroke();
-
-    ctx.fillStyle = "#3a3a44";
-    ctx.beginPath();
-    ctx.ellipse(-18, 18 + kick, 5, 3, 0, 0, Math.PI * 2);
-    ctx.ellipse(-6, 20 - kick, 5, 3, 0, 0, Math.PI * 2);
-    ctx.ellipse(6, 20 + kick * 0.8, 5, 3, 0, 0, Math.PI * 2);
-    ctx.ellipse(18, 18 - kick * 0.8, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#6a6a74";
-    ctx.beginPath();
-    ctx.ellipse(0, -4 + (chewT > 0 ? 2 : 0), 20, 17, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#4a4a54";
-    ctx.beginPath();
-    ctx.ellipse(-12, -18, 4, 6, -0.15, 0, Math.PI * 2);
-    ctx.ellipse(12, -18, 4, 6, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#1c1c22";
-    ctx.beginPath();
-    ctx.ellipse(0, -6, 14, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#f7f3e8";
-    ctx.beginPath();
-    ctx.arc(-5, -7, 2.6, 0, Math.PI * 2);
-    ctx.arc(5, -7, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#121214";
-    ctx.beginPath();
-    ctx.arc(-4.5, -6.5, 1.2, 0, Math.PI * 2);
-    ctx.arc(5.5, -6.5, 1.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#c9a292";
-    ctx.beginPath();
-    ctx.ellipse(0, -1, 4, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (formImg && formImg.complete && formImg.naturalWidth > 0) {
+      // Side SVG faces right; feet sit near the bottom of the 120 viewBox.
+      const size = 92;
+      ctx.drawImage(formImg, -size / 2, -size + 16, size, size);
+    } else {
+      // Fallback potato if art hasn't loaded yet.
+      ctx.fillStyle = "#6a6a74";
+      ctx.beginPath();
+      ctx.ellipse(0, -10, 20, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#1c1c22";
+      ctx.beginPath();
+      ctx.ellipse(6, -12, 12, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#f7f3e8";
+      ctx.beginPath();
+      ctx.arc(10, -13, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     if (chewT > 0) {
-      ctx.fillStyle = "rgba(224,160,74,0.7)";
+      ctx.fillStyle = "rgba(224,160,74,0.75)";
       ctx.beginPath();
-      ctx.arc(8, 2, 3, 0, Math.PI * 2);
+      ctx.arc(14, -2, 3.2, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
