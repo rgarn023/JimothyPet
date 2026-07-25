@@ -880,7 +880,7 @@
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  function say(text, ms = 2800) {
+  function say(text, ms = 5200) {
     const el = $("speech");
     el.hidden = false;
     el.textContent = text;
@@ -980,9 +980,7 @@
             ? state.youngForm
             : "";
 
-    raccoon.innerHTML = showBody
-      ? RaccoonArt.render(formProfile())
-      : RaccoonArt.render({ stage: "bush", ageSec: 0, genes: {} });
+    refreshArt(true);
 
     if (window.RaccoonAnim) {
       RaccoonAnim.sync({
@@ -1294,7 +1292,7 @@
     save();
   }
 
-  function canStartPlay() {
+  function canStartPlay({ rollStubborn = false } = {}) {
     if (!state.alive || state.stage === "bush" || state.stage === "baby") {
       if (state.stage === "baby") {
         say("Too tiny for games — let him wobble a bit first.");
@@ -1312,7 +1310,8 @@
       render();
       return "stubborn";
     }
-    if (!state.stubborn && state.discipline < 35 && Math.random() < 0.3) {
+    // Only roll stubborn when opening the picker — not again when launching a game.
+    if (rollStubborn && !state.stubborn && state.discipline < 35 && Math.random() < 0.3) {
       state.stubborn = true;
       state.stubbornReason = "refuses to exercise";
       state.careMistakes += 1;
@@ -1325,7 +1324,7 @@
   }
 
   function openPlayPicker() {
-    if (canStartPlay() !== "ok") return;
+    if (canStartPlay({ rollStubborn: true }) !== "ok") return;
     $("playPickModal").hidden = false;
   }
 
@@ -1335,7 +1334,7 @@
 
   function openGame() {
     closePlayPicker();
-    if (canStartPlay() !== "ok") return;
+    if (canStartPlay({ rollStubborn: false }) !== "ok") return;
     sfx("play");
     $("gameModal").hidden = false;
     DumpsterDive.start(onGameDone);
@@ -1343,9 +1342,14 @@
 
   function openDiceGame() {
     closePlayPicker();
-    if (canStartPlay() !== "ok") return;
+    if (canStartPlay({ rollStubborn: false }) !== "ok") return;
+    if (!window.DiceHighLow) {
+      say("High or Low couldn’t load — try a refresh.");
+      return;
+    }
     sfx("play");
-    if (window.DiceHighLow) DiceHighLow.start(onDiceDone);
+    // Show modal first so canvas sizing / paint land correctly.
+    requestAnimationFrame(() => DiceHighLow.start(onDiceDone));
   }
 
   function closeGame() {
@@ -1355,14 +1359,10 @@
 
   function closeDiceGame() {
     if (window.DiceHighLow) DiceHighLow.close(false);
-    if ($("diceModal")) $("diceModal").hidden = true;
   }
 
   function onDiceDone(result) {
-    if (!result || result.bailed) {
-      closeDiceGame();
-      return;
-    }
+    if (!result || result.bailed) return;
     if (!state.alive) return;
 
     state.playSessions += 1;
@@ -1375,28 +1375,69 @@
       state.fitness = clamp(state.fitness + 2);
       state.careScore += 2;
       state.health = clamp(state.health + 1);
-      say(`d20 shows ${result.roll} — you called it! He chirps with joy.`);
+      say(`d20 shows ${result.roll} — you called it! He chirps with joy.`, 6000);
       bounceHappy();
       pulseAnim("happy");
-      setTimeout(() => pulseAnim("hop"), 400);
+      setTimeout(() => pulseAnim("hop"), 500);
       sfx("chirp");
     } else {
       state.happy = clamp(state.happy - 6);
-      state.careMistakes += 0;
-      say(`d20 shows ${result.roll} — wrong call. He droops and sighs.`);
+      say(`d20 shows ${result.roll} — wrong call. He droops and sighs.`, 6000);
       pulseAnim("sad");
       sfx("grumble");
     }
     render();
     save();
 
-    // If wiped, nudge them out of the dice modal on next again attempt.
     if (state.energy < 18 && $("diceAgain")) {
       $("diceAgain").hidden = true;
       if ($("diceStatus")) {
         $("diceStatus").textContent += " He’s wiped — rest before another roll.";
       }
     }
+  }
+
+  function confirmReset() {
+    const ok = window.confirm(
+      "Reset Jimothy? This starts a new rustling bush. Unlocked forms stay."
+    );
+    if (!ok) return;
+    resetPet();
+    say("A new bush is rustling…", 6000);
+  }
+
+  let lastArtKey = "";
+
+  function artProfile() {
+    const view =
+      window.RaccoonAnim && typeof RaccoonAnim.getView === "function"
+        ? RaccoonAnim.getView()
+        : "side";
+    return { ...formProfile(), view };
+  }
+
+  function refreshArt(force = false) {
+    const raccoon = $("raccoon");
+    if (!raccoon) return;
+    const showBody = state.alive || state.ascending;
+    const profile = showBody
+      ? artProfile()
+      : { stage: "bush", ageSec: 0, genes: {}, view: "front" };
+    const bushBucket =
+      profile.stage === "bush" ? Math.floor((profile.ageSec || 0) / 8) : 0;
+    const key = [
+      showBody ? state.stage : "gone",
+      profile.youngForm || "",
+      profile.teenForm || "",
+      profile.adultForm || "",
+      profile.smiling ? "1" : "0",
+      profile.view || "side",
+      bushBucket,
+      state.ascending ? "up" : "",
+    ].join("|");
+    if (!force && key === lastArtKey) return;
+    lastArtKey = key;
+    raccoon.innerHTML = RaccoonArt.render(profile);
   }
 
   function onGameDone(result) {
@@ -1464,7 +1505,8 @@
     if ($("playPickClose")) $("playPickClose").addEventListener("click", closePlayPicker);
     if ($("pickDumpster")) $("pickDumpster").addEventListener("click", openGame);
     if ($("pickDice")) $("pickDice").addEventListener("click", openDiceGame);
-    if ($("diceClose")) $("diceClose").addEventListener("click", closeDiceGame);
+    // Dice close is handled inside DiceHighLow (avoids double-binding).
+    if ($("btnReset")) $("btnReset").addEventListener("click", confirmReset);
     $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
     const wrap = $("raccoonWrap");
@@ -1560,6 +1602,8 @@
     lastAnimPulse = now;
     ambientAnim(dt);
     if (window.RaccoonAnim) RaccoonAnim.tick(dt);
+    // Keep art in sync with front/side view without rewriting every frame.
+    refreshArt(false);
     requestAnimationFrame(animLoop);
   }
 

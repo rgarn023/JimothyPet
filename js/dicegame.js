@@ -10,6 +10,8 @@ const DiceHighLow = (() => {
   let rafId = 0;
   let canvas = null;
   let ctx = null;
+  let bound = false;
+  let idle = false;
 
   // Regular icosahedron (golden-ratio vertices)
   const PHI = (1 + Math.sqrt(5)) / 2;
@@ -115,7 +117,6 @@ const DiceHighLow = (() => {
   /** Rotation that aims a face normal toward +Z (camera). */
   function rotationForFace(faceIndex) {
     const n = faceNormals[faceIndex];
-    // yaw then pitch to aim n at (0,0,1)
     const yaw = Math.atan2(n[0], n[2]);
     const hyp = Math.hypot(n[0], n[2]);
     const pitch = -Math.atan2(n[1], hyp);
@@ -126,6 +127,7 @@ const DiceHighLow = (() => {
     canvas = $("d20Canvas");
     if (!canvas) return false;
     ctx = canvas.getContext("2d");
+    if (!ctx) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const css = 220;
     canvas.width = css * dpr;
@@ -137,7 +139,6 @@ const DiceHighLow = (() => {
   }
 
   function project(p, scale, cx, cy) {
-    // Closer camera = stronger perspective foreshortening
     const dist = 2.55;
     const z = p[2] + dist;
     const f = (scale * dist) / z;
@@ -153,7 +154,6 @@ const DiceHighLow = (() => {
     const scale = 86;
     ctx.clearRect(0, 0, w, h);
 
-    // Soft ground shadow (stretches a bit while spinning)
     const spinStretch = opts.spinning ? 1.25 : 1;
     ctx.save();
     const g = ctx.createRadialGradient(cx, h - 26, 4, cx, h - 26, 60);
@@ -166,7 +166,7 @@ const DiceHighLow = (() => {
     ctx.restore();
 
     const verts = RAW.map((v) => rotatePoint(v, rot));
-    const light = [0.35, 0.55, 0.75]; // key light from upper-right / camera
+    const light = [0.35, 0.55, 0.75];
     const faces = FACES.map((face, i) => {
       const pts = face.map((vi) => project(verts[vi], scale, cx, cy));
       const avgZ = (pts[0][2] + pts[1][2] + pts[2][2]) / 3;
@@ -175,7 +175,6 @@ const DiceHighLow = (() => {
       return { i, pts, avgZ, n, ndot, num: FACE_NUMS[i] };
     });
 
-    // Painter's algorithm — far to near; skip back faces
     faces
       .filter((f) => f.n[2] > 0.04)
       .sort((a, b) => b.avgZ - a.avgZ)
@@ -189,14 +188,11 @@ const DiceHighLow = (() => {
             base = opts.win ? [55, 85, 70] : [75, 58, 68];
           }
         } else {
-          // Slight hue variance per face so facets read in motion
           base = [78 + (f.i % 5) * 6, 62 + (f.i % 3) * 4, 130 + (f.i % 4) * 5];
         }
         const r = Math.min(255, Math.round(base[0] * lit + f.ndot * 28));
         const gch = Math.min(255, Math.round(base[1] * lit + f.ndot * 18));
         const b = Math.min(255, Math.round(base[2] * lit + f.ndot * 10));
-
-        // Depth darkening for far faces
         const depth = Math.min(1, Math.max(0.55, 1.15 - (f.avgZ - 2.2) * 0.35));
 
         ctx.beginPath();
@@ -207,7 +203,6 @@ const DiceHighLow = (() => {
         ctx.fillStyle = `rgb(${Math.round(r * depth)},${Math.round(gch * depth)},${Math.round(b * depth)})`;
         ctx.fill();
 
-        // Specular glint near camera-facing faces
         if (f.ndot > 0.75) {
           const mx = (f.pts[0][0] + f.pts[1][0] + f.pts[2][0]) / 3;
           const my = (f.pts[0][1] + f.pts[1][1] + f.pts[2][1]) / 3;
@@ -225,7 +220,6 @@ const DiceHighLow = (() => {
         ctx.lineWidth = f.num === result && opts.landed ? 2.4 : 1.05;
         ctx.stroke();
 
-        // Number at face centroid (larger on facing faces)
         const mx = (f.pts[0][0] + f.pts[1][0] + f.pts[2][0]) / 3;
         const my = (f.pts[0][1] + f.pts[1][1] + f.pts[2][1]) / 3;
         const fontSize = 10 + Math.max(0, f.n[2]) * 14;
@@ -251,7 +245,9 @@ const DiceHighLow = (() => {
     const status = $("diceStatus");
     const again = $("diceAgain");
     const picks = $("dicePicks");
-    if (status) status.textContent = "Guess High (11–20) or Low (1–10), then watch the d20 tumble.";
+    if (status) {
+      status.textContent = "Guess High (11–20) or Low (1–10), then watch the d20 tumble.";
+    }
     if (again) again.hidden = true;
     if (picks) picks.hidden = false;
     if (stage) stage.dataset.state = "ready";
@@ -263,16 +259,51 @@ const DiceHighLow = (() => {
     drawDie();
   }
 
-  function start(doneCallback) {
-    onDone = doneCallback;
-    resetUi();
-    $("diceModal").hidden = false;
-    bind();
-    // Idle gentle spin
-    idleSpin(true);
+  function onModalClick(e) {
+    const t = e.target;
+    if (!t || !t.id) return;
+    if (t.id === "diceLow") pick("low");
+    else if (t.id === "diceHigh") pick("high");
+    else if (t.id === "diceClose") close(false);
+    else if (t.id === "diceAgain") {
+      resetUi();
+      idleSpin(true);
+    }
   }
 
-  let idle = false;
+  function bind() {
+    if (bound) return;
+    const modal = $("diceModal");
+    if (!modal) return;
+    modal.addEventListener("click", onModalClick);
+    bound = true;
+  }
+
+  function unbind() {
+    const modal = $("diceModal");
+    if (modal && bound) modal.removeEventListener("click", onModalClick);
+    bound = false;
+  }
+
+  function start(doneCallback) {
+    onDone = doneCallback;
+    const modal = $("diceModal");
+    if (!modal) {
+      if (typeof onDone === "function") {
+        onDone({ completed: false, correct: false, roll: 0, guess: null, bailed: true });
+      }
+      return;
+    }
+    modal.hidden = false;
+    bind();
+    // Init canvas after the modal is visible so layout/CSS apply.
+    requestAnimationFrame(() => {
+      if (modal.hidden) return;
+      resetUi();
+      idleSpin(true);
+    });
+  }
+
   function idleSpin(on) {
     idle = on;
     if (!on) return;
@@ -291,56 +322,33 @@ const DiceHighLow = (() => {
   }
 
   function close(bail = true) {
-    unbind();
     idle = false;
     cancelAnimationFrame(rafId);
     rolling = false;
-    $("diceModal").hidden = true;
+    const modal = $("diceModal");
+    if (modal) modal.hidden = true;
     if (bail && typeof onDone === "function") {
       onDone({ completed: false, correct: false, roll: 0, guess: null, bailed: true });
     }
     onDone = null;
   }
 
-  function bind() {
-    unbind();
-    $("diceLow")?.addEventListener("click", onPickLow);
-    $("diceHigh")?.addEventListener("click", onPickHigh);
-    $("diceClose")?.addEventListener("click", onClose);
-    $("diceAgain")?.addEventListener("click", onAgain);
-  }
-
-  function unbind() {
-    $("diceLow")?.removeEventListener("click", onPickLow);
-    $("diceHigh")?.removeEventListener("click", onPickHigh);
-    $("diceClose")?.removeEventListener("click", onClose);
-    $("diceAgain")?.removeEventListener("click", onAgain);
-  }
-
-  function onPickLow() {
-    pick("low");
-  }
-  function onPickHigh() {
-    pick("high");
-  }
-  function onClose() {
-    close(false);
-  }
-  function onAgain() {
-    resetUi();
-    idleSpin(true);
-  }
-
   function pick(guess) {
     if (rolling) return;
+    if ($("diceModal")?.hidden) return;
     idle = false;
     cancelAnimationFrame(rafId);
     chosen = guess;
     result = 1 + Math.floor(Math.random() * 20);
-    $("dicePicks").hidden = true;
-    $("diceStatus").textContent =
-      guess === "high" ? "You called High (11–20)…" : "You called Low (1–10)…";
-    $("diceStage").dataset.state = "spinning";
+    const picks = $("dicePicks");
+    const status = $("diceStatus");
+    const stage = $("diceStage");
+    if (picks) picks.hidden = true;
+    if (status) {
+      status.textContent =
+        guess === "high" ? "You called High (11–20)…" : "You called Low (1–10)…";
+    }
+    if (stage) stage.dataset.state = "spinning";
     beginSpin();
   }
 
@@ -352,32 +360,28 @@ const DiceHighLow = (() => {
     const startRot = { ...rot };
     const faceIdx = FACE_NUMS.indexOf(result);
     targetRot = rotationForFace(faceIdx >= 0 ? faceIdx : 0);
-    // Extra full tumbles before settling
     const tumbleX = startRot.x + Math.PI * 2 * (3 + Math.random() * 2);
     const tumbleY = startRot.y + Math.PI * 2 * (4 + Math.random() * 2);
     const tumbleZ = startRot.z + Math.PI * 2 * (1 + Math.random());
-
     const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
     const tick = (now) => {
+      if ($("diceModal")?.hidden) {
+        rolling = false;
+        return;
+      }
       const u = Math.min(1, (now - startT) / duration);
-      const e = easeOut(u);
       if (u < 0.72) {
-        // Chaotic tumble
         const chaos = 1 - u / 0.72;
         rot.x = startRot.x + (tumbleX - startRot.x) * (u / 0.72) + Math.sin(now * 0.03) * chaos * 0.8;
         rot.y = startRot.y + (tumbleY - startRot.y) * (u / 0.72) + Math.cos(now * 0.025) * chaos * 0.9;
         rot.z = startRot.z + (tumbleZ - startRot.z) * (u / 0.72) + Math.sin(now * 0.02) * chaos * 0.5;
       } else {
-        // Settle onto result face
         const s = (u - 0.72) / 0.28;
         const se = easeOut(s);
-        const fromX = tumbleX;
-        const fromY = tumbleY;
-        const fromZ = tumbleZ;
-        rot.x = fromX + (targetRot.x - fromX) * se;
-        rot.y = fromY + (targetRot.y - fromY) * se;
-        rot.z = fromZ + (targetRot.z - fromZ) * se;
+        rot.x = tumbleX + (targetRot.x - tumbleX) * se;
+        rot.y = tumbleY + (targetRot.y - tumbleY) * se;
+        rot.z = tumbleZ + (targetRot.z - tumbleZ) * se;
       }
       drawDie({ spinning: true });
       if (u < 1) {
@@ -394,14 +398,19 @@ const DiceHighLow = (() => {
     rot = { ...targetRot };
     const isHigh = result >= 11;
     const correct = (chosen === "high" && isHigh) || (chosen === "low" && !isHigh);
-    $("diceStage").dataset.state = correct ? "win" : "lose";
+    const stage = $("diceStage");
+    if (stage) stage.dataset.state = correct ? "win" : "lose";
     drawDie({ landed: true, win: correct });
 
     const band = isHigh ? "High" : "Low";
-    $("diceStatus").textContent = correct
-      ? `d20 shows ${result} — ${band}! Jimothy is thrilled.`
-      : `d20 shows ${result} — ${band}. Jimothy droops.`;
-    $("diceAgain").hidden = false;
+    const status = $("diceStatus");
+    if (status) {
+      status.textContent = correct
+        ? `d20 shows ${result} — ${band}! Jimothy is thrilled.`
+        : `d20 shows ${result} — ${band}. Jimothy droops.`;
+    }
+    const again = $("diceAgain");
+    if (again) again.hidden = false;
 
     const payload = {
       completed: true,

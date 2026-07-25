@@ -818,9 +818,15 @@ button {
   margin-top: 0.15rem;
 }
 
-@media (min-width: 380px) {
+@media (min-width: 420px) {
   .utility-row {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 380px) and (max-width: 419px) {
+  .utility-row {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 

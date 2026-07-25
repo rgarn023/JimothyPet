@@ -14,6 +14,8 @@ var _t: float = 0.0
 var _pose_x: float = 0.0
 var _pose_y: float = 0.0
 var _facing: float = 1.0
+var _desired_facing: float = 1.0
+var _face_cooldown: float = 0.0
 var _anim: String = "idle"
 var _anim_t: float = 0.0
 var _anim_dur: float = 1.2
@@ -30,6 +32,8 @@ var _wing_span: float = 0.0
 var _fade: float = 1.0
 var _ascend_done_emitted: bool = false
 var _tap_cooldown: float = 0.0
+
+const SIDE_ANIMS := ["walk", "run", "lope", "jump", "hop", "sniff"]
 
 
 func _ready() -> void:
@@ -78,8 +82,35 @@ func clear_ascend() -> void:
 	_body_squash = 1.0
 	_ascend_done_emitted = false
 	_speed = 0.0
+	_facing = 1.0
+	_desired_facing = 1.0
+	_face_cooldown = 0.0
 	modulate = Color(1, 1, 1, 1)
 	_sync_from_state()
+
+
+func _view_front() -> bool:
+	if stage == "bush":
+		return true
+	return not (_anim in SIDE_ANIMS)
+
+
+func _request_facing(dir: float) -> void:
+	if dir == 0.0:
+		return
+	_desired_facing = -1.0 if dir < 0.0 else 1.0
+
+
+func _commit_facing(delta: float) -> void:
+	_face_cooldown = maxf(0.0, _face_cooldown - delta)
+	if _view_front():
+		return
+	if is_equal_approx(_desired_facing, _facing):
+		return
+	if _face_cooldown > 0.0:
+		return
+	_facing = _desired_facing
+	_face_cooldown = 0.42
 
 
 func play_eat(food_kind: String = "berry") -> void:
@@ -125,20 +156,25 @@ func play_anim(kind: String) -> void:
 			_anim_dur = randf_range(1.6, 2.8)
 			_speed = randf_range(100.0, 155.0)
 			_target_x = randf_range(-78.0, 78.0)
-			_facing = signf(_target_x - _pose_x)
-			if _facing == 0.0:
-				_facing = 1.0
+			_request_facing(signf(_target_x - _pose_x) if _target_x != _pose_x else 1.0)
+			_facing = _desired_facing
+			_face_cooldown = 0.0
 		"walk", "lope":
 			_anim_dur = randf_range(2.2, 3.8)
 			_speed = randf_range(40.0, 80.0) if kind == "walk" else randf_range(60.0, 105.0)
 			_target_x = randf_range(-78.0, 78.0)
-			_facing = signf(_target_x - _pose_x)
-			if _facing == 0.0:
-				_facing = [-1.0, 1.0][randi() % 2]
+			var wdir := signf(_target_x - _pose_x)
+			if wdir == 0.0:
+				wdir = [-1.0, 1.0][randi() % 2]
+			_request_facing(wdir)
+			_facing = _desired_facing
+			_face_cooldown = 0.0
 		"jump":
 			_anim_dur = randf_range(0.55, 0.9)
 			_jump_peak = randf_range(18.0, 36.0)
-			_facing = [-1.0, 1.0][randi() % 2]
+			_request_facing([-1.0, 1.0][randi() % 2])
+			_facing = _desired_facing
+			_face_cooldown = 0.0
 			_target_x = clampf(_pose_x + _facing * randf_range(20.0, 50.0), -70.0, 70.0)
 		"pop":
 			_anim_dur = 0.85
@@ -221,7 +257,7 @@ func _process(delta: float) -> void:
 			var dir := signf(_target_x - _pose_x)
 			if dir == 0.0:
 				dir = _facing
-			_facing = dir
+			_request_facing(dir)
 			_pose_x = move_toward(_pose_x, _target_x, _speed * delta)
 			_walk_phase += delta * (_speed * 0.12)
 			_pose_y = absf(sin(_walk_phase)) * (3.0 if _anim == "walk" else 5.5)
@@ -230,9 +266,10 @@ func _process(delta: float) -> void:
 			if absf(_pose_x - _target_x) < 1.5 or _anim_t >= _anim_dur:
 				if randf() < 0.55 and _anim_t < _anim_dur:
 					_target_x = randf_range(-78.0, 78.0)
-					_facing = signf(_target_x - _pose_x)
-					if _facing == 0.0:
-						_facing = 1.0
+					var ndir := signf(_target_x - _pose_x)
+					if ndir == 0.0:
+						ndir = 1.0
+					_request_facing(ndir)
 				else:
 					_anim = "idle"
 					_pose_y = 0.0
@@ -286,8 +323,8 @@ func _process(delta: float) -> void:
 				_pose_y = 0.0
 		"refuse":
 			var ru := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			_facing = -1.0 if int(_t * 8.0) % 2 == 0 else 1.0
-			_pose_x += sin(_t * 20.0) * 1.1
+			# Head-shake without rapid facing flips (avoids visual glitch).
+			_pose_x += sin(_t * 14.0) * 0.9
 			_head_dip = sin(ru * PI) * 4.0
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
@@ -304,7 +341,12 @@ func _process(delta: float) -> void:
 		"sniff":
 			_head_dip = 6.0 + sin(_t * 10.0) * 2.0
 			_pose_y = sin(_t * 3.0) * 1.0
-			_facing = 1.0 if sin(_t * 1.4) > 0.0 else -1.0
+			var sniff_target := sin(_t * 0.7) * 28.0
+			var sniff_dir := signf(sniff_target - _pose_x)
+			if sniff_dir == 0.0:
+				sniff_dir = _facing
+			_request_facing(sniff_dir)
+			_pose_x = move_toward(_pose_x, sniff_target, 18.0 * delta)
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_head_dip = 0.0
@@ -337,42 +379,37 @@ func _process(delta: float) -> void:
 				_body_squash = 1.0
 		"nuzzle":
 			var nu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			_pose_x += sin(_t * 10.0) * 0.8
+			_pose_x += sin(_t * 6.0) * 0.45
 			_head_dip = 4.0 + sin(nu * PI) * 5.0
-			_facing = 1.0 if sin(_t * 6.0) > 0.0 else -1.0
 			_smile = 0.8
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_head_dip = 0.0
 		"spin":
 			var su2 := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			_facing = 1.0 if int(su2 * 8.0) % 2 == 0 else -1.0
+			if su2 > 0.45 and su2 < 0.55:
+				_request_facing(-_facing if _facing != 0.0 else 1.0)
 			_pose_y = -sin(su2 * PI) * 10.0
-			_pose_x += sin(_t * 20.0) * 1.2
+			_pose_x += sin(_t * 10.0) * 0.6
 			_smile = 0.6
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_pose_y = 0.0
 		"stubborn", "sick":
-			_pose_x += sin(_t * 16.0) * 0.55
+			_pose_x += sin(_t * 10.0) * 0.35
 			_head_dip = 2.0
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 		_:
-			# Livelier idle: bob, look around, tiny weight shifts
+			# Idle: face the screen, gentle bob, settle toward center.
 			_pose_y = sin(_t * 2.4) * 2.2 + sin(_t * 5.1) * 0.6
-			var idle_target := sin(_t * 0.55) * 42.0 + sin(_t * 0.19) * 12.0
-			var dir := signf(idle_target - _pose_x)
-			if dir != 0.0 and absf(idle_target - _pose_x) > 2.0:
-				_facing = dir
-			_pose_x = move_toward(_pose_x, idle_target, 22.0 * delta)
+			_pose_x = move_toward(_pose_x, 0.0, 36.0 * delta)
 			_head_dip = sin(_t * 1.7) * 1.4
 			_body_squash = 1.0 + sin(_t * 2.4) * 0.02
 			_walk_phase += delta * 1.2
-			if int(_t * 2.0) % 9 == 0 and randf() < 0.04:
-				_facing *= -1.0
 
 	_pose_x = clampf(_pose_x, -78.0, 78.0)
+	_commit_facing(delta)
 	queue_redraw()
 
 
@@ -446,22 +483,158 @@ func _draw() -> void:
 	# Head dip nudges the silhouette down while chewing / sniffing.
 	var draw_c := c + Vector2(0, _head_dip * 0.45)
 
-	match stage:
-		"baby":
-			_draw_baby(draw_c, face)
-		"young":
-			_draw_young(draw_c, face)
-		"teen":
-			_draw_teen(draw_c, face)
-		"adult":
-			_draw_adult(draw_c, face)
-		_:
-			_draw_baby(draw_c, face)
+	if _view_front() and _anim != "ascend":
+		_draw_front(draw_c)
+	else:
+		match stage:
+			"baby":
+				_draw_baby(draw_c, face)
+			"young":
+				_draw_young(draw_c, face)
+			"teen":
+				_draw_teen(draw_c, face)
+			"adult":
+				_draw_adult(draw_c, face)
+			_:
+				_draw_baby(draw_c, face)
 
 	if _anim == "eat" and _eat_flash > 0.05:
 		_draw_food_prop(c, face, clampf(_anim_t / _anim_dur, 0.0, 1.0))
 
 	modulate = old_mod
+
+
+func _draw_front(c: Vector2) -> void:
+	var fur := _fur()
+	var belly := fur.lightened(0.2)
+	var body_rx := 28.0
+	var body_ry := 24.0
+	var body_y := 6.0
+	var head_r := 20.0
+	var head_y := -10.0
+	var leg_h := 28.0
+	var leg_spread := 14.0
+	var stroke_w := 4.5
+	var ear_y := -28.0
+	var ear_rx := 7.0
+	var ear_ry := 11.0
+	var snout := Color("c9a292")
+	var mask := Color("1c1c22")
+	var gleam := Color("faf6ec")
+
+	match stage:
+		"baby":
+			body_rx = 20.0
+			body_ry = 16.0
+			body_y = 14.0
+			head_r = 16.0
+			head_y = 0.0
+			leg_h = 16.0
+			leg_spread = 10.0
+			stroke_w = 3.6
+			ear_y = -14.0
+			ear_rx = 5.0
+			ear_ry = 8.0
+		"young":
+			body_rx = 24.0
+			body_ry = 20.0
+			body_y = 10.0
+			head_r = 18.0
+			head_y = -6.0
+			leg_h = 22.0
+			leg_spread = 12.0
+			ear_y = -22.0
+			if young_form == "nub":
+				leg_h = 16.0
+			if young_form == "shadow":
+				mask = Color("0e1018")
+				gleam = Color("e8f0ff")
+		"teen":
+			body_rx = 27.0
+			body_ry = 22.0
+			body_y = 8.0
+			head_r = 19.0
+			head_y = -8.0
+			leg_h = 30.0
+			if teen_form == "bounder":
+				leg_h = 34.0
+			if teen_form == "dumpling":
+				body_rx = 30.0
+				body_ry = 24.0
+			if teen_form == "nightlane":
+				mask = Color("0e1018")
+				snout = Color("1a1a24")
+				gleam = Color("e8f0ff")
+		_:
+			body_rx = 32.0
+			body_ry = 26.0
+			body_y = 4.0
+			head_r = 22.0
+			head_y = -12.0
+			leg_h = 38.0
+			leg_spread = 16.0
+			stroke_w = 5.5
+			ear_y = -32.0
+			ear_rx = 7.5
+			ear_ry = 12.0
+			if adult_form == "alley_ghost":
+				snout = Color("b8c4d4")
+				mask = Color("3a4250")
+				gleam = Color("e8f0ff")
+			elif adult_form == "legend":
+				gleam = Color("fff3d0")
+
+	_ellipse(c + Vector2(0, 48), Vector2(30, 6), Color(0, 0, 0, 0.2))
+	# Tail peek
+	if stage == "baby":
+		_ellipse(c + Vector2(-26, 16), Vector2(7, 5), fur.lightened(0.05))
+	else:
+		draw_line(c + Vector2(-32, 6), c + Vector2(-44, 10), Color("5a5a64"), 7.0)
+		_ellipse(c + Vector2(-40, 2), Vector2(3.5, 2.8), Color("c8c8d0").darkened(0.05))
+
+	# Front legs
+	var lx := c.x - leg_spread
+	var rx := c.x + leg_spread
+	var hip_y := c.y + body_y + 12.0
+	draw_line(Vector2(lx, hip_y), Vector2(lx - 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
+	draw_line(Vector2(rx, hip_y), Vector2(rx + 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
+	_ellipse(Vector2(lx - 2, hip_y + leg_h), Vector2(6, 3.2), Color("3a3a44"))
+	_ellipse(Vector2(rx + 2, hip_y + leg_h), Vector2(6, 3.2), Color("3a3a44"))
+
+	_ellipse(c + Vector2(0, body_y), Vector2(body_rx, body_ry), fur)
+	_ellipse(c + Vector2(0, body_y + 4), Vector2(body_rx * 0.55, body_ry * 0.45), Color(belly.r, belly.g, belly.b, 0.45))
+
+	if stage == "adult" and adult_form == "saint":
+		_ellipse(c + Vector2(0, body_y + 6), Vector2(12, 8), Color(belly.r, belly.g, belly.b, 0.35))
+	elif stage == "adult" and adult_form == "legend":
+		draw_colored_polygon(PackedVector2Array([
+			c + Vector2(-8, -4), c + Vector2(10, 2), c + Vector2(-6, 8)
+		]), Color("e0a04a"))
+	elif stage == "adult" and adult_form == "ballard_blip":
+		draw_line(c + Vector2(-12, 18), c + Vector2(12, 18), Color("c45c4a"), 3.5)
+
+	_ellipse(c + Vector2(0, head_y), Vector2(head_r, head_r * 0.95), fur.lightened(0.04))
+	_ellipse(c + Vector2(-10, ear_y), Vector2(ear_rx, ear_ry), Color("4a4a54"))
+	_ellipse(c + Vector2(-10, ear_y), Vector2(ear_rx * 0.45, ear_ry * 0.55), Color("e2cdb2"))
+	_ellipse(c + Vector2(10, ear_y), Vector2(ear_rx, ear_ry), Color("4a4a54"))
+	_ellipse(c + Vector2(10, ear_y), Vector2(ear_rx * 0.45, ear_ry * 0.55), Color("e2cdb2"))
+	_ellipse(c + Vector2(0, head_y + 2), Vector2(head_r * 0.72, head_r * 0.42), Color(mask.r, mask.g, mask.b, 0.9))
+
+	var eye_r := 2.6 if stage == "baby" else (3.6 if stage == "adult" else 3.1)
+	var gap := eye_r * 2.2
+	if _smile > 0.35:
+		draw_line(c + Vector2(-gap - eye_r, head_y + 1), c + Vector2(-gap, head_y + 1 - eye_r), gleam, 2.0)
+		draw_line(c + Vector2(-gap, head_y + 1 - eye_r), c + Vector2(-gap + eye_r, head_y + 1), gleam, 2.0)
+		draw_line(c + Vector2(gap - eye_r, head_y + 1), c + Vector2(gap, head_y + 1 - eye_r), gleam, 2.0)
+		draw_line(c + Vector2(gap, head_y + 1 - eye_r), c + Vector2(gap + eye_r, head_y + 1), gleam, 2.0)
+	else:
+		draw_circle(c + Vector2(-gap, head_y + 1), eye_r, gleam)
+		draw_circle(c + Vector2(-gap + eye_r * 0.2, head_y + 1), eye_r * 0.42, Color("101014"))
+		draw_circle(c + Vector2(gap, head_y + 1), eye_r, gleam)
+		draw_circle(c + Vector2(gap + eye_r * 0.2, head_y + 1), eye_r * 0.42, Color("101014"))
+
+	_ellipse(c + Vector2(0, head_y + head_r * 0.42), Vector2(head_r * 0.28, head_r * 0.18), snout)
+	draw_circle(c + Vector2(0, head_y + head_r * 0.32), 1.6, Color("2a2a32"))
 
 
 func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
@@ -536,21 +709,38 @@ func _draw_clearing() -> void:
 		]), Color(0.35, 0.22, 0.1, 0.45))
 
 
+func _leaf_cluster(c: Vector2, rx: float, ry: float, color: Color) -> void:
+	_ellipse(c, Vector2(rx, ry), color)
+	_ellipse(c + Vector2(-rx * 0.35, -ry * 0.15), Vector2(rx * 0.45, ry * 0.55), color.lightened(0.04))
+	_ellipse(c + Vector2(rx * 0.3, ry * 0.1), Vector2(rx * 0.4, ry * 0.48), color.darkened(0.06))
+
+
 func _draw_bush(c: Vector2) -> void:
-	var rustle := sin(_t * 10.0) * 3.0
-	var rustle2 := cos(_t * 7.5) * 2.0
+	var rustle := sin(_t * 10.0) * 2.2
+	var rustle2 := cos(_t * 7.5) * 1.6
 	# Ground shadow
-	_ellipse(c + Vector2(0, 46), Vector2(48, 10), Color(0, 0, 0, 0.25))
-	# Layered foliage
-	_ellipse(c + Vector2(-18 + rustle, 18), Vector2(26, 22), Color("2f5a3c"))
-	_ellipse(c + Vector2(16 + rustle2, 20), Vector2(28, 24), Color("3d6b4f"))
-	_ellipse(c + Vector2(0, 8 + rustle * 0.3), Vector2(34, 28), Color("355f44"))
-	_ellipse(c + Vector2(-8, -6 + rustle2), Vector2(18, 16), Color("4a8a5e"))
-	_ellipse(c + Vector2(12, -2 + rustle), Vector2(16, 14), Color("6fbf84").darkened(0.25))
+	_ellipse(c + Vector2(0, 48), Vector2(46, 9), Color(0, 0, 0, 0.24))
+	# Woody stems
+	draw_line(c + Vector2(-2, 42), c + Vector2(-16 + rustle * 0.2, 2), Color("4a3424"), 3.2)
+	draw_line(c + Vector2(2, 42), c + Vector2(18 + rustle2 * 0.2, 4), Color("3d2c1e"), 2.8)
+	draw_line(c + Vector2(0, 36), c + Vector2(-8, 8), Color("5a4030"), 2.2)
+	# Leaf clusters (real foliage, not one blob)
+	_leaf_cluster(c + Vector2(-24 + rustle, 18), 16, 12, Color("2a5236"))
+	_leaf_cluster(c + Vector2(24 + rustle2, 20), 17, 13, Color("355f44"))
+	_leaf_cluster(c + Vector2(-10, 4 + rustle * 0.3), 15, 11, Color("3d6b4f"))
+	_leaf_cluster(c + Vector2(12, 2 + rustle2), 14, 11, Color("4a8a5e"))
+	_leaf_cluster(c + Vector2(0, -6), 18, 13, Color("548a62"))
+	_leaf_cluster(c + Vector2(-16, 28), 13, 10, Color("2f5a3c"))
+	_leaf_cluster(c + Vector2(18, 30), 14, 10, Color("3a6648"))
+	_leaf_cluster(c + Vector2(0, 14), 20, 14, Color("355f44"))
+	# Tip leaves
+	_ellipse(c + Vector2(-12, -16), Vector2(7, 4.5), Color("6fbf84"))
+	_ellipse(c + Vector2(10, -18), Vector2(6.5, 4), Color("5aa870"))
+	_ellipse(c + Vector2(0, -22), Vector2(6, 3.8), Color("7ec98a").darkened(0.05))
 	# Occasional eye glint in the leaves near reveal
 	if age_hint() > 0.7:
-		draw_circle(c + Vector2(-4 + rustle, 6), 2.2, Color(0.98, 0.96, 0.9, 0.55))
-		draw_circle(c + Vector2(6 + rustle2, 8), 2.2, Color(0.98, 0.96, 0.9, 0.45))
+		draw_circle(c + Vector2(-6 + rustle, 4), 2.1, Color(0.98, 0.96, 0.9, 0.55))
+		draw_circle(c + Vector2(8 + rustle2, 6), 2.0, Color(0.98, 0.96, 0.9, 0.42))
 
 
 func age_hint() -> float:

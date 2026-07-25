@@ -786,7 +786,7 @@ func clean_mess() -> void:
 	save_game()
 
 
-func can_start_play() -> String:
+func can_start_play(roll_stubborn: bool = false) -> String:
 	if not alive or stage in ["bush", "baby"]:
 		if stage == "baby":
 			speech.emit("Too tiny for games — let him wobble a bit first.")
@@ -800,7 +800,8 @@ func can_start_play() -> String:
 		speech.emit("He plants his paws. No night run until you scold him.")
 		state_changed.emit()
 		return "stubborn"
-	if not stubborn and discipline < 35.0 and randf() < 0.3:
+	# Only roll stubborn when opening the picker — not again when launching a game.
+	if roll_stubborn and not stubborn and discipline < 35.0 and randf() < 0.3:
 		stubborn = true
 		stubborn_reason = "refuses to exercise"
 		care_mistakes += 1

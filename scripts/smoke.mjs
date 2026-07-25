@@ -70,7 +70,15 @@ const feedDisabled = await page.locator("#btnFeed").isDisabled();
 const cleanDisabled = await page.locator("#btnClean").isDisabled();
 const floatGone = (await page.locator("#btnFloat").count()) === 0;
 const alertsPresent = (await page.locator("#btnAlerts").count()) === 1;
+const resetPresent = (await page.locator("#btnReset").count()) === 1;
 const notifyPresent = await page.evaluate(() => typeof window.JimothyNotify !== "undefined");
+const viewFacing = await page.evaluate(() => {
+  const wrap = document.getElementById("raccoonWrap");
+  return {
+    view: wrap?.dataset?.view || "",
+    hasFrontApi: typeof window.RaccoonAnim?.getView === "function",
+  };
+});
 
 await page.screenshot({
   path: "/opt/cursor/artifacts/screenshots/jimothy-kit.png",
@@ -176,6 +184,8 @@ const summary = {
   scoldDisabledAfterDiscipline: scoldDisabledAfter,
   floatGone,
   alertsPresent,
+  resetPresent,
+  viewFacing,
   notifyPresent,
   realtime,
   manifestOk,
@@ -191,6 +201,8 @@ summary.ok =
   summary.scoldDisabledAfterDiscipline &&
   summary.floatGone &&
   summary.alertsPresent &&
+  summary.resetPresent &&
+  summary.viewFacing.hasFrontApi &&
   summary.notifyPresent &&
   summary.realtime.uncapped &&
   summary.realtime.hungerDropped &&

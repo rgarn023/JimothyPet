@@ -25,7 +25,9 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var btn_sound: Button = %BtnSound
 @onready var btn_alerts: Button = %BtnAlerts
 @onready var btn_forms: Button = %BtnForms
+@onready var btn_reset: Button = %BtnReset
 @onready var btn_dev: Button = %BtnDev
+var _reset_dialog: ConfirmationDialog
 @onready var feed_panel: Control = %FeedPanel
 @onready var message_panel: Control = %MessagePanel
 @onready var message_title: Label = %MessageTitle
@@ -360,7 +362,7 @@ func _format_age(sec: float) -> String:
 func _on_speech(text: String) -> void:
 	speech_label.visible = true
 	speech_label.text = text
-	_speech_timer = get_tree().create_timer(2.8)
+	_speech_timer = get_tree().create_timer(5.2)
 	_speech_timer.timeout.connect(func():
 		speech_label.visible = false
 	, CONNECT_ONE_SHOT)
@@ -469,6 +471,25 @@ func _on_forms_pressed() -> void:
 	_forms_panel.visible = true
 
 
+func _on_reset_pressed() -> void:
+	if _reset_dialog == null:
+		_reset_dialog = ConfirmationDialog.new()
+		_reset_dialog.title = "Reset Jimothy"
+		_reset_dialog.dialog_text = "Reset Jimothy? This starts a new rustling bush. Unlocked forms stay."
+		_reset_dialog.ok_button_text = "Reset"
+		_reset_dialog.cancel_button_text = "Cancel"
+		_reset_dialog.confirmed.connect(_confirm_reset)
+		add_child(_reset_dialog)
+	_reset_dialog.popup_centered()
+
+
+func _confirm_reset() -> void:
+	if raccoon and raccoon.has_method("clear_ascend"):
+		raccoon.clear_ascend()
+	PetState.reset_pet()
+	_refresh()
+
+
 func _on_dev_pressed() -> void:
 	_refresh_dev_panel()
 	_dev_panel.visible = true
@@ -556,14 +577,14 @@ func _build_dice_panel() -> void:
 func _on_play_pressed() -> void:
 	if btn_play.disabled:
 		return
-	if PetState.can_start_play() != "ok":
+	if PetState.can_start_play(true) != "ok":
 		return
 	_play_pick_panel.visible = true
 
 
 func _start_dumpster() -> void:
 	_play_pick_panel.visible = false
-	if PetState.can_start_play() != "ok":
+	if PetState.can_start_play(false) != "ok":
 		return
 	if JimothyAudio:
 		JimothyAudio.play("rustle", -3.0)
@@ -573,7 +594,7 @@ func _start_dumpster() -> void:
 
 func _start_dice() -> void:
 	_play_pick_panel.visible = false
-	if PetState.can_start_play() != "ok":
+	if PetState.can_start_play(false) != "ok":
 		return
 	if JimothyAudio:
 		JimothyAudio.play("chitter", -6.0)

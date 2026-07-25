@@ -110,21 +110,41 @@ const RaccoonArt = (() => {
     `;
   }
 
+  function leafCluster(cx, cy, rx, ry, fill, rot = 0) {
+    return `<g transform="translate(${cx} ${cy}) rotate(${rot})">
+      <ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="${fill}"/>
+      <ellipse cx="${-rx * 0.35}" cy="${-ry * 0.15}" rx="${rx * 0.45}" ry="${ry * 0.55}" fill="${fill}" opacity="0.85"/>
+      <ellipse cx="${rx * 0.3}" cy="${ry * 0.1}" rx="${rx * 0.4}" ry="${ry * 0.48}" fill="${fill}" opacity="0.75"/>
+      <path d="M${-rx * 0.2} 0 Q0 ${-ry * 0.7} ${rx * 0.25} ${-ry * 0.1}" fill="none" stroke="rgba(20,40,24,0.28)" stroke-width="1.2"/>
+    </g>`;
+  }
+
   function bush(ageSec = 0) {
     const hint = Math.min(1, Math.max(0, ageSec / 60));
     const glint =
       hint > 0.7
-        ? `<circle class="bush-glint" cx="56" cy="62" r="2.2" fill="#faf6ec" opacity="0.55"/>
-           <circle class="bush-glint" cx="66" cy="64" r="2.2" fill="#faf6ec" opacity="0.45"/>`
+        ? `<circle class="bush-glint" cx="54" cy="58" r="2.1" fill="#faf6ec" opacity="0.55"/>
+           <circle class="bush-glint" cx="68" cy="60" r="2" fill="#faf6ec" opacity="0.42"/>`
         : "";
     return svg(`
-      <ellipse cx="60" cy="98" rx="48" ry="10" fill="#000" opacity="0.25"/>
+      <ellipse cx="60" cy="102" rx="46" ry="9" fill="#000" opacity="0.24"/>
+      <!-- woody stems -->
+      <path d="M58 96 C56 78 50 66 44 54" fill="none" stroke="#4a3424" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M62 96 C64 80 70 68 78 56" fill="none" stroke="#3d2c1e" stroke-width="2.8" stroke-linecap="round"/>
+      <path d="M60 90 C58 76 56 68 52 60" fill="none" stroke="#5a4030" stroke-width="2.2" stroke-linecap="round"/>
       <g class="bush-foliage">
-        <ellipse class="leaf a" cx="42" cy="78" rx="26" ry="22" fill="#2f5a3c"/>
-        <ellipse class="leaf b" cx="76" cy="80" rx="28" ry="24" fill="#3d6b4f"/>
-        <ellipse class="leaf c" cx="60" cy="68" rx="34" ry="28" fill="#355f44"/>
-        <ellipse class="leaf d" cx="52" cy="54" rx="18" ry="16" fill="#4a8a5e"/>
-        <ellipse class="leaf e" cx="72" cy="58" rx="16" ry="14" fill="#548a62"/>
+        ${leafCluster(36, 72, 16, 12, "#2a5236", -18)}
+        ${leafCluster(84, 74, 17, 13, "#355f44", 16)}
+        ${leafCluster(50, 58, 15, 11, "#3d6b4f", -8)}
+        ${leafCluster(72, 56, 14, 11, "#4a8a5e", 12)}
+        ${leafCluster(60, 48, 18, 13, "#548a62", 0)}
+        ${leafCluster(44, 82, 13, 10, "#2f5a3c", -28)}
+        ${leafCluster(78, 84, 14, 10, "#3a6648", 24)}
+        ${leafCluster(60, 70, 20, 14, "#355f44", 4)}
+        <!-- small tip leaves -->
+        <ellipse cx="48" cy="42" rx="7" ry="4.5" fill="#6fbf84" transform="rotate(-32 48 42)" opacity="0.9"/>
+        <ellipse cx="70" cy="40" rx="6.5" ry="4" fill="#5aa870" transform="rotate(28 70 40)" opacity="0.85"/>
+        <ellipse cx="60" cy="36" rx="6" ry="3.8" fill="#7ec98a" opacity="0.75"/>
       </g>
       ${glint}
     `);
@@ -432,6 +452,175 @@ const RaccoonArt = (() => {
     `);
   }
 
+  function frontLegs(hipY, spacing, legH, strokeW = 4.5) {
+    const foot = "#3a3a44";
+    const leg = "#4f4f58";
+    const lx = 60 - spacing;
+    const rx = 60 + spacing;
+    return `
+      <g class="legs front-legs">
+        <path d="M${lx} ${hipY} L${lx - 2} ${hipY + legH}" stroke="${leg}" stroke-width="${strokeW}" stroke-linecap="round"/>
+        <path d="M${rx} ${hipY} L${rx + 2} ${hipY + legH}" stroke="${leg}" stroke-width="${strokeW}" stroke-linecap="round"/>
+        <ellipse cx="${lx - 2}" cy="${hipY + legH}" rx="6" ry="3.2" fill="${foot}"/>
+        <ellipse cx="${rx + 2}" cy="${hipY + legH}" rx="6" ry="3.2" fill="${foot}"/>
+      </g>
+    `;
+  }
+
+  function frontEyes(cx, cy, r, smiling, gleam = "#faf6ec") {
+    const gap = r * 2.2;
+    if (smiling) {
+      return `
+        <path d="M${cx - gap - r} ${cy} Q${cx - gap} ${cy - r} ${cx - gap + r} ${cy}" fill="none" stroke="${gleam}" stroke-width="2" stroke-linecap="round"/>
+        <path d="M${cx + gap - r} ${cy} Q${cx + gap} ${cy - r} ${cx + gap + r} ${cy}" fill="none" stroke="${gleam}" stroke-width="2" stroke-linecap="round"/>
+      `;
+    }
+    return `
+      <circle cx="${cx - gap}" cy="${cy}" r="${r}" fill="${gleam}"/>
+      <circle cx="${cx - gap + r * 0.2}" cy="${cy}" r="${r * 0.42}" fill="#101014"/>
+      <circle cx="${cx + gap}" cy="${cy}" r="${r}" fill="${gleam}"/>
+      <circle cx="${cx + gap + r * 0.2}" cy="${cy}" r="${r * 0.42}" fill="#101014"/>
+    `;
+  }
+
+  /** Front-facing Jimothy — looks at the player / screen. */
+  function frontCreature(stage, form, genes, smiling = false) {
+    const color = formFur(stage, form || "", genes);
+    const belly = lighten(color, 0.2);
+    let bodyRx = 28;
+    let bodyRy = 24;
+    let bodyY = 58;
+    let headR = 20;
+    let headY = 42;
+    let legH = 28;
+    let legSpread = 14;
+    let strokeW = 4.5;
+    let earY = 24;
+    let earRx = 7;
+    let earRy = 11;
+    let snout = "#c9a292";
+    let mask = "#1c1c22";
+    let gleam = "#faf6ec";
+    let accent = "";
+    let mist = "";
+
+    if (stage === "baby") {
+      bodyRx = 20;
+      bodyRy = 16;
+      bodyY = 68;
+      headR = 16;
+      headY = 54;
+      legH = 16;
+      legSpread = 10;
+      strokeW = 3.6;
+      earY = 40;
+      earRx = 5;
+      earRy = 8;
+    } else if (stage === "young") {
+      bodyRx = 24;
+      bodyRy = 20;
+      bodyY = 62;
+      headR = 18;
+      headY = 46;
+      legH = 22;
+      legSpread = 12;
+      earY = 30;
+      if (form === "puff") {
+        bodyRx = 26;
+        bodyRy = 22;
+        accent = `<ellipse cx="60" cy="66" rx="12" ry="8" fill="${belly}" opacity="0.55"/>`;
+      } else if (form === "shadow") {
+        mask = "#0e1018";
+        gleam = "#e8f0ff";
+      } else if (form === "looper") {
+        accent = `<ellipse cx="42" cy="58" rx="6" ry="4" fill="${lighten(color, 0.1)}" opacity="0.5"/>`;
+      } else if (form === "nub") {
+        legH = 16;
+      }
+    } else if (stage === "teen") {
+      bodyRx = 27;
+      bodyRy = 22;
+      bodyY = 60;
+      headR = 19;
+      headY = 44;
+      legH = 30;
+      if (form === "dumpling") {
+        bodyRx = 30;
+        bodyRy = 24;
+      } else if (form === "bounder") {
+        legH = 34;
+      } else if (form === "nightlane") {
+        mask = "#0e1018";
+        snout = "#1a1a24";
+        gleam = "#e8f0ff";
+      } else if (form === "scruff") {
+        accent = `<path d="M48 36 L52 28 M68 36 L72 28" stroke="#4a4a54" stroke-width="2" stroke-linecap="round"/>`;
+      }
+    } else {
+      // adult
+      bodyRx = 32;
+      bodyRy = 26;
+      bodyY = 56;
+      headR = 22;
+      headY = 40;
+      legH = 38;
+      legSpread = 16;
+      strokeW = 5.5;
+      earY = 20;
+      earRx = 7.5;
+      earRy = 12;
+      if (form === "saint") {
+        accent = `
+          <ellipse cx="60" cy="62" rx="12" ry="8" fill="${belly}" opacity="0.4"/>
+          <circle cx="48" cy="34" r="1.5" fill="#b8e0c0" opacity="0.65"/>
+          <circle cx="74" cy="36" r="1.2" fill="#b8e0c0" opacity="0.5"/>
+        `;
+      } else if (form === "legend") {
+        accent = `<path d="M52 48 L70 54 L54 60 Z" fill="#e0a04a"/>`;
+        gleam = "#fff3d0";
+      } else if (form === "alley_ghost") {
+        snout = "#b8c4d4";
+        mask = "#3a4250";
+        gleam = "#e8f0ff";
+        mist = `
+          <ellipse cx="34" cy="58" rx="8" ry="5" fill="rgba(200,220,240,0.25)"/>
+          <ellipse cx="88" cy="60" rx="7" ry="4" fill="rgba(200,220,240,0.2)"/>
+        `;
+      } else if (form === "ballard_blip") {
+        accent = `<path d="M48 66 Q60 74 72 66" fill="none" stroke="#c45c4a" stroke-width="3.5" stroke-linecap="round"/>`;
+      }
+    }
+
+    const formId =
+      stage === "young" ? form : stage === "teen" ? form : stage === "adult" ? form : "";
+    const tailPeek =
+      stage === "baby"
+        ? `<ellipse cx="34" cy="70" rx="7" ry="5" fill="${lighten(color, 0.05)}"/>`
+        : `<path d="M28 58 Q18 50 16 62" fill="none" stroke="#5a5a64" stroke-width="7" stroke-linecap="round"/>
+           <ellipse cx="20" cy="54" rx="3.5" ry="2.8" fill="#c8c8d0" opacity="0.7"/>`;
+
+    return svg(`
+      <ellipse cx="60" cy="108" rx="30" ry="6" fill="#000" opacity="0.2"/>
+      ${mist}
+      ${tailPeek}
+      ${frontLegs(bodyY + 12, legSpread, legH, strokeW)}
+      <ellipse class="body" cx="60" cy="${bodyY}" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
+      <ellipse cx="60" cy="${bodyY + 4}" rx="${bodyRx * 0.55}" ry="${bodyRy * 0.45}" fill="${belly}" opacity="0.45"/>
+      ${accent}
+      <ellipse class="head" cx="60" cy="${headY}" rx="${headR}" ry="${headR * 0.95}" fill="${lighten(color, 0.04)}"/>
+      <ellipse cx="50" cy="${earY}" rx="${earRx}" ry="${earRy}" fill="#4a4a54"/>
+      <ellipse cx="50" cy="${earY}" rx="${earRx * 0.45}" ry="${earRy * 0.55}" fill="#e2cdb2"/>
+      <ellipse cx="70" cy="${earY}" rx="${earRx}" ry="${earRy}" fill="#4a4a54"/>
+      <ellipse cx="70" cy="${earY}" rx="${earRx * 0.45}" ry="${earRy * 0.55}" fill="#e2cdb2"/>
+      <ellipse cx="60" cy="${headY + 2}" rx="${headR * 0.72}" ry="${headR * 0.42}" fill="${mask}" opacity="0.9"/>
+      ${frontEyes(60, headY + 1, stage === "baby" ? 2.6 : stage === "adult" ? 3.6 : 3.1, smiling, gleam)}
+      <ellipse cx="60" cy="${headY + headR * 0.42}" rx="${headR * 0.28}" ry="${headR * 0.18}" fill="${snout}"/>
+      <circle cx="60" cy="${headY + headR * 0.32}" r="1.6" fill="#2a2a32"/>
+      <path d="M42 ${headY + 4} h-8 M42 ${headY + 8} h-6 M78 ${headY + 4} h8 M78 ${headY + 8} h6"
+        stroke="#d0d0d8" stroke-width="1.1" stroke-linecap="round" opacity="0.45"/>
+    `.replace("FORM", formId || ""));
+  }
+
   const icons = {
     feed: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3v10a3 3 0 006 0V3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 16v5M7 21h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 4c2 2 3 4 3 7v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
     play: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="7" width="18" height="12" rx="3" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="13" r="1.5" fill="currentColor"/><circle cx="16" cy="13" r="1.5" fill="currentColor"/><path d="M9 7V5h6v2" stroke="currentColor" stroke-width="2"/></svg>`,
@@ -448,9 +637,20 @@ const RaccoonArt = (() => {
     const stage = profile.stage || "bush";
     const genes = profile.genes || {};
     const smiling = !!profile.smiling;
+    const view = profile.view || "side";
+    if (stage === "bush") return bush(profile.ageSec || 0);
+    if (view === "front") {
+      const form =
+        stage === "young"
+          ? profile.youngForm || "puff"
+          : stage === "teen"
+            ? profile.teenForm || "bounder"
+            : stage === "adult"
+              ? profile.adultForm || "saint"
+              : "";
+      return frontCreature(stage, form, genes, smiling);
+    }
     switch (stage) {
-      case "bush":
-        return bush(profile.ageSec || 0);
       case "baby":
         return baby(genes, smiling);
       case "young":
@@ -469,9 +669,11 @@ const RaccoonArt = (() => {
 window.RaccoonArt = RaccoonArt;
 
 /**
- * Pose / locomotion — side-to-side walks with facing flip.
+ * Pose / locomotion — side walks + front-facing idle; facing changes are gated.
  */
 const RaccoonAnim = (() => {
+  const SIDE_ANIMS = new Set(["walk", "run", "lope", "jump", "hop", "sniff"]);
+
   let wrap = null;
   let raccoon = null;
   let stage = "bush";
@@ -482,6 +684,8 @@ const RaccoonAnim = (() => {
   let poseX = 0;
   let poseY = 0;
   let facing = 1;
+  let desiredFacing = 1;
+  let faceCooldown = 0;
   let anim = "idle";
   let animT = 0;
   let animDur = 1.2;
@@ -498,10 +702,32 @@ const RaccoonAnim = (() => {
     raccoon = raccoonEl;
   }
 
+  function getView() {
+    if (stage === "bush") return "front";
+    if (SIDE_ANIMS.has(anim)) return "side";
+    return "front";
+  }
+
+  function requestFacing(dir) {
+    if (!dir) return;
+    desiredFacing = dir < 0 ? -1 : 1;
+  }
+
+  function commitFacing(dt) {
+    faceCooldown = Math.max(0, faceCooldown - dt);
+    if (getView() !== "side") return;
+    if (desiredFacing === facing) return;
+    if (faceCooldown > 0) return;
+    facing = desiredFacing;
+    faceCooldown = 0.42;
+  }
+
   function reset() {
     poseX = 0;
     poseY = 0;
     facing = 1;
+    desiredFacing = 1;
+    faceCooldown = 0;
     anim = "idle";
     animT = 0;
     animDur = 1.2;
@@ -553,7 +779,8 @@ const RaccoonAnim = (() => {
       wrap.classList.toggle("is-bush", showBush);
       wrap.classList.toggle("ascending", anim === "ascend" || !!info.ascending);
       wrap.dataset.anim = anim;
-      wrap.dataset.facing = facing < 0 ? "left" : "right";
+      wrap.dataset.view = getView();
+      wrap.dataset.facing = getView() === "front" ? "front" : facing < 0 ? "left" : "right";
       if (showBush) {
         wrap.style.opacity = "1";
         const wings = wrap.querySelector(".ascend-wings");
@@ -595,19 +822,25 @@ const RaccoonAnim = (() => {
         animDur = 1.6 + Math.random() * 1.2;
         speed = 100 + Math.random() * 55;
         targetX = -78 + Math.random() * 156;
-        facing = Math.sign(targetX - poseX) || (Math.random() < 0.5 ? -1 : 1);
+        requestFacing(Math.sign(targetX - poseX) || (Math.random() < 0.5 ? -1 : 1));
+        faceCooldown = 0;
+        facing = desiredFacing;
         break;
       case "walk":
       case "lope":
         animDur = 2.2 + Math.random() * 1.6;
         speed = kind === "walk" ? 40 + Math.random() * 40 : 60 + Math.random() * 45;
         targetX = -78 + Math.random() * 156;
-        facing = Math.sign(targetX - poseX) || (Math.random() < 0.5 ? -1 : 1);
+        requestFacing(Math.sign(targetX - poseX) || (Math.random() < 0.5 ? -1 : 1));
+        faceCooldown = 0;
+        facing = desiredFacing;
         break;
       case "jump":
         animDur = 0.55 + Math.random() * 0.35;
         jumpPeak = 18 + Math.random() * 18;
-        facing = Math.random() < 0.5 ? -1 : 1;
+        requestFacing(Math.random() < 0.5 ? -1 : 1);
+        faceCooldown = 0;
+        facing = desiredFacing;
         targetX = Math.max(-78, Math.min(78, poseX + facing * (28 + Math.random() * 36)));
         break;
       case "pop":
@@ -634,7 +867,9 @@ const RaccoonAnim = (() => {
       case "hop":
         animDur = 0.7;
         jumpPeak = 22 + Math.random() * 12;
-        facing = Math.random() < 0.5 ? -1 : 1;
+        requestFacing(Math.random() < 0.5 ? -1 : 1);
+        faceCooldown = 0;
+        facing = desiredFacing;
         targetX = Math.max(-70, Math.min(70, poseX + facing * (16 + Math.random() * 24)));
         break;
       case "nuzzle":
@@ -664,11 +899,13 @@ const RaccoonAnim = (() => {
 
   function applyTransform() {
     if (!wrap) return;
-    // Art is drawn facing right; flip for leftward travel.
-    const scaleX = facing < 0 ? -1 : 1;
+    const view = getView();
+    // Side art faces right; flip only while in side-view travel.
+    const scaleX = view === "side" && facing < 0 ? -1 : 1;
     wrap.style.transform = `translate(${poseX}px, ${poseY + headDip * 0.35}px) scaleX(${scaleX})`;
     wrap.dataset.anim = anim;
-    wrap.dataset.facing = facing < 0 ? "left" : "right";
+    wrap.dataset.view = view;
+    wrap.dataset.facing = view === "front" ? "front" : facing < 0 ? "left" : "right";
     wrap.style.setProperty("--head-dip", String(headDip));
   }
 
@@ -710,8 +947,8 @@ const RaccoonAnim = (() => {
       case "walk":
       case "run":
       case "lope": {
-        let dir = Math.sign(targetX - poseX) || facing;
-        facing = dir;
+        const dir = Math.sign(targetX - poseX) || facing;
+        requestFacing(dir);
         const step = speed * dt;
         if (Math.abs(targetX - poseX) <= step) poseX = targetX;
         else poseX += dir * step;
@@ -720,7 +957,7 @@ const RaccoonAnim = (() => {
         if (Math.abs(poseX - targetX) < 1.5 || animT >= animDur) {
           if (Math.random() < 0.55 && animT < animDur) {
             targetX = -78 + Math.random() * 156;
-            facing = Math.sign(targetX - poseX) || facing;
+            requestFacing(Math.sign(targetX - poseX) || facing);
           } else {
             anim = "idle";
             poseY = 0;
@@ -789,8 +1026,8 @@ const RaccoonAnim = (() => {
         break;
       }
       case "refuse": {
-        facing = Math.floor(t * 8) % 2 === 0 ? -1 : 1;
-        poseX += Math.sin(t * 20) * 1.1;
+        // Head-shake without flipping art every frame (avoids glitch).
+        poseX += Math.sin(t * 14) * 0.9;
         headDip = Math.sin(Math.min(1, animT / animDur) * Math.PI) * 4;
         if (animT >= animDur) {
           anim = "idle";
@@ -811,11 +1048,10 @@ const RaccoonAnim = (() => {
       case "sniff": {
         headDip = 6 + Math.sin(t * 10) * 2;
         poseY = Math.sin(t * 3) * 1;
-        // Pace a short sniff walk left/right
-        const sniffTarget = Math.sin(t * 1.1) * 36;
+        const sniffTarget = Math.sin(t * 0.7) * 28;
         const sniffDir = Math.sign(sniffTarget - poseX) || facing;
-        facing = sniffDir;
-        poseX += sniffDir * Math.min(Math.abs(sniffTarget - poseX), 28 * dt);
+        requestFacing(sniffDir);
+        poseX += sniffDir * Math.min(Math.abs(sniffTarget - poseX), 18 * dt);
         if (animT >= animDur) {
           anim = "idle";
           headDip = 0;
@@ -847,9 +1083,8 @@ const RaccoonAnim = (() => {
       }
       case "nuzzle": {
         const u = Math.min(1, animT / animDur);
-        poseX += Math.sin(t * 10) * 0.8;
+        poseX += Math.sin(t * 6) * 0.45;
         headDip = 4 + Math.sin(u * Math.PI) * 5;
-        facing = Math.sin(t * 6) > 0 ? 1 : -1;
         if (animT >= animDur) {
           anim = "idle";
           headDip = 0;
@@ -858,9 +1093,10 @@ const RaccoonAnim = (() => {
       }
       case "spin": {
         const u = Math.min(1, animT / animDur);
-        facing = Math.floor(u * 8) % 2 === 0 ? 1 : -1;
+        // One slow turn cue, not rapid left/right flips.
+        if (u > 0.45 && u < 0.55) requestFacing(facing < 0 ? 1 : -1);
         poseY = -Math.sin(u * Math.PI) * 10;
-        poseX += Math.sin(t * 20) * 1.2;
+        poseX += Math.sin(t * 10) * 0.6;
         if (animT >= animDur) {
           anim = "idle";
           poseY = 0;
@@ -873,29 +1109,26 @@ const RaccoonAnim = (() => {
       }
       case "stubborn":
       case "sick": {
-        poseX += Math.sin(t * 16) * 0.55;
+        poseX += Math.sin(t * 10) * 0.35;
         headDip = 2;
         if (animT >= animDur) anim = "idle";
         break;
       }
       default: {
-        // Idle: gentle bob + deliberate side-to-side pacing
+        // Idle: face the screen, gentle bob, settle toward center (no rapid flips).
         poseY = Math.sin(t * 2.4) * 2.2 + Math.sin(t * 5.1) * 0.6;
-        const idleTarget = Math.sin(t * 0.55) * 42 + Math.sin(t * 0.19) * 12;
-        const dir = Math.sign(idleTarget - poseX) || facing;
-        if (Math.abs(idleTarget - poseX) > 2) facing = dir;
-        poseX += dir * Math.min(Math.abs(idleTarget - poseX), 22 * dt);
+        poseX += (0 - poseX) * Math.min(1, dt * 1.35);
         headDip = Math.sin(t * 1.7) * 1.4;
         walkPhase += dt * 1.2;
-        if (Math.floor(t * 2) % 9 === 0 && Math.random() < 0.04) facing *= -1;
         break;
       }
     }
 
     poseX = Math.max(-78, Math.min(78, poseX));
+    commitFacing(dt);
     applyTransform();
   }
 
-  return { init, reset, sync, play, tick };
+  return { init, reset, sync, play, tick, getView };
 })();
 window.RaccoonAnim = RaccoonAnim;

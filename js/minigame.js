@@ -136,8 +136,8 @@ const DumpsterDive = (() => {
     const mouthX = dumpster.x + dumpster.w * (0.28 + Math.random() * 0.44);
     const mouthY = dumpster.y + 18;
     const outward = mouthX < width / 2 ? -1 : 1;
-    const vx = (Math.random() * 70 + 40) * (Math.random() < 0.5 ? -outward : outward * 0.35);
-    const vy = -(160 + Math.random() * 90);
+    const vx = (Math.random() * 36 + 18) * (Math.random() < 0.5 ? -outward : outward * 0.35);
+    const vy = -(70 + Math.random() * 45);
     items.push({
       ...proto,
       x: mouthX,
@@ -179,13 +179,13 @@ const DumpsterDive = (() => {
     chewT = Math.max(0, chewT - dt);
 
     lastSpawn += dt;
-    const interval = Math.max(0.38, 0.85 - Math.min(score, 20) * 0.015);
+    const interval = Math.max(0.7, 1.35 - Math.min(score, 20) * 0.02);
     if (lastSpawn > interval) {
       lastSpawn = 0;
       spawnItem(false);
     }
 
-    const speed = 240;
+    const speed = 180;
     const moving = Math.abs(moveDir) > 0;
     if (moving) {
       playerX += moveDir * speed * dt;
@@ -207,7 +207,7 @@ const DumpsterDive = (() => {
     }
     playerX = Math.max(PLAYER_W / 2, Math.min(width - PLAYER_W / 2, playerX));
 
-    const gravity = 420;
+    const gravity = 210;
     const ground = height - 54;
     for (const item of items) {
       item.vy += gravity * dt;

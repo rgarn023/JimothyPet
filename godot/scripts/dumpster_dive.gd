@@ -91,7 +91,7 @@ func _spawn_item(forced_good: bool = false) -> void:
 	var mouth_x := dumpster.position.x + dumpster.size.x * randf_range(0.28, 0.72)
 	var mouth_y := dumpster.position.y + 18.0
 	var outward := -1.0 if mouth_x < playfield.size.x * 0.5 else 1.0
-	var vx := randf_range(40.0, 110.0) * (-outward if randf() < 0.5 else outward * 0.35)
+	var vx := randf_range(18.0, 54.0) * (-outward if randf() < 0.5 else outward * 0.35)
 	items.append({
 		"kind": proto.kind,
 		"points": proto.points,
@@ -100,9 +100,9 @@ func _spawn_item(forced_good: bool = false) -> void:
 		"y": mouth_y,
 		"r": 13.0 + randf() * 4.0,
 		"vx": vx,
-		"vy": -(160.0 + randf() * 90.0),
+		"vy": -(70.0 + randf() * 45.0),
 		"rot": randf() * TAU,
-		"spin": randf_range(-6.0, 6.0),
+		"spin": randf_range(-3.0, 3.0),
 	})
 	lid_open = 1.0
 	if JimothyAudio:
@@ -128,14 +128,14 @@ func _process(delta: float) -> void:
 	chew_t = maxf(0.0, chew_t - delta)
 
 	spawn_timer += delta
-	var interval := maxf(0.38, 0.85 - mini(score, 20) * 0.015)
+	var interval := maxf(0.7, 1.35 - mini(score, 20) * 0.02)
 	if spawn_timer >= interval:
 		spawn_timer = 0.0
 		_spawn_item(false)
 
 	var move := Input.get_axis("ui_left", "ui_right")
 	if absf(move) > 0.01:
-		player_x += move * 240.0 * delta
+		player_x += move * 180.0 * delta
 		player_facing = signf(move)
 		walk_phase += delta * 12.0
 		dig_hold = 0.0
@@ -154,7 +154,7 @@ func _process(delta: float) -> void:
 
 	player_x = clampf(player_x, 26.0, maxf(26.0, playfield.size.x - 26.0))
 
-	var gravity := 420.0
+	var gravity := 210.0
 	var ground := playfield.size.y - 54.0
 	var keep: Array = []
 	for item in items:
