@@ -1,5 +1,5 @@
 /* Jimothy service worker — offline shell for installed web / Android PWA */
-const CACHE = "jimothy-v3";
+const CACHE = "jimothy-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const ASSETS = [
   "./js/minigame.js",
   "./js/raccoon.js",
   "./js/sound.js",
+  "./js/companion.js",
   "./audio/night_ambience.wav",
   "./audio/chitter.wav",
   "./audio/chirp.wav",

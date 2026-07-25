@@ -462,6 +462,37 @@
     save({ touchTick: false });
   }
 
+  function refreshFloatButton() {
+    const btn = $("btnFloat");
+    if (!btn) return;
+    if (!window.JimothyCompanion || !JimothyCompanion.supported()) {
+      btn.textContent = "Float: N/A";
+      btn.disabled = true;
+      btn.title = "Floating companion needs Chrome/Edge (Document Picture-in-Picture)";
+      btn.setAttribute("aria-pressed", "false");
+      return;
+    }
+    btn.disabled = false;
+    const on = JimothyCompanion.isOpen();
+    btn.textContent = on ? "Float: On" : "Float: Off";
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on
+      ? "Close floating Jimothy"
+      : "Open a tiny always-on-top Jimothy while you use other tabs";
+  }
+
+  async function toggleFloatCompanion() {
+    if (!window.JimothyCompanion) return;
+    if (!JimothyCompanion.supported()) {
+      say("Floating companion needs Chrome or Edge on desktop.");
+      return;
+    }
+    const open = await JimothyCompanion.toggle();
+    refreshFloatButton();
+    if (open) say("Jimothy’s floating nearby — he’ll wander while you multitask.");
+    else say("Floating companion closed.");
+  }
+
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -1296,6 +1327,11 @@
         setSoundEnabled(next);
       });
     }
+    if ($("btnFloat")) {
+      $("btnFloat").addEventListener("click", () => {
+        toggleFloatCompanion();
+      });
+    }
     $("feedClose").addEventListener("click", closeFeed);
     $("gameClose").addEventListener("click", closeGame);
     $("messageOk").addEventListener("click", () => {
@@ -1379,6 +1415,17 @@
       JimothySound.setEnabled(!state.soundMuted, { announce: false });
     }
     refreshSoundButton();
+    if (window.JimothyCompanion) {
+      JimothyCompanion.setStateGetter(() => ({
+        stage: state.stage,
+        alive: state.alive,
+        ascending: state.ascending,
+        youngForm: state.youngForm,
+        adultForm: state.adultForm,
+      }));
+      JimothyCompanion.setOnChange(() => refreshFloatButton());
+    }
+    refreshFloatButton();
     save({ touchTick: false });
     if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
     render();
