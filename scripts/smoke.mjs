@@ -83,6 +83,8 @@ await page.click('[data-food="pizza"]', { force: true });
 await page.waitForFunction(() => document.getElementById("feedModal").hidden);
 
 await page.click("#btnPlay", { force: true });
+await page.waitForSelector("#playPickModal:not([hidden])");
+await page.click("#pickDumpster", { force: true });
 await page.waitForSelector("#gameModal:not([hidden])");
 await page.waitForTimeout(400);
 await page.screenshot({
@@ -90,6 +92,24 @@ await page.screenshot({
 });
 await page.click("#gameClose", { force: true });
 await page.waitForFunction(() => document.getElementById("gameModal").hidden);
+
+// High or Low d20 picker + spin
+await page.evaluate(() => {
+  window.JimothyDebug.setState({ energy: 80, stubborn: false });
+});
+await page.click("#btnPlay", { force: true });
+await page.waitForSelector("#playPickModal:not([hidden])");
+await page.click("#pickDice", { force: true });
+await page.waitForSelector("#diceModal:not([hidden])");
+await page.click("#diceHigh", { force: true });
+await page.waitForFunction(() => document.getElementById("d20")?.classList.contains("landed"), {
+  timeout: 5000,
+});
+await page.screenshot({
+  path: "/opt/cursor/artifacts/screenshots/jimothy-dice.png",
+});
+await page.click("#diceClose", { force: true });
+await page.waitForFunction(() => document.getElementById("diceModal").hidden);
 
 await page.click("#btnClean", { force: true });
 const cleanDisabledAfter = await page.locator("#btnClean").isDisabled();

@@ -26,7 +26,7 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 
 - **Feed:** Wild berries, night crickets, stream fish (proper forage) or pizza crust / dumpster fries (junk)
 - Satiety stops overfeeding; junk can upset his stomach
-- **Play:** Dumpster Dive night forage — burns energy, builds fitness
+- **Play:** Dumpster Dive night forage, or High or Low (spinning d20) — burns energy, builds mood/fitness
 - **Scold / Clean:** Discipline refusals; clear nest messes
 - **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)

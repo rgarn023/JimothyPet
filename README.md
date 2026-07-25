@@ -46,7 +46,7 @@ Full wall-clock catch-up when you return (no 1-hour cap). Saves use `jimothy-pet
 | Action | What it does |
 | --- | --- |
 | **Feed** | Wild Berries, Night Crickets, Stream Fish Bits — or Pizza Crust / Dumpster Fries |
-| **Play** | **Dumpster Dive** night forage — burns energy, builds fitness |
+| **Play** | **Dumpster Dive** night forage, or **High or Low** d20 gamble — burns energy, builds mood/fitness |
 | **Scold** | Discipline when he acts up |
 | **Clean** | Clear nest messes |
 

@@ -628,6 +628,9 @@ const RaccoonAnim = (() => {
       case "happy":
         animDur = 0.95;
         break;
+      case "sad":
+        animDur = 1.35;
+        break;
       case "hop":
         animDur = 0.7;
         jumpPeak = 22 + Math.random() * 12;
@@ -827,6 +830,17 @@ const RaccoonAnim = (() => {
         if (animT >= animDur) {
           anim = "idle";
           poseY = 0;
+          headDip = 0;
+        }
+        break;
+      }
+      case "sad": {
+        const u = Math.min(1, animT / animDur);
+        headDip = 7 + Math.sin(u * Math.PI) * 3;
+        poseY = Math.sin(t * 2.2) * 0.8;
+        poseX += Math.sin(t * 3) * 0.25;
+        if (animT >= animDur) {
+          anim = "idle";
           headDip = 0;
         }
         break;

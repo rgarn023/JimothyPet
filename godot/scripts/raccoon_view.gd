@@ -163,6 +163,9 @@ func play_anim(kind: String) -> void:
 		"smile":
 			_anim_dur = 0.95
 			_smile = 1.0
+		"sad":
+			_anim_dur = 1.35
+			_smile = 0.0
 		"hop":
 			_anim_dur = 0.7
 			_jump_peak = randf_range(22.0, 34.0)
@@ -311,6 +314,15 @@ func _process(delta: float) -> void:
 			_pose_y = sin(sm * PI) * 3.0
 			_head_dip = -sin(sm * PI) * 2.0
 			_body_squash = 1.0 + sin(sm * PI) * 0.04
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+		"sad":
+			var sd := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_smile = 0.0
+			_head_dip = 7.0 + sin(sd * PI) * 3.0
+			_pose_y = sin(_t * 2.2) * 0.8
+			_pose_x += sin(_t * 3.0) * 0.25
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_head_dip = 0.0

@@ -789,7 +789,7 @@ func clean_mess() -> void:
 func can_start_play() -> String:
 	if not alive or stage in ["bush", "baby"]:
 		if stage == "baby":
-			speech.emit("Too tiny for a full dumpster run — let him wobble first.")
+			speech.emit("Too tiny for games — let him wobble a bit first.")
 		state_changed.emit()
 		return "blocked"
 	if energy < 18.0:
@@ -837,6 +837,28 @@ func apply_play_result(score: int, stars: int, completed: bool) -> void:
 		anim_impulse.emit("walk")
 	else:
 		speech.emit("A sleepy shuffle. Score %d." % score)
+	state_changed.emit()
+	save_game()
+
+
+func apply_dice_result(correct: bool, roll: int) -> void:
+	if not alive:
+		return
+	play_sessions += 1
+	energy = clamp01(energy - 10.0)
+	hunger = clamp01(hunger - 3.0)
+	discipline = clamp01(discipline + 1.0)
+	if correct:
+		happy = clamp01(happy + 14.0)
+		fitness = clamp01(fitness + 2.0)
+		health = clamp01(health + 1.0)
+		care_score += 2
+		speech.emit("d20 shows %d — you called it! He chirps with joy." % roll)
+		anim_impulse.emit("happy")
+	else:
+		happy = clamp01(happy - 6.0)
+		speech.emit("d20 shows %d — wrong call. He droops and sighs." % roll)
+		anim_impulse.emit("sad")
 	state_changed.emit()
 	save_game()
 

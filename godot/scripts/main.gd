@@ -39,6 +39,8 @@ var _forms_panel: ColorRect
 var _forms_list: VBoxContainer
 var _dev_panel: ColorRect
 var _dev_status: Label
+var _play_pick_panel: ColorRect
+var _dice: ColorRect
 
 
 func _ready() -> void:
@@ -53,6 +55,8 @@ func _ready() -> void:
 	message_panel.visible = false
 	_build_forms_panel()
 	_build_dev_panel()
+	_build_play_pick_panel()
+	_build_dice_panel()
 	_refresh_sound_button()
 	_refresh_alerts_button()
 	_refresh()
@@ -485,9 +489,80 @@ func _on_food(food_key: String) -> void:
 	feed_panel.visible = false
 
 
+func _build_play_pick_panel() -> void:
+	_play_pick_panel = ColorRect.new()
+	_play_pick_panel.visible = false
+	_play_pick_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_play_pick_panel.color = Color(0.03, 0.05, 0.04, 0.82)
+	_play_pick_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_play_pick_panel)
+
+	var card := PanelContainer.new()
+	card.set_anchors_preset(Control.PRESET_CENTER)
+	card.offset_left = -170
+	card.offset_right = 170
+	card.offset_top = -180
+	card.offset_bottom = 180
+	_play_pick_panel.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	card.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	margin.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Play with Jimothy"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color("f0c57a"))
+	title.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(title)
+
+	var copy := Label.new()
+	copy.text = "Dumpster Dive is a night forage. High or Low is a quick d20 gamble."
+	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_theme_color_override("font_color", Color("9aab9c"))
+	copy.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(copy)
+
+	var dive := Button.new()
+	dive.text = "Dumpster Dive"
+	dive.pressed.connect(_start_dumpster)
+	vbox.add_child(dive)
+
+	var dice_btn := Button.new()
+	dice_btn.text = "High or Low (d20)"
+	dice_btn.pressed.connect(_start_dice)
+	vbox.add_child(dice_btn)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func(): _play_pick_panel.visible = false)
+	vbox.add_child(close)
+
+
+func _build_dice_panel() -> void:
+	var script := load("res://scripts/dice_high_low.gd")
+	_dice = script.new()
+	add_child(_dice)
+	_dice.finished.connect(_on_dice_finished)
+
+
 func _on_play_pressed() -> void:
 	if btn_play.disabled:
 		return
+	if PetState.can_start_play() != "ok":
+		return
+	_play_pick_panel.visible = true
+
+
+func _start_dumpster() -> void:
+	_play_pick_panel.visible = false
 	if PetState.can_start_play() != "ok":
 		return
 	if JimothyAudio:
@@ -496,10 +571,26 @@ func _on_play_pressed() -> void:
 	dumpster.start_game()
 
 
+func _start_dice() -> void:
+	_play_pick_panel.visible = false
+	if PetState.can_start_play() != "ok":
+		return
+	if JimothyAudio:
+		JimothyAudio.play("chitter", -6.0)
+	if _dice and _dice.has_method("start_game"):
+		_dice.start_game()
+
+
 func _on_dive_finished(score: int, stars: int, completed: bool) -> void:
 	PetState.apply_play_result(score, stars, completed)
 	if JimothyAudio and completed:
 		JimothyAudio.play("chirp", -4.0)
+
+
+func _on_dice_finished(correct: bool, roll: int, _guess: String) -> void:
+	PetState.apply_dice_result(correct, roll)
+	if JimothyAudio:
+		JimothyAudio.play("chirp" if correct else "grumble", -4.0)
 
 
 func _on_scold_pressed() -> void:

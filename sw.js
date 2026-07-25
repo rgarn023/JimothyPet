@@ -1,5 +1,5 @@
 /* Jimothy service worker — offline shell + care notification clicks */
-const CACHE = "jimothy-v5";
+const CACHE = "jimothy-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./js/game.js",
   "./js/minigame.js",
+  "./js/dicegame.js",
   "./js/raccoon.js",
   "./js/sound.js",
   "./js/notify.js",

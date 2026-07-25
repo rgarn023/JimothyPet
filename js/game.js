@@ -1297,7 +1297,7 @@
   function canStartPlay() {
     if (!state.alive || state.stage === "bush" || state.stage === "baby") {
       if (state.stage === "baby") {
-        say("Too tiny for a full dumpster run — let him wobble first.");
+        say("Too tiny for games — let him wobble a bit first.");
       }
       render();
       return "blocked";
@@ -1324,16 +1324,79 @@
     return "ok";
   }
 
+  function openPlayPicker() {
+    if (canStartPlay() !== "ok") return;
+    $("playPickModal").hidden = false;
+  }
+
+  function closePlayPicker() {
+    $("playPickModal").hidden = true;
+  }
+
   function openGame() {
+    closePlayPicker();
     if (canStartPlay() !== "ok") return;
     sfx("play");
     $("gameModal").hidden = false;
     DumpsterDive.start(onGameDone);
   }
 
+  function openDiceGame() {
+    closePlayPicker();
+    if (canStartPlay() !== "ok") return;
+    sfx("play");
+    if (window.DiceHighLow) DiceHighLow.start(onDiceDone);
+  }
+
   function closeGame() {
     DumpsterDive.stop(false);
     $("gameModal").hidden = true;
+  }
+
+  function closeDiceGame() {
+    if (window.DiceHighLow) DiceHighLow.close(false);
+    if ($("diceModal")) $("diceModal").hidden = true;
+  }
+
+  function onDiceDone(result) {
+    if (!result || result.bailed) {
+      closeDiceGame();
+      return;
+    }
+    if (!state.alive) return;
+
+    state.playSessions += 1;
+    state.energy = clamp(state.energy - 10);
+    state.hunger = clamp(state.hunger - 3);
+    state.discipline = clamp(state.discipline + 1);
+
+    if (result.correct) {
+      state.happy = clamp(state.happy + 14);
+      state.fitness = clamp(state.fitness + 2);
+      state.careScore += 2;
+      state.health = clamp(state.health + 1);
+      say(`d20 shows ${result.roll} — you called it! He chirps with joy.`);
+      bounceHappy();
+      pulseAnim("happy");
+      setTimeout(() => pulseAnim("hop"), 400);
+      sfx("chirp");
+    } else {
+      state.happy = clamp(state.happy - 6);
+      state.careMistakes += 0;
+      say(`d20 shows ${result.roll} — wrong call. He droops and sighs.`);
+      pulseAnim("sad");
+      sfx("grumble");
+    }
+    render();
+    save();
+
+    // If wiped, nudge them out of the dice modal on next again attempt.
+    if (state.energy < 18 && $("diceAgain")) {
+      $("diceAgain").hidden = true;
+      if ($("diceStatus")) {
+        $("diceStatus").textContent += " He’s wiped — rest before another roll.";
+      }
+    }
   }
 
   function onGameDone(result) {
@@ -1397,7 +1460,11 @@
 
   function bind() {
     $("btnFeed").addEventListener("click", openFeed);
-    $("btnPlay").addEventListener("click", openGame);
+    $("btnPlay").addEventListener("click", openPlayPicker);
+    if ($("playPickClose")) $("playPickClose").addEventListener("click", closePlayPicker);
+    if ($("pickDumpster")) $("pickDumpster").addEventListener("click", openGame);
+    if ($("pickDice")) $("pickDice").addEventListener("click", openDiceGame);
+    if ($("diceClose")) $("diceClose").addEventListener("click", closeDiceGame);
     $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
     const wrap = $("raccoonWrap");
