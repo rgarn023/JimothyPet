@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate Jimothy nighttime ambience + raccoon SFX WAVs."""
+"""Regenerate Jimothy nighttime ambience + more realistic raccoon SFX WAVs."""
 from __future__ import annotations
 
 import math
@@ -8,8 +8,8 @@ import struct
 import wave
 from pathlib import Path
 
-SR = 22050
-rng = random.Random(42)
+SR = 44100
+rng = random.Random(77)
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIRS = [ROOT / "audio", ROOT / "godot" / "audio"]
 
@@ -67,70 +67,115 @@ def highpass(samples: list[float], alpha: float = 0.1) -> list[float]:
     return out
 
 
-def mix(*layers: list[float]) -> list[float]:
+def bandpass(samples: list[float], low_a: float = 0.05, high_a: float = 0.25) -> list[float]:
+    return highpass(lowpass(samples, high_a), low_a)
+
+
+def mix(*layers: list[float], peak: float = 0.92) -> list[float]:
     n = max(len(layer) for layer in layers)
     out = [0.0] * n
     for layer in layers:
         for i, v in enumerate(layer):
             out[i] += v
-    peak = max(1e-6, max(abs(x) for x in out))
-    if peak > 0.95:
-        out = [x * 0.95 / peak for x in out]
+    mx = max(1e-6, max(abs(x) for x in out))
+    if mx > peak:
+        out = [x * peak / mx for x in out]
     return out
 
 
-def tone(freq: float, dur: float, amp: float = 0.3, bend: float = 0.0) -> list[float]:
-    n = int(dur * SR)
-    out = []
+def sine(freq: float, t: float, phase: float = 0.0) -> float:
+    return math.sin(2 * math.pi * freq * t + phase)
+
+
+def env_ad(i: int, n: int, attack: float = 0.08, release: float = 0.35) -> float:
+    u = i / max(1, n - 1)
+    if u < attack:
+        return (u / attack) ** 0.7
+    return max(0.0, ((1 - u) / max(1e-6, 1 - attack)) ** release)
+
+
+def formant(t: float, f0: float, f1: float, f2: float, amp: float) -> float:
+    """Rough vocal-ish stack for animal chatter."""
+    return amp * (
+        0.55 * sine(f0, t)
+        + 0.28 * sine(f1, t)
+        + 0.17 * sine(f2, t)
+        + 0.08 * sine(f0 * 2.02, t)
+    )
+
+
+def night_ambience(seconds: float = 12.0) -> list[float]:
+    n = int(seconds * SR)
+    # Soft night wind (pink-ish)
+    wind_raw = noise(n, 0.55)
+    wind = [w * 0.18 for w in lowpass(wind_raw, 0.012)]
     for i in range(n):
         t = i / SR
-        f = freq * (1.0 + bend * (i / max(1, n - 1)))
-        env = math.sin(math.pi * min(1.0, i / max(1, n - 1))) ** 0.6
-        out.append(math.sin(2 * math.pi * f * t) * amp * env)
-    return out
+        gust = 0.75 + 0.25 * math.sin(2 * math.pi * t / 7.5 + 0.4)
+        wind[i] *= gust
 
-
-def night_ambience(seconds: float = 10.0) -> list[float]:
-    n = int(seconds * SR)
-    wind = [w * 0.22 for w in lowpass(noise(n, 0.35), 0.02)]
-    pad = []
+    # Distant low hum / creek hush
+    hush = []
     for i in range(n):
         t = i / SR
         v = (
-            0.04 * math.sin(2 * math.pi * 110 * t)
-            + 0.03 * math.sin(2 * math.pi * 164.8 * t + 0.4)
-            + 0.025 * math.sin(2 * math.pi * 220 * t + 1.1)
+            0.03 * sine(78, t)
+            + 0.02 * sine(112, t, 0.7)
+            + 0.015 * sine(156, t, 1.3)
         )
-        v *= 0.55 + 0.45 * math.sin(2 * math.pi * t / seconds)
-        pad.append(v)
+        v *= 0.6 + 0.4 * math.sin(2 * math.pi * t / seconds)
+        hush.append(v)
+    hush = lowpass(hush, 0.04)
+
+    # Realistic cricket bursts: short trills, not constant tone
     crickets = [0.0] * n
-    t = 0.15
-    while t < seconds - 0.2:
-        chirp_len = rng.uniform(0.04, 0.09)
-        f0 = rng.uniform(3800, 5200)
+    t = 0.2
+    while t < seconds - 0.25:
+        trill_len = rng.uniform(0.12, 0.28)
+        f0 = rng.uniform(4200, 5600)
+        rate = rng.uniform(45, 70)
         base = int(t * SR)
-        cn = int(chirp_len * SR)
+        cn = int(trill_len * SR)
         for j in range(cn):
             if base + j >= n:
                 break
             tt = j / SR
+            pulse = 0.5 + 0.5 * math.sin(2 * math.pi * rate * tt)
+            pulse = max(0.0, pulse) ** 2
             env = math.sin(math.pi * j / max(1, cn - 1))
-            am = 0.5 + 0.5 * math.sin(2 * math.pi * 55 * tt)
-            crickets[base + j] += math.sin(2 * math.pi * f0 * tt) * 0.045 * env * am
-        t += rng.uniform(0.08, 0.16) if rng.random() < 0.55 else rng.uniform(0.35, 1.1)
+            # Slight FM for insect texture
+            f = f0 * (1.0 + 0.02 * math.sin(2 * math.pi * 18 * tt))
+            crickets[base + j] += sine(f, tt) * 0.028 * env * pulse
+        t += rng.uniform(0.35, 1.4)
+
+    # Occasional leaf tick
+    ticks = [0.0] * n
+    for _ in range(14):
+        start = int(rng.uniform(0.3, seconds - 0.1) * SR)
+        ln = int(rng.uniform(0.008, 0.02) * SR)
+        burst = highpass(noise(ln, 0.5), 0.45)
+        for j, v in enumerate(burst):
+            if start + j < n:
+                ticks[start + j] += v * (1 - j / ln) * 0.08
+
+    # Soft distant owl
     owls = [0.0] * n
-    for start in (2.8, 7.1):
-        hn = int(0.55 * SR)
+    for start in (3.2, 8.6):
+        hn = int(0.7 * SR)
         b = int(start * SR)
         for j in range(hn):
             if b + j >= n:
                 break
             tt = j / SR
-            env = math.sin(math.pi * j / max(1, hn - 1)) ** 1.2
-            f = 320 + 40 * math.sin(2 * math.pi * 3 * tt)
-            owls[b + j] += math.sin(2 * math.pi * f * tt) * 0.035 * env
-    out = mix(wind, pad, crickets, owls)
-    xf = int(0.25 * SR)
+            env = math.sin(math.pi * j / max(1, hn - 1)) ** 1.4
+            f = 290 + 35 * math.sin(2 * math.pi * 2.2 * tt)
+            owls[b + j] += (
+                0.7 * sine(f, tt) + 0.3 * sine(f * 1.97, tt)
+            ) * 0.03 * env
+
+    out = mix(wind, hush, crickets, ticks, owls, peak=0.9)
+    # Crossfade loop seam
+    xf = int(0.35 * SR)
     for i in range(xf):
         k = i / xf
         out[i] = out[i] * k + out[n - xf + i] * (1 - k)
@@ -138,91 +183,174 @@ def night_ambience(seconds: float = 10.0) -> list[float]:
 
 
 def chitter() -> list[float]:
+    """Raccoon chatter — rapid noisy chirps with formants."""
     parts: list[float] = []
-    for k in range(5):
-        f = 900 + k * 120 + rng.uniform(-40, 40)
-        parts.extend(tone(f, 0.055, amp=0.28, bend=0.15))
-        parts.extend([0.0] * int(rng.uniform(0.02, 0.04) * SR))
-    return fade(parts, 0.005, 0.04)
+    bursts = rng.randint(6, 8)
+    for k in range(bursts):
+        dur = rng.uniform(0.035, 0.06)
+        n = int(dur * SR)
+        f0 = rng.uniform(780, 1100) + k * 40
+        chunk = []
+        for i in range(n):
+            t = i / SR
+            u = i / max(1, n - 1)
+            env = math.sin(math.pi * u) ** 0.8
+            # Noisy vocal
+            v = formant(t, f0, f0 * 1.7, f0 * 2.4, 0.42)
+            v += rng.uniform(-1, 1) * 0.12 * env
+            # Quick pitch flip
+            fbend = f0 * (1.0 + 0.18 * (u - 0.3))
+            v = 0.65 * v + 0.35 * sine(fbend, t) * 0.4
+            chunk.append(v * env)
+        chunk = bandpass(chunk, 0.08, 0.45)
+        parts.extend(fade(chunk, 0.002, 0.01))
+        parts.extend([0.0] * int(rng.uniform(0.018, 0.04) * SR))
+    return fade(parts, 0.004, 0.04)
 
 
 def chirp() -> list[float]:
-    a = tone(720, 0.08, amp=0.32, bend=0.25)
-    b = tone(980, 0.1, amp=0.28, bend=-0.1)
-    return fade(a + [0.0] * int(0.03 * SR) + b, 0.005, 0.05)
+    """Happy short squeak — two rising notes."""
+    def note(f0: float, dur: float, amp: float) -> list[float]:
+        n = int(dur * SR)
+        out = []
+        for i in range(n):
+            t = i / SR
+            u = i / max(1, n - 1)
+            f = f0 * (1.0 + 0.22 * u)
+            env = math.sin(math.pi * u) ** 0.75
+            v = formant(t, f, f * 1.85, f * 2.6, amp)
+            v += rng.uniform(-1, 1) * 0.06 * env
+            out.append(v * env)
+        return bandpass(out, 0.07, 0.4)
+
+    a = note(640, 0.1, 0.38)
+    gap = [0.0] * int(0.04 * SR)
+    b = note(900, 0.12, 0.34)
+    return fade(a + gap + b, 0.004, 0.05)
 
 
 def grumble() -> list[float]:
-    n = int(0.45 * SR)
-    base = lowpass(noise(n, 0.7), 0.08)
-    out = []
-    for i, x in enumerate(base):
-        t = i / SR
-        f = 140 + 30 * math.sin(2 * math.pi * 6 * t)
-        tone_v = math.sin(2 * math.pi * f * t) * 0.35
-        env = math.sin(math.pi * i / max(1, n - 1))
-        out.append((x * 0.45 + tone_v) * env * 0.55)
-    return fade(out, 0.01, 0.06)
-
-
-def rustle() -> list[float]:
+    """Low throaty raccoon grumble / protest."""
     n = int(0.55 * SR)
-    raw = highpass(lowpass(noise(n, 0.9), 0.35), 0.2)
-    out = []
-    for i, x in enumerate(raw):
-        env = (math.sin(math.pi * i / max(1, n - 1)) ** 0.7) * (0.7 + 0.3 * math.sin(i * 0.37))
-        out.append(x * env * 0.4)
-    return fade(out, 0.005, 0.08)
-
-
-def crunch() -> list[float]:
-    parts: list[float] = []
-    for _ in range(4):
-        n = int(rng.uniform(0.03, 0.05) * SR)
-        click = highpass(noise(n, 0.9), 0.4)
-        click = [c * (1 - i / n) * 0.5 for i, c in enumerate(click)]
-        parts.extend(click)
-        parts.extend([0.0] * int(0.02 * SR))
-    return fade(parts, 0.001, 0.03)
-
-
-def ascend() -> list[float]:
-    n = int(2.8 * SR)
     out = []
     for i in range(n):
         t = i / SR
         u = i / max(1, n - 1)
-        f1 = 220 * (1 + 1.8 * u)
-        f2 = 330 * (1 + 1.8 * u)
-        f3 = 440 * (1 + 1.6 * u)
+        env = math.sin(math.pi * u) ** 1.1
+        f = 120 + 45 * math.sin(2 * math.pi * 5.5 * t) + 20 * math.sin(2 * math.pi * 2.1 * t)
         v = (
-            0.16 * math.sin(2 * math.pi * f1 * t)
-            + 0.12 * math.sin(2 * math.pi * f2 * t)
-            + 0.08 * math.sin(2 * math.pi * f3 * t)
+            0.45 * sine(f, t)
+            + 0.25 * sine(f * 1.5, t)
+            + 0.15 * sine(f * 2.1, t)
         )
-        shimmer = rng.uniform(-1, 1) * 0.04 * u
-        env = (u ** 0.45) * (1 - u) ** 0.35 * 2.2
+        # Throat noise
+        v += rng.uniform(-1, 1) * 0.2
+        out.append(v * env * 0.55)
+    out = lowpass(out, 0.12)
+    # Soft growl pulse
+    for i in range(n):
+        t = i / SR
+        out[i] *= 0.75 + 0.25 * math.sin(2 * math.pi * 14 * t)
+    return fade(out, 0.015, 0.08)
+
+
+def rustle() -> list[float]:
+    """Dry leaf / underbrush rustle."""
+    n = int(0.7 * SR)
+    layers = []
+    for alpha, amp in ((0.45, 0.55), (0.28, 0.4), (0.18, 0.28)):
+        raw = highpass(noise(n, amp), alpha)
+        layer = []
+        for i, x in enumerate(raw):
+            env = (math.sin(math.pi * i / max(1, n - 1)) ** 0.65) * (
+                0.55 + 0.45 * abs(math.sin(i * 0.21 + alpha * 10))
+            )
+            layer.append(x * env)
+        layers.append(layer)
+    # Occasional twig snaps
+    snaps = [0.0] * n
+    for _ in range(3):
+        s = int(rng.uniform(0.08, 0.55) * SR)
+        ln = int(rng.uniform(0.006, 0.014) * SR)
+        burst = highpass(noise(ln, 0.9), 0.5)
+        for j, v in enumerate(burst):
+            if s + j < n:
+                snaps[s + j] += v * (1 - j / ln) * 0.35
+    return fade(mix(*layers, snaps, peak=0.85), 0.008, 0.1)
+
+
+def crunch() -> list[float]:
+    """Chewing: hard crack + wet mouth noise."""
+    parts: list[float] = []
+    for bite in range(5):
+        # Hard crack
+        cn = int(rng.uniform(0.018, 0.032) * SR)
+        crack = highpass(noise(cn, 1.0), 0.55)
+        crack = [c * (1 - i / cn) ** 0.5 * 0.7 for i, c in enumerate(crack)]
+        # Wet chew body
+        wn = int(rng.uniform(0.05, 0.08) * SR)
+        wet = bandpass(noise(wn, 0.7), 0.15, 0.35)
+        for i in range(wn):
+            t = i / SR
+            wet[i] *= math.sin(math.pi * i / max(1, wn - 1)) * (
+                0.5 + 0.5 * math.sin(2 * math.pi * 28 * t)
+            )
+            wet[i] += 0.12 * sine(180 + bite * 20, t) * math.sin(math.pi * i / max(1, wn - 1))
+        parts.extend(fade(crack, 0.001, 0.01))
+        parts.extend(fade(wet, 0.005, 0.02))
+        parts.extend([0.0] * int(rng.uniform(0.035, 0.06) * SR))
+    return fade(parts, 0.002, 0.04)
+
+
+def ascend() -> list[float]:
+    n = int(3.0 * SR)
+    out = []
+    for i in range(n):
+        t = i / SR
+        u = i / max(1, n - 1)
+        f1 = 200 * (1 + 2.0 * u)
+        f2 = 300 * (1 + 1.9 * u)
+        f3 = 450 * (1 + 1.7 * u)
+        v = (
+            0.14 * sine(f1, t)
+            + 0.1 * sine(f2, t)
+            + 0.07 * sine(f3, t)
+        )
+        shimmer = rng.uniform(-1, 1) * 0.035 * u
+        env = (u ** 0.4) * (1 - u) ** 0.32 * 2.1
         out.append((v + shimmer) * env)
-    whoosh = lowpass(noise(int(0.6 * SR), 0.5), 0.05)
+    whoosh = lowpass(noise(int(0.7 * SR), 0.55), 0.04)
     for i, w in enumerate(whoosh):
         env = math.sin(math.pi * i / max(1, len(whoosh) - 1))
-        out[i] += w * env * 0.25
-    return fade(out, 0.02, 0.25)
+        out[i] += w * env * 0.22
+    return fade(out, 0.03, 0.28)
 
 
 def soft_hoot() -> list[float]:
-    return fade(
-        tone(280, 0.35, amp=0.18, bend=-0.08)
-        + [0.0] * int(0.08 * SR)
-        + tone(250, 0.28, amp=0.14, bend=-0.05),
-        0.02,
-        0.08,
-    )
+    """Softer two-note owl hoot."""
+    def hoot_note(f0: float, dur: float, amp: float) -> list[float]:
+        n = int(dur * SR)
+        out = []
+        for i in range(n):
+            t = i / SR
+            u = i / max(1, n - 1)
+            env = math.sin(math.pi * u) ** 1.35
+            f = f0 * (1.0 - 0.06 * u)
+            v = 0.7 * sine(f, t) + 0.25 * sine(f * 2.01, t) + 0.08 * sine(f * 3.1, t)
+            # Soft breath noise
+            v += rng.uniform(-1, 1) * 0.04 * env
+            out.append(v * env * amp)
+        return lowpass(out, 0.2)
+
+    a = hoot_note(275, 0.42, 0.22)
+    gap = [0.0] * int(0.1 * SR)
+    b = hoot_note(245, 0.36, 0.18)
+    return fade(a + gap + b, 0.02, 0.1)
 
 
 def main() -> None:
     files = {
-        "night_ambience.wav": night_ambience(10.0),
+        "night_ambience.wav": night_ambience(12.0),
         "chitter.wav": chitter(),
         "chirp.wav": chirp(),
         "grumble.wav": grumble(),

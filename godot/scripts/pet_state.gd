@@ -693,6 +693,7 @@ func try_feed(food_key: String) -> String:
 		else:
 			speech.emit("He stash-eats the %s." % food.name)
 			anim_impulse.emit("eat")
+			_anim_cooldown = 3.2
 	else:
 		treat_streak = 0
 		healthy_meals += 1
@@ -701,6 +702,7 @@ func try_feed(food_key: String) -> String:
 		discipline = clamp01(discipline + 1.5)
 		speech.emit("He forages the %s carefully." % food.name)
 		anim_impulse.emit("eat")
+		_anim_cooldown = 3.2
 
 	state_changed.emit()
 	save_game()
@@ -865,6 +867,8 @@ func apply_dice_result(correct: bool, roll: int) -> void:
 
 
 func _pulse_ambient_anim() -> void:
+	# Skip while a care animation (especially slow eat) should stay visible.
+	# Cooldown is also stretched when eat is emitted.
 	if stubborn or sick:
 		_anim_cooldown = randf_range(2.2, 3.6)
 		anim_impulse.emit("stubborn" if stubborn else "sick")

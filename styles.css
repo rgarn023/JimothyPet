@@ -621,17 +621,31 @@ button {
 .eat-food {
   position: absolute;
   left: 50%;
-  top: 58%;
-  width: 28px;
-  height: 20px;
-  margin-left: -6px;
+  top: 48%;
+  width: 72px;
+  height: 72px;
+  margin-left: -14px;
   pointer-events: none;
   transform: translate(
-    calc((1 - var(--reach, 0)) * 18px),
-    calc((1 - var(--reach, 0)) * 16px - var(--reach, 0) * 28px)
-  );
+    calc((1 - var(--reach, 0)) * 34px),
+    calc((1 - var(--reach, 0)) * 26px - var(--reach, 0) * 42px)
+  ) scale(calc(0.9 + var(--reach, 0) * 0.28));
   transition: none;
   z-index: 3;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+
+.eat-food-art {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.eat-food-art svg {
+  width: 68px;
+  height: 68px;
+  display: block;
 }
 
 .eat-food .crumb {
@@ -641,38 +655,40 @@ button {
 }
 
 .eat-food .crumb.berry {
-  width: 10px;
-  height: 10px;
+  width: 18px;
+  height: 18px;
   background: #6b5aa0;
-  left: 2px;
-  top: 4px;
+  left: 8px;
+  top: 14px;
 }
 .eat-food .crumb.berry.b2 {
-  left: 10px;
-  top: 1px;
+  left: 24px;
+  top: 8px;
+  width: 16px;
+  height: 16px;
 }
 .eat-food .crumb.crust {
-  width: 16px;
-  height: 10px;
-  border-radius: 3px;
+  width: 34px;
+  height: 22px;
+  border-radius: 6px;
   background: #e0a04a;
-  left: 2px;
-  top: 4px;
-  box-shadow: inset 0 -2px 0 #c45c4a;
+  left: 8px;
+  top: 14px;
+  box-shadow: inset 0 -4px 0 #c45c4a;
 }
 .eat-food .crumb.fish {
-  width: 16px;
-  height: 7px;
+  width: 34px;
+  height: 16px;
   background: #a8c4d4;
-  left: 2px;
-  top: 6px;
+  left: 8px;
+  top: 18px;
 }
 .eat-food .crumb.bug {
-  width: 9px;
-  height: 6px;
+  width: 18px;
+  height: 12px;
   background: #5a6b3a;
-  left: 6px;
-  top: 6px;
+  left: 16px;
+  top: 20px;
 }
 
 /* Form evolution paths */
@@ -1079,9 +1095,9 @@ button {
 
 .food-btn {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 64px 1fr;
   grid-template-rows: auto auto;
-  column-gap: 0.7rem;
+  column-gap: 0.75rem;
   text-align: left;
   padding: 0.75rem;
   border-radius: 14px;
@@ -1106,17 +1122,17 @@ button {
 
 .food-btn .food-art {
   grid-row: span 2;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.05);
 }
 
 .food-btn .food-art svg {
-  width: 28px;
-  height: 28px;
+  width: 48px;
+  height: 48px;
 }
 
 .food-btn strong {

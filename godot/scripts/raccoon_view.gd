@@ -143,6 +143,9 @@ func set_look(_stage: String, _variant: String = "", _mood: String = "idle") -> 
 
 
 func play_anim(kind: String) -> void:
+	# Don't let ambient walks cut off a slow eat / ascent.
+	if _anim in ["eat", "ascend"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick"]:
+		return
 	_anim = kind
 	_anim_t = 0.0
 	match kind:
@@ -183,7 +186,7 @@ func play_anim(kind: String) -> void:
 			_anim_dur = 1.05
 			_body_squash = 1.0
 		"eat":
-			_anim_dur = 1.15
+			_anim_dur = 2.6
 			_eat_flash = 1.0
 			_head_dip = 0.0
 			if PetState and PetState.last_fed_food != "":
@@ -304,19 +307,19 @@ func _process(delta: float) -> void:
 				_head_dip = 0.0
 		"eat":
 			var eu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			# Reach → chew → settle
-			if eu < 0.22:
-				_head_dip = lerpf(0.0, 10.0, eu / 0.22)
-				_pose_y = lerpf(0.0, 3.0, eu / 0.22)
-			elif eu < 0.78:
-				_head_dip = 8.0 + sin(_t * 22.0) * 2.5
-				_pose_y = 2.0 + sin(_t * 18.0) * 1.5
-				_walk_phase += delta * 10.0
+			# Slow reach → long chew → settle so food stays readable.
+			if eu < 0.28:
+				_head_dip = lerpf(0.0, 10.0, eu / 0.28)
+				_pose_y = lerpf(0.0, 3.0, eu / 0.28)
+			elif eu < 0.82:
+				_head_dip = 8.0 + sin(_t * 10.0) * 2.2
+				_pose_y = 2.0 + sin(_t * 8.0) * 1.2
+				_walk_phase += delta * 4.5
 			else:
-				var settle := (eu - 0.78) / 0.22
+				var settle := (eu - 0.82) / 0.18
 				_head_dip = lerpf(8.0, 0.0, settle)
 				_pose_y = lerpf(2.0, 0.0, settle)
-			_eat_flash = 1.0 - eu * 0.85
+			_eat_flash = 1.0 - smoothstep(0.62, 0.95, eu)
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_head_dip = 0.0
@@ -638,25 +641,34 @@ func _draw_front(c: Vector2) -> void:
 
 
 func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
-	# Food arcs from paws up to muzzle, then fades while chewing.
-	var reach := smoothstep(0.0, 0.28, u)
-	var fade := 1.0 - smoothstep(0.55, 0.95, u)
-	var paw := c + Vector2(14.0 * face, 18.0)
+	# Larger food arcs from paws up to muzzle, then fades while chewing.
+	var reach := smoothstep(0.0, 0.32, u)
+	var fade := 1.0 - smoothstep(0.62, 0.95, u)
+	var paw := c + Vector2(18.0 * face, 22.0)
 	var mouth := c + Vector2(2.0 * face, -2.0 + _head_dip)
 	var p := paw.lerp(mouth, reach)
-	p += Vector2(sin(u * PI) * -6.0 * face, -sin(reach * PI) * 10.0)
-	var a := fade * 0.95
+	p += Vector2(sin(u * PI) * -8.0 * face, -sin(reach * PI) * 14.0)
+	var a := fade * 0.98
 	match _eat_food:
 		"pizza", "fries":
-			_ellipse(p, Vector2(7, 4), Color(0.88, 0.63, 0.29, a))
-			draw_line(p + Vector2(-5, -1), p + Vector2(5, -1), Color(0.77, 0.36, 0.29, a), 2.0)
+			_ellipse(p, Vector2(16, 10), Color(0.88, 0.63, 0.29, a))
+			draw_line(p + Vector2(-12, -2), p + Vector2(12, -2), Color(0.77, 0.36, 0.29, a), 4.0)
+			_ellipse(p + Vector2(-3, 3), Vector2(3.2, 3.2), Color(0.55, 0.18, 0.18, a))
+			_ellipse(p + Vector2(4, 1), Vector2(2.6, 2.6), Color(0.55, 0.18, 0.18, a))
 		"fish":
-			_ellipse(p, Vector2(8, 3.5), Color(0.66, 0.77, 0.83, a))
+			_ellipse(p, Vector2(18, 8), Color(0.66, 0.77, 0.83, a))
+			draw_colored_polygon(PackedVector2Array([
+				p + Vector2(16, 0), p + Vector2(24, -7), p + Vector2(24, 7)
+			]), Color(0.45, 0.62, 0.7, a))
+			draw_circle(p + Vector2(-8, -1), 2.2, Color(0.1, 0.12, 0.14, a))
 		"crickets":
-			_ellipse(p, Vector2(5, 3), Color(0.42, 0.48, 0.28, a))
+			_ellipse(p, Vector2(12, 7), Color(0.42, 0.48, 0.28, a))
+			draw_line(p + Vector2(-5, -3), p + Vector2(-13, -10), Color(0.3, 0.35, 0.18, a), 2.0)
+			draw_line(p + Vector2(4, 2), p + Vector2(12, 9), Color(0.3, 0.35, 0.18, a), 2.0)
 		_:
-			_ellipse(p + Vector2(-3, 0), Vector2(4.5, 4.5), Color(0.42, 0.35, 0.63, a))
-			_ellipse(p + Vector2(3, -1), Vector2(4.5, 4.5), Color(0.42, 0.35, 0.63, a))
+			_ellipse(p + Vector2(-7, 1), Vector2(10, 10), Color(0.42, 0.35, 0.63, a))
+			_ellipse(p + Vector2(7, -3), Vector2(9, 9), Color(0.48, 0.38, 0.68, a))
+			_ellipse(p + Vector2(0, 7), Vector2(8, 8), Color(0.35, 0.28, 0.52, a))
 
 
 func _draw_wings(c: Vector2, face: float, span: float) -> void:
@@ -709,61 +721,73 @@ func _draw_clearing() -> void:
 		]), Color(0.35, 0.22, 0.1, 0.45))
 
 
-func _draw_leaf(c: Vector2, len: float, wid: float, color: Color, rot_deg: float) -> void:
+func _draw_oval_leaf(c: Vector2, rx: float, ry: float, color: Color, rot_deg: float) -> void:
+	var rad := deg_to_rad(rot_deg)
+	var pts := PackedVector2Array()
+	for i in 18:
+		var a := TAU * float(i) / 18.0
+		var local := Vector2(cos(a) * rx, sin(a) * ry).rotated(rad)
+		pts.append(c + local)
+	draw_colored_polygon(pts, color)
+
+
+func _draw_tip_leaf(c: Vector2, len: float, wid: float, color: Color, rot_deg: float) -> void:
 	var rad := deg_to_rad(rot_deg)
 	var tip := Vector2(0, -len * 0.55).rotated(rad)
-	var base := Vector2(0, len * 0.55).rotated(rad)
-	var left := Vector2(-wid, -len * 0.05).rotated(rad)
-	var right := Vector2(wid, -len * 0.05).rotated(rad)
-	draw_colored_polygon(PackedVector2Array([
-		c + tip, c + right, c + base, c + left
-	]), color)
+	var base := Vector2(0, len * 0.45).rotated(rad)
+	var left := Vector2(-wid, 0).rotated(rad)
+	var right := Vector2(wid, 0).rotated(rad)
+	draw_colored_polygon(PackedVector2Array([c + tip, c + right, c + base, c + left]), color)
 
 
 func _draw_bush(c: Vector2) -> void:
-	var rustle := sin(_t * 10.0) * 1.8
-	var rustle2 := cos(_t * 7.5) * 1.4
-	# Ground shadow
-	_ellipse(c + Vector2(0, 50), Vector2(44, 8), Color(0, 0, 0, 0.22))
-	# Trunk & branches
-	draw_line(c + Vector2(0, 46), c + Vector2(-2, 8), Color("4a3424"), 4.0)
-	draw_line(c + Vector2(-2, 24), c + Vector2(-28 + rustle, 4), Color("3d2c1e"), 2.6)
-	draw_line(c + Vector2(2, 22), c + Vector2(30 + rustle2, 2), Color("3d2c1e"), 2.6)
-	draw_line(c + Vector2(-4, 14), c + Vector2(-16, -12), Color("5a4030"), 2.0)
-	draw_line(c + Vector2(4, 12), c + Vector2(18, -14), Color("5a4030"), 2.0)
-	draw_line(c + Vector2(0, 10), c + Vector2(-2, -18), Color("4a3424"), 2.2)
-	# Pointed leaves fanned around branches
-	var leaves := [
-		[Vector2(-30, 2), 18.0, 8.0, Color("2a5236"), -55.0],
-		[Vector2(-24, -6), 16.0, 7.0, Color("2f5a3c"), -35.0],
-		[Vector2(-16, -14), 15.0, 6.5, Color("3d6b4f"), -20.0],
-		[Vector2(-6, -20), 14.0, 6.0, Color("4a8a5e"), -8.0],
-		[Vector2(2, -24), 16.0, 7.0, Color("548a62"), 4.0],
-		[Vector2(12, -20), 15.0, 6.5, Color("4a8a5e"), 18.0],
-		[Vector2(20, -14), 16.0, 7.0, Color("3d6b4f"), 32.0],
-		[Vector2(28, -4), 17.0, 7.5, Color("355f44"), 48.0],
-		[Vector2(34, 4), 15.0, 6.5, Color("2f5a3c"), 62.0],
-		[Vector2(-22, 12), 14.0, 6.0, Color("2a5236"), -70.0],
-		[Vector2(-12, 4), 13.0, 5.5, Color("355f44"), -40.0],
-		[Vector2(-2, -2), 14.0, 6.0, Color("3d6b4f"), -12.0],
-		[Vector2(8, -6), 15.0, 6.5, Color("548a62"), 8.0],
-		[Vector2(18, 0), 14.0, 6.0, Color("3a6648"), 28.0],
-		[Vector2(26, 10), 15.0, 6.5, Color("2f5a3c"), 50.0],
-		[Vector2(-10, 20), 13.0, 5.5, Color("2a5236"), -55.0],
-		[Vector2(0, 14), 16.0, 7.0, Color("355f44"), 0.0],
-		[Vector2(12, 20), 13.0, 5.5, Color("2f5a3c"), 55.0],
-		[Vector2(-4, -12), 11.0, 4.5, Color("6fbf84"), -15.0],
-		[Vector2(8, -14), 10.0, 4.0, Color("5aa870"), 20.0],
-		[Vector2(2, -18), 10.0, 4.0, Color("7ec98a"), 2.0],
+	var rustle := sin(_t * 10.0) * 1.2
+	var rustle2 := cos(_t * 7.5) * 1.0
+	# Wide shrub shadow
+	_ellipse(c + Vector2(0, 52), Vector2(54, 7), Color(0, 0, 0, 0.2))
+	# Tiny soil-line twigs only
+	draw_line(c + Vector2(-12, 46), c + Vector2(-8, 40), Color("4a3424"), 1.8)
+	draw_line(c + Vector2(12, 46), c + Vector2(8, 40), Color("3d2c1e"), 1.6)
+	# Dense body pads — wider than tall
+	var deep: Array = [Color("1e3f2a"), Color("244a32"), Color("2a5236"), Color("2f5a3c")]
+	var mid: Array = [Color("355f44"), Color("3d6b4f"), Color("3a6648"), Color("2d5740")]
+	var lite: Array = [Color("4a8a5e"), Color("548a62"), Color("5aa870"), Color("6fbf84")]
+	var pads: Array = [
+		[-40, 34, 14, 10], [-24, 30, 16, 11], [-6, 28, 18, 12], [12, 30, 16, 11], [30, 34, 14, 10],
+		[-32, 20, 13, 10], [-14, 16, 15, 11], [4, 16, 15, 11], [22, 20, 13, 10],
+		[-22, 38, 14, 9], [-2, 40, 16, 9], [18, 38, 14, 9],
+		[-20, 8, 12, 9], [-2, 6, 14, 10], [16, 8, 12, 9],
+		[-10, 24, 12, 9], [8, 24, 12, 9],
 	]
-	for L in leaves:
-		var p: Vector2 = L[0]
+	for i in pads.size():
+		var L: Array = pads[i]
+		var p := Vector2(float(L[0]), float(L[1]))
+		p.x += rustle * 0.1 if p.x < 0.0 else rustle2 * 0.1
+		_draw_oval_leaf(c + p, float(L[2]), float(L[3]), mid[i % mid.size()], float((i * 13) % 40) - 20.0)
+	for i in 5:
+		var under := [
+			Vector2(-36, 36), Vector2(-8, 42), Vector2(20, 36), Vector2(-26, 14), Vector2(14, 12)
+		][i]
+		_draw_oval_leaf(c + under, 12.0, 8.0, deep[i % deep.size()], float(i * 9))
+	# Tip leaves for ragged bushy edge
+	var tips: Array = [
+		[-46, 28, 11, 5, -70], [-42, 16, 10, 4.5, -50], [-36, 6, 10, 4.5, -35],
+		[-26, 0, 10, 4.5, -20], [-14, -4, 11, 5, -8], [-2, -6, 11, 5, 4],
+		[10, -4, 11, 5, 16], [22, 0, 10, 4.5, 30], [32, 8, 10, 4.5, 45],
+		[40, 18, 10, 4.5, 60], [46, 30, 10, 4.5, 75],
+		[-48, 38, 9, 4, -85], [48, 38, 9, 4, 85],
+		[-30, 4, 9, 4, -28], [-10, -2, 9, 4, 0], [14, 2, 9, 4, 28],
+		[-38, 24, 8, 3.5, -55], [-20, 10, 8, 3.5, -15], [2, 8, 8, 3.5, 12],
+		[24, 14, 8, 3.5, 40], [-18, 34, 8, 3.5, -40], [18, 32, 8, 3.5, 40],
+	]
+	for i in tips.size():
+		var T: Array = tips[i]
+		var p := Vector2(float(T[0]), float(T[1]))
 		p.x += rustle * 0.15 if p.x < 0.0 else rustle2 * 0.15
-		_draw_leaf(c + p, float(L[1]), float(L[2]), L[3], float(L[4]))
-	# Occasional eye glint in the leaves near reveal
+		_draw_tip_leaf(c + p, float(T[2]), float(T[3]), lite[i % lite.size()], float(T[4]))
 	if age_hint() > 0.7:
-		draw_circle(c + Vector2(-6 + rustle, 0), 2.1, Color(0.98, 0.96, 0.9, 0.55))
-		draw_circle(c + Vector2(8 + rustle2, 2), 2.0, Color(0.98, 0.96, 0.9, 0.42))
+		draw_circle(c + Vector2(-8 + rustle, 22), 2.0, Color(0.98, 0.96, 0.9, 0.55))
+		draw_circle(c + Vector2(10 + rustle2, 24), 1.8, Color(0.98, 0.96, 0.9, 0.42))
 
 
 func age_hint() -> float:

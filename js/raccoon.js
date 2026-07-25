@@ -110,54 +110,66 @@ const RaccoonArt = (() => {
     `;
   }
 
-  /** Pointed leaf (teardrop) — reads as foliage, not a blob. */
-  function leaf(cx, cy, len, wid, fill, rot = 0) {
+  /** Pointed leaf tip for a jagged bushy silhouette. */
+  function leafTip(cx, cy, len, wid, fill, rot = 0) {
     return `<path transform="translate(${cx} ${cy}) rotate(${rot})"
-      d="M0 ${-len * 0.55}
-         Q${wid} ${-len * 0.1} 0 ${len * 0.55}
-         Q${-wid} ${-len * 0.1} 0 ${-len * 0.55} Z"
+      d="M0 ${-len * 0.55} Q${wid} 0 0 ${len * 0.45} Q${-wid} 0 0 ${-len * 0.55} Z"
       fill="${fill}"/>`;
+  }
+
+  /** Soft oval fill leaf for dense body. */
+  function leafPad(cx, cy, rx, ry, fill, rot = 0) {
+    return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"
+      transform="rotate(${rot} ${cx} ${cy})"/>`;
   }
 
   function bush(ageSec = 0) {
     const hint = Math.min(1, Math.max(0, ageSec / 60));
     const glint =
       hint > 0.7
-        ? `<circle class="bush-glint" cx="54" cy="58" r="2.1" fill="#faf6ec" opacity="0.55"/>
-           <circle class="bush-glint" cx="68" cy="60" r="2" fill="#faf6ec" opacity="0.42"/>`
+        ? `<circle class="bush-glint" cx="50" cy="78" r="2" fill="#faf6ec" opacity="0.55"/>
+           <circle class="bush-glint" cx="68" cy="80" r="1.8" fill="#faf6ec" opacity="0.4"/>`
         : "";
+    const deep = ["#1e3f2a", "#244a32", "#2a5236", "#2f5a3c"];
+    const mid = ["#355f44", "#3d6b4f", "#3a6648", "#2d5740"];
+    const lite = ["#4a8a5e", "#548a62", "#5aa870", "#6fbf84"];
+    const body = [];
+    // Wide low pads — shrub mass (wider than tall)
+    const pads = [
+      [20, 88, 14, 10, -8], [36, 84, 16, 11, 6], [54, 82, 18, 12, -4], [72, 84, 16, 11, 8],
+      [90, 88, 14, 10, -6], [28, 74, 13, 10, 12], [46, 70, 15, 11, -10], [64, 70, 15, 11, 10],
+      [82, 74, 13, 10, -12], [38, 92, 14, 9, 4], [58, 94, 16, 9, -6], [78, 92, 14, 9, 8],
+      [40, 62, 12, 9, -14], [58, 60, 14, 10, 2], [76, 62, 12, 9, 16],
+      [48, 78, 12, 9, 0], [66, 78, 12, 9, 0],
+    ];
+    pads.forEach(([x, y, rx, ry, rot], i) => {
+      body.push(leafPad(x, y, rx, ry, mid[i % mid.length], rot));
+    });
+    // Under-layer darker pads
+    [[24, 90, 12, 8], [50, 96, 18, 8], [80, 90, 12, 8], [34, 68, 10, 8], [70, 66, 10, 8]].forEach(
+      ([x, y, rx, ry], i) => body.unshift(leafPad(x, y, rx, ry, deep[i % deep.length], i * 7))
+    );
+    // Lots of tip leaves poking out for a bushy ragged edge
+    const tips = [
+      [14, 82, 11, 5, -70], [18, 70, 10, 4.5, -50], [24, 60, 10, 4.5, -35],
+      [34, 54, 10, 4.5, -20], [46, 50, 11, 5, -8], [58, 48, 11, 5, 4],
+      [70, 50, 11, 5, 16], [82, 54, 10, 4.5, 30], [90, 62, 10, 4.5, 45],
+      [96, 74, 10, 4.5, 60], [100, 86, 10, 4.5, 75],
+      [12, 92, 9, 4, -85], [104, 92, 9, 4, 85],
+      [30, 58, 9, 4, -28], [50, 52, 9, 4, 0], [74, 56, 9, 4, 28],
+      [22, 78, 8, 3.5, -55], [40, 64, 8, 3.5, -15], [62, 62, 8, 3.5, 12],
+      [84, 68, 8, 3.5, 40], [42, 88, 8, 3.5, -40], [78, 86, 8, 3.5, 40],
+      [36, 72, 7, 3, 20], [56, 68, 7, 3, -18], [72, 74, 7, 3, 25],
+    ];
+    tips.forEach(([x, y, len, wid, rot], i) => {
+      body.push(leafTip(x, y, len, wid, lite[i % lite.length], rot));
+    });
     return svg(`
-      <ellipse cx="60" cy="104" rx="44" ry="8" fill="#000" opacity="0.22"/>
-      <!-- trunk & branches -->
-      <path d="M60 100 C59 86 57 74 54 62" fill="none" stroke="#4a3424" stroke-width="4" stroke-linecap="round"/>
-      <path d="M58 78 C48 70 38 64 30 58" fill="none" stroke="#3d2c1e" stroke-width="2.6" stroke-linecap="round"/>
-      <path d="M62 76 C72 68 82 62 90 56" fill="none" stroke="#3d2c1e" stroke-width="2.6" stroke-linecap="round"/>
-      <path d="M56 68 C50 58 46 50 42 42" fill="none" stroke="#5a4030" stroke-width="2" stroke-linecap="round"/>
-      <path d="M64 66 C70 56 76 48 82 40" fill="none" stroke="#5a4030" stroke-width="2" stroke-linecap="round"/>
-      <path d="M60 64 C58 52 56 44 54 36" fill="none" stroke="#4a3424" stroke-width="2.2" stroke-linecap="round"/>
-      <g class="bush-foliage">
-        ${leaf(28, 56, 18, 8, "#2a5236", -55)}
-        ${leaf(34, 48, 16, 7, "#2f5a3c", -35)}
-        ${leaf(40, 40, 15, 6.5, "#3d6b4f", -20)}
-        ${leaf(48, 34, 14, 6, "#4a8a5e", -8)}
-        ${leaf(58, 30, 16, 7, "#548a62", 4)}
-        ${leaf(68, 32, 15, 6.5, "#4a8a5e", 18)}
-        ${leaf(76, 38, 16, 7, "#3d6b4f", 32)}
-        ${leaf(84, 48, 17, 7.5, "#355f44", 48)}
-        ${leaf(90, 56, 15, 6.5, "#2f5a3c", 62)}
-        ${leaf(36, 66, 14, 6, "#2a5236", -70)}
-        ${leaf(44, 58, 13, 5.5, "#355f44", -40)}
-        ${leaf(52, 50, 14, 6, "#3d6b4f", -12)}
-        ${leaf(62, 46, 15, 6.5, "#548a62", 8)}
-        ${leaf(72, 52, 14, 6, "#3a6648", 28)}
-        ${leaf(80, 62, 15, 6.5, "#2f5a3c", 50)}
-        ${leaf(48, 74, 13, 5.5, "#2a5236", -55)}
-        ${leaf(60, 68, 16, 7, "#355f44", 0)}
-        ${leaf(72, 74, 13, 5.5, "#2f5a3c", 55)}
-        ${leaf(54, 42, 11, 4.5, "#6fbf84", -15)}
-        ${leaf(66, 40, 10, 4, "#5aa870", 20)}
-        ${leaf(60, 36, 10, 4, "#7ec98a", 2)}
-      </g>
+      <ellipse cx="58" cy="106" rx="52" ry="7" fill="#000" opacity="0.2"/>
+      <!-- tiny twigs only at soil line -->
+      <path d="M44 100 C46 96 48 94 50 92" fill="none" stroke="#4a3424" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M70 100 C68 96 66 94 64 92" fill="none" stroke="#3d2c1e" stroke-width="1.6" stroke-linecap="round"/>
+      <g class="bush-foliage">${body.join("")}</g>
       ${glint}
     `);
   }
@@ -770,12 +782,18 @@ const RaccoonAnim = (() => {
     foodEl = document.createElement("div");
     foodEl.className = "eat-food";
     foodEl.dataset.food = kind || "berries";
-    foodEl.innerHTML =
-      kind === "pizza" || kind === "fries"
+    const key = kind || "berries";
+    const icon =
+      window.RaccoonArt && RaccoonArt.icons && RaccoonArt.icons[key]
+        ? RaccoonArt.icons[key]
+        : "";
+    foodEl.innerHTML = icon
+      ? `<div class="eat-food-art">${icon}</div>`
+      : key === "pizza" || key === "fries"
         ? `<span class="crumb crust"></span>`
-        : kind === "fish"
+        : key === "fish"
           ? `<span class="crumb fish"></span>`
-          : kind === "crickets"
+          : key === "crickets"
             ? `<span class="crumb bug"></span>`
             : `<span class="crumb berry"></span><span class="crumb berry b2"></span>`;
     wrap.appendChild(foodEl);
@@ -818,6 +836,13 @@ const RaccoonAnim = (() => {
   }
 
   function play(kind, opts = {}) {
+    // Don't let ambient walks cut off a slow eat / ascent.
+    if (
+      ["eat", "ascend"].includes(anim) &&
+      ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick"].includes(kind)
+    ) {
+      return;
+    }
     anim = kind || "idle";
     animT = 0;
     if (!wrap) return;
@@ -862,7 +887,7 @@ const RaccoonAnim = (() => {
         animDur = 1.05;
         break;
       case "eat":
-        animDur = 1.15;
+        animDur = 2.6;
         eatFood = opts.food || eatFood || "berries";
         ensureFoodProp(eatFood);
         break;
@@ -1011,21 +1036,22 @@ const RaccoonAnim = (() => {
       }
       case "eat": {
         const u = Math.min(1, animT / animDur);
-        if (u < 0.22) {
-          headDip = (u / 0.22) * 10;
-          poseY = (u / 0.22) * 3;
-        } else if (u < 0.78) {
-          headDip = 8 + Math.sin(t * 22) * 2.5;
-          poseY = 2 + Math.sin(t * 18) * 1.5;
-          walkPhase += dt * 10;
+        // Slow reach → long chew → settle so the food reads clearly.
+        if (u < 0.28) {
+          headDip = (u / 0.28) * 10;
+          poseY = (u / 0.28) * 3;
+        } else if (u < 0.82) {
+          headDip = 8 + Math.sin(t * 10) * 2.2;
+          poseY = 2 + Math.sin(t * 8) * 1.2;
+          walkPhase += dt * 4.5;
         } else {
-          const settle = (u - 0.78) / 0.22;
+          const settle = (u - 0.82) / 0.18;
           headDip = 8 * (1 - settle);
           poseY = 2 * (1 - settle);
         }
         if (foodEl) {
-          const reach = Math.min(1, u / 0.28);
-          const fade = 1 - Math.max(0, (u - 0.55) / 0.4);
+          const reach = Math.min(1, u / 0.32);
+          const fade = 1 - Math.max(0, (u - 0.62) / 0.32);
           foodEl.style.setProperty("--reach", String(reach));
           foodEl.style.opacity = String(Math.max(0, fade));
         }
@@ -1141,6 +1167,14 @@ const RaccoonAnim = (() => {
     applyTransform();
   }
 
-  return { init, reset, sync, play, tick, getView };
+  function getAnim() {
+    return anim;
+  }
+
+  function isBusy() {
+    return ["eat", "ascend", "refuse", "pop"].includes(anim);
+  }
+
+  return { init, reset, sync, play, tick, getView, getAnim, isBusy };
 })();
 window.RaccoonAnim = RaccoonAnim;

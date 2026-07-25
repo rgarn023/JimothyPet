@@ -902,12 +902,18 @@
 
   function pulseAnim(kind, opts = {}) {
     if (window.RaccoonAnim) RaccoonAnim.play(kind, opts);
-    animCooldown = randRange(1.2, 3.2);
+    // Keep ambient from cutting off a slow eat / key reaction.
+    if (kind === "eat") animCooldown = 3.2;
+    else if (kind === "ascend") animCooldown = 5;
+    else animCooldown = randRange(1.2, 3.2);
   }
 
   function ambientAnim(dt) {
     tapCooldown = Math.max(0, tapCooldown - dt);
     if (!state.alive || state.ascending || state.stage === "bush") return;
+    if (window.RaccoonAnim && typeof RaccoonAnim.isBusy === "function" && RaccoonAnim.isBusy()) {
+      return;
+    }
     animCooldown -= dt;
     if (animCooldown > 0) return;
 
