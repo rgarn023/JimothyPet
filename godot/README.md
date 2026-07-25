@@ -35,6 +35,14 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
 - **Tap Jimothy** for smile / hop / nuzzle / spin reactions
 
+## Download
+
+Zips live in the repo [`dist/`](../dist/) folder:
+
+- `Jimothy-godot-only-4.7.1.zip` — this Godot project
+- `JimothyPet-godot-4.7.1.zip` — full repo (web + Godot)
+- `Jimothy-web.zip` — browser-only build
+
 ## Export Android
 
 1. Install Godot **4.7.1** export templates  

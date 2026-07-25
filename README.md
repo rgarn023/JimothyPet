@@ -25,6 +25,16 @@ npm start
 # open http://localhost:8080
 ```
 
+## Download zips
+
+Fresh packs in [`dist/`](dist/):
+
+| Zip | What’s inside |
+| --- | --- |
+| [`Jimothy-web.zip`](dist/Jimothy-web.zip) | Browser build — unzip and open `index.html`, or host the folder |
+| [`Jimothy-godot-only-4.7.1.zip`](dist/Jimothy-godot-only-4.7.1.zip) | Godot 4.7.1 project only |
+| [`JimothyPet-godot-4.7.1.zip`](dist/JimothyPet-godot-4.7.1.zip) | Full repo (web + Godot) |
+
 ## Life cycle (real time)
 
 | Stage | When |
