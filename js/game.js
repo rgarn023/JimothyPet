@@ -617,15 +617,15 @@
       return;
     }
     state.lightsOff = !state.lightsOff;
+    sfx("lights");
     if (state.lightsOff) {
       say("Lights out. He’s settling in…");
-      pulseAnim("fallAsleep");
+      // Sleep SFX + fallAsleep anim come from syncSleepVisuals.
     } else if (isInSleepWindow()) {
       say("Lights on — but it’s still his sleep hours.");
     } else {
       say("Lights on. He’s waking up.");
-      pulseAnim("stretch");
-      sfx("stretch");
+      // Wake stretch SFX comes from syncSleepVisuals.
     }
     closeActionMenu();
     render();
@@ -672,8 +672,10 @@
 
     if (sleeping && !wasSleeping && state.alive && !state.ascending) {
       pulseAnim("fallAsleep");
+      sfx("sleep");
     } else if (!sleeping && wasSleeping && state.alive && !state.ascending) {
       pulseAnim("stretch");
+      sfx("stretch");
     }
     wasSleeping = sleeping;
   }
@@ -1565,6 +1567,7 @@
   }
 
   function openActionMenu() {
+    sfx("chirp");
     if ($("actionModal")) $("actionModal").hidden = false;
   }
 
@@ -1590,6 +1593,7 @@
   function openFeed() {
     if (!state.alive || state.stage === "bush" || state.ascending) return;
     closeActionMenu();
+    sfx("pet");
     $("feedModal").hidden = false;
   }
 
@@ -1789,6 +1793,7 @@
   function openPlayPicker() {
     closeActionMenu();
     if (canStartPlay({ rollStubborn: true }) !== "ok") return;
+    sfx("play");
     $("playPickModal").hidden = false;
   }
 
@@ -2009,14 +2014,13 @@
       }
       devSleepOverride = "sleep";
       state.lightsOff = true;
-      pulseAnim("fallAsleep");
       say("Dev: put to sleep.");
+      // Sleep anim + SFX come from syncSleepVisuals.
     } else {
       devSleepOverride = "awake";
       state.lightsOff = false;
-      pulseAnim("stretch");
-      sfx("stretch");
       say("Dev: woke up.");
+      // Wake stretch anim + SFX come from syncSleepVisuals.
     }
     render();
     save({ touchTick: false });

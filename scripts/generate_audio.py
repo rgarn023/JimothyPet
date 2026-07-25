@@ -442,6 +442,100 @@ def soft_hoot() -> list[float]:
     return fade(a + gap + b, 0.02, 0.1)
 
 
+def sick() -> list[float]:
+    """Weak congested whimper — short illness cue."""
+    parts: list[float] = []
+    for f0, dur, amp in ((340, 0.16, 0.22), (300, 0.2, 0.2), (280, 0.18, 0.16)):
+        nn = int(dur * SR)
+        note = []
+        for i in range(nn):
+            t = i / SR
+            u = i / max(1, nn - 1)
+            env = (math.sin(math.pi * u) ** 1.2) * (0.75 + 0.25 * (1 - u))
+            f = f0 * (1.0 - 0.1 * u)
+            v = 0.55 * sine(f, t) + 0.22 * sine(f * 1.95, t)
+            v += rng.uniform(-1, 1) * 0.08 * env
+            note.append(v * env * amp)
+        parts.extend(fade(bandpass(note, 0.05, 0.35), 0.006, 0.03))
+        parts.extend([0.0] * int(0.05 * SR))
+    # Soft cough rasp
+    cn = int(0.09 * SR)
+    cough = highpass(noise(cn, 0.55), 0.35)
+    for i in range(cn):
+        cough[i] *= (1 - i / cn) ** 0.6 * 0.28
+    parts.extend(fade(cough, 0.002, 0.02))
+    return fade(parts, 0.01, 0.06)
+
+
+def heal() -> list[float]:
+    """Gentle recovery chime — soft ascending tones."""
+    parts: list[float] = []
+    for f0, dur, amp in ((420, 0.14, 0.2), (560, 0.16, 0.22), (740, 0.22, 0.18)):
+        nn = int(dur * SR)
+        note = []
+        for i in range(nn):
+            t = i / SR
+            u = i / max(1, nn - 1)
+            env = (math.sin(math.pi * u) ** 0.9) * (1.0 - 0.2 * u)
+            f = f0 * (1.0 + 0.08 * u)
+            v = 0.55 * sine(f, t) + 0.25 * sine(f * 2.02, t) + 0.1 * sine(f * 3.05, t)
+            note.append(v * env * amp)
+        parts.extend(fade(lowpass(note, 0.35), 0.008, 0.04))
+        parts.extend([0.0] * int(0.028 * SR))
+    # Soft warm bed
+    bn = int(0.35 * SR)
+    bed = lowpass(noise(bn, 0.25), 0.08)
+    for i in range(bn):
+        u = i / max(1, bn - 1)
+        bed[i] *= math.sin(math.pi * u) * 0.18
+    parts.extend(fade(bed, 0.02, 0.08))
+    return fade(parts, 0.012, 0.08)
+
+
+def sleep_sfx() -> list[float]:
+    """Nest settle: soft leaf rustle + sleepy breath."""
+    n = int(1.15 * SR)
+    rust = highpass(noise(n, 0.45), 0.28)
+    out = []
+    for i in range(n):
+        t = i / SR
+        u = i / max(1, n - 1)
+        env = (math.sin(math.pi * u) ** 0.65) * (0.55 + 0.45 * abs(math.sin(i * 0.17)))
+        v = rust[i] * env * 0.55
+        # Slow breath tone
+        breath = 0.12 * sine(95 + 12 * math.sin(2 * math.pi * 0.7 * t), t)
+        breath *= math.sin(math.pi * u) ** 1.4
+        out.append(v + breath)
+    # Twig settle taps
+    for _ in range(3):
+        s = int(rng.uniform(0.12, 0.75) * SR)
+        ln = int(rng.uniform(0.008, 0.02) * SR)
+        burst = highpass(noise(ln, 0.8), 0.45)
+        for j, b in enumerate(burst):
+            if s + j < n:
+                out[s + j] += b * (1 - j / ln) ** 0.7 * 0.22
+    return fade(lowpass(out, 0.22), 0.02, 0.14)
+
+
+def lights() -> list[float]:
+    """Soft lamp-switch click + tiny hum fade."""
+    n = int(0.28 * SR)
+    out = [0.0] * n
+    # Click transient
+    cn = int(0.012 * SR)
+    click = highpass(noise(cn, 1.0), 0.55)
+    for i, c in enumerate(click):
+        out[i] += c * (1 - i / cn) ** 0.4 * 0.55
+    # Soft electrical settle
+    for i in range(n):
+        t = i / SR
+        u = i / max(1, n - 1)
+        env = math.exp(-u * 6.5) * (1 - u) ** 0.4
+        out[i] += 0.1 * sine(180, t) * env
+        out[i] += rng.uniform(-1, 1) * 0.03 * env
+    return fade(out, 0.001, 0.05)
+
+
 def main() -> None:
     files = {
         "night_ambience.wav": night_ambience(12.0),
@@ -455,6 +549,10 @@ def main() -> None:
         "discipline.wav": discipline(),
         "ascend.wav": ascend(),
         "hoot.wav": soft_hoot(),
+        "sick.wav": sick(),
+        "heal.wav": heal(),
+        "sleep.wav": sleep_sfx(),
+        "lights.wav": lights(),
     }
     for out_dir in OUT_DIRS:
         for name, samples in files.items():

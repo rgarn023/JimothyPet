@@ -1007,6 +1007,8 @@ func _on_forms_pressed() -> void:
 
 
 func _on_action_pressed() -> void:
+	if JimothyAudio:
+		JimothyAudio.play("chirp", -6.0)
 	if _action_panel:
 		_action_panel.visible = true
 
@@ -1057,6 +1059,8 @@ func _on_feed_pressed() -> void:
 		return
 	if _action_panel:
 		_action_panel.visible = false
+	if JimothyAudio:
+		JimothyAudio.play("chitter", -6.0)
 	feed_panel.visible = true
 
 
@@ -1140,6 +1144,9 @@ func _on_play_pressed() -> void:
 		_action_panel.visible = false
 	if PetState.can_start_play(true) != "ok":
 		return
+	if JimothyAudio:
+		JimothyAudio.play("rustle", -4.0)
+		JimothyAudio.play("chitter", -6.0)
 	_play_pick_panel.visible = true
 
 

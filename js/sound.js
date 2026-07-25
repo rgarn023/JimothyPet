@@ -14,6 +14,10 @@ const JimothySound = (() => {
     cry: "cry.wav",
     discipline: "discipline.wav",
     ascend: "ascend.wav",
+    sick: "sick.wav",
+    heal: "heal.wav",
+    sleep: "sleep.wav",
+    lights: "lights.wav",
   };
   const CRY_MS = 5000;
 
@@ -162,6 +166,7 @@ const JimothySound = (() => {
         play("crunch", 0.45);
         break;
       case "refuse":
+      case "grumble":
         play("grumble", 0.78);
         break;
       case "stubborn":
@@ -171,10 +176,22 @@ const JimothySound = (() => {
         stopCry();
         play("discipline", 0.88);
         break;
+      case "sick":
+        play("sick", 0.8);
+        break;
       case "heal":
       case "treat":
-        play("chirp", 0.5);
-        play("chitter", 0.4);
+        play("heal", 0.78);
+        play("chirp", 0.35);
+        break;
+      case "lights":
+        play("lights", 0.7);
+        break;
+      case "fallAsleep":
+      case "sleep":
+        // "sleep" cue is the settle-in one-shot; ambient sleep pose pulses stay silent.
+        play("sleep", 0.75);
+        play("rustle", 0.35);
         break;
       case "pop":
       case "stretch":
@@ -200,13 +217,15 @@ const JimothySound = (() => {
         play("chitter", 0.5);
         break;
       case "clean":
-        play("rustle", 0.45);
+        play("rustle", 0.55);
+        play("chitter", 0.3);
         break;
       case "pet":
       case "smile":
       case "nuzzle":
         play("chitter", 0.55);
         break;
+      case "chirp":
       case "hop":
       case "spin":
       case "happy":
@@ -217,6 +236,7 @@ const JimothySound = (() => {
         if (Math.random() < 0.55) play("chitter", 0.35);
         break;
       default:
+        if (FILES[kind]) play(kind, 0.7);
         break;
     }
   }

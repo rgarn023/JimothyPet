@@ -902,8 +902,8 @@ button {
 }
 
 .raccoon-wrap.sleeping .raccoon {
-  transform: translateY(10px) rotate(-8deg) scale(1.02, 0.92);
-  transform-origin: 50% 80%;
+  transform: translateY(6px);
+  transform-origin: 50% 85%;
 }
 
 .raccoon-wrap[data-anim="fallAsleep"] .raccoon {
@@ -911,14 +911,24 @@ button {
 }
 
 .raccoon-wrap[data-anim="sleep"] .raccoon {
-  transform: translateY(12px) rotate(-10deg) scale(1.04, 0.9);
-  transform-origin: 50% 80%;
+  transform: translateY(8px);
+  transform-origin: 50% 85%;
+}
+
+.raccoon-wrap.sleeping .sleep-nest {
+  transform-origin: 60px 102px;
+  animation: nest-settle 2.8s ease-in-out infinite;
 }
 
 @keyframes fall-asleep {
-  0% { transform: translateY(0) rotate(0) scale(1, 1); }
-  55% { transform: translateY(6px) rotate(-4deg) scale(1.02, 0.96); }
-  100% { transform: translateY(12px) rotate(-10deg) scale(1.04, 0.9); }
+  0% { transform: translateY(-4px) scale(1, 1); opacity: 0.92; }
+  55% { transform: translateY(4px) scale(1.01, 0.98); opacity: 1; }
+  100% { transform: translateY(8px) scale(1, 1); opacity: 1; }
+}
+
+@keyframes nest-settle {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.015, 0.985); }
 }
 
 .sleep-zzz {

@@ -290,16 +290,17 @@ func toggle_lights() -> void:
 		speech.emit("Nothing to light yet.")
 		return
 	lights_off = not lights_off
+	anim_impulse.emit("lights")
 	if lights_off:
 		speech.emit("Lights out. He’s settling in…")
-		anim_impulse.emit("fallAsleep")
 	elif is_in_sleep_window():
 		speech.emit("Lights on — but it’s still his sleep hours.")
 	else:
 		speech.emit("Lights on. He’s waking up.")
-		anim_impulse.emit("stretch")
+	# fallAsleep / stretch SFX come from sync_sleep_transition.
 	save_game()
 	state_changed.emit()
+	sync_sleep_transition()
 
 
 func sync_sleep_transition() -> void:
@@ -423,15 +424,14 @@ func dev_set_sleep(on: bool) -> void:
 			return
 		dev_sleep_override = "sleep"
 		lights_off = true
-		anim_impulse.emit("fallAsleep")
 		speech.emit("Dev: put to sleep.")
 	else:
 		dev_sleep_override = "awake"
 		lights_off = false
-		anim_impulse.emit("stretch")
 		speech.emit("Dev: woke up.")
 	state_changed.emit()
 	save_game()
+	sync_sleep_transition()
 
 
 ## Developer fast-forward — jumps wall-clock age to the start of a stage.
@@ -1093,6 +1093,7 @@ func clean_mess() -> void:
 		speech.emit("Nest cleared. He sniffs approval.")
 	else:
 		speech.emit("One pile gone — %d left." % mess_count)
+	anim_impulse.emit("clean")
 	state_changed.emit()
 	save_game()
 

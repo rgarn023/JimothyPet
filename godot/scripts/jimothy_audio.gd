@@ -12,6 +12,10 @@ const FILES := {
 	"cry": "cry.wav",
 	"discipline": "discipline.wav",
 	"ascend": "ascend.wav",
+	"sick": "sick.wav",
+	"heal": "heal.wav",
+	"sleep": "sleep.wav",
+	"lights": "lights.wav",
 }
 const CRY_SEC := 5.0
 
@@ -145,32 +149,48 @@ func _on_anim(kind: String) -> void:
 		"eat":
 			play("chew", -1.5)
 			play("crunch", -6.0)
-		"refuse":
+		"refuse", "grumble":
 			play("grumble", -2.0)
 		"stubborn":
 			_play_cry(-1.0)
 		"scold":
 			_stop_cry()
 			play("discipline", -1.5)
+		"sick":
+			play("sick", -2.0)
+		"lights":
+			play("lights", -3.0)
+		"fallAsleep":
+			# Ambient "sleep" pose pulses intentionally silent.
+			play("sleep", -2.0)
+			play("rustle", -8.0)
 		"pop", "stretch":
 			play("rustle", -2.0)
 			play("chirp", -4.0)
 		"ascend":
 			play("ascend", -1.0)
-		"jump", "hop", "happy":
+		"jump", "hop", "happy", "play", "chirp":
 			play("chirp", -6.0)
-		"smile", "nuzzle":
+			if kind == "play":
+				play("rustle", -5.0)
+				play("chitter", -7.0)
+		"sad":
+			play("grumble", -3.0)
+		"smile", "nuzzle", "pet":
 			play("chitter", -5.0)
 		"spin":
 			play("chirp", -4.0)
 			play("chitter", -8.0)
-		"rustle":
+		"rustle", "clean":
 			play("rustle", -3.0)
+			if kind == "clean":
+				play("chitter", -9.0)
 		"heal":
-			play("chirp", -5.0)
-			play("chitter", -7.0)
+			play("heal", -2.0)
+			play("chirp", -8.0)
 		_:
-			pass
+			if _streams.has(kind):
+				play(kind, -3.0)
 
 
 func _on_speech(_text: String) -> void:

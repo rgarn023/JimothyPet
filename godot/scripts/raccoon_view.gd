@@ -576,7 +576,10 @@ func _draw() -> void:
 	# Head dip nudges the silhouette down while chewing / sniffing.
 	var draw_c := c + Vector2(0, _head_dip * 0.45)
 
-	if _view_front() and _anim != "ascend":
+	if _is_sleeping() and _anim != "ascend":
+		_draw_nest_bed(c + Vector2(0, 18))
+		_draw_sleeping(draw_c + Vector2(0, 10))
+	elif _view_front() and _anim != "ascend":
 		_draw_front(draw_c)
 	else:
 		match stage:
@@ -1025,6 +1028,128 @@ func _ringed_tail(base: Vector2, length: float, face: float, rings: bool = true)
 
 func _is_sleeping() -> bool:
 	return mood == "sleep" or _anim in ["sleep", "fallAsleep"] or (PetState != null and PetState.is_sleeping())
+
+
+func _draw_nest_bed(c: Vector2) -> void:
+	_ellipse(c + Vector2(0, 8), Vector2(46, 14), Color(0.23, 0.16, 0.09, 0.55))
+	_ellipse(c + Vector2(0, 6), Vector2(42, 11), Color(0.29, 0.21, 0.12, 0.7))
+	# Sticks
+	var sticks := [
+		[Vector2(-38, 2), Vector2(-2, 0), Vector2(34, 4)],
+		[Vector2(-30, 10), Vector2(-2, 14), Vector2(28, 8)],
+		[Vector2(-22, -4), Vector2(2, -8), Vector2(36, 2)],
+		[Vector2(-36, 6), Vector2(-8, 12), Vector2(20, 4)],
+		[Vector2(-12, 14), Vector2(10, 18), Vector2(40, 4)],
+	]
+	var stick_cols := [Color("6b4a2a"), Color("5a3c22"), Color("7a5530"), Color("4a3018"), Color("6a4828")]
+	for i in sticks.size():
+		var pts: Array = sticks[i]
+		draw_polyline(PackedVector2Array([c + pts[0], c + pts[1], c + pts[2]]), stick_cols[i], 2.6, true)
+	draw_line(c + Vector2(-42, 4), c + Vector2(-26, -2), Color("5c3e20"), 2.0)
+	draw_line(c + Vector2(32, 0), c + Vector2(44, 6), Color("5c3e20"), 2.0)
+	# Leaves
+	var leaves := [
+		[Vector2(-32, 4), Vector2(7, 3.5), Color("4a7a48"), -28.0],
+		[Vector2(-20, 12), Vector2(8, 3.8), Color("3d6b4f"), 18.0],
+		[Vector2(12, 13), Vector2(9, 4.0), Color("548a62"), -12.0],
+		[Vector2(28, 6), Vector2(7.5, 3.4), Color("6fbf84"), 22.0],
+		[Vector2(-4, 16), Vector2(8, 3.2), Color("3d6b4f"), 8.0],
+		[Vector2(4, -2), Vector2(6, 2.8), Color("5a8a58"), -35.0],
+		[Vector2(-12, 0), Vector2(5.5, 2.6), Color("6fbf84"), 40.0],
+	]
+	for L in leaves:
+		var p: Vector2 = c + L[0]
+		var r: Vector2 = L[1]
+		var col: Color = L[2]
+		var rot: float = deg_to_rad(float(L[3]))
+		draw_set_transform(p, rot, Vector2.ONE)
+		_ellipse(Vector2.ZERO, r, Color(col.r, col.g, col.b, 0.88))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_sleeping(c: Vector2) -> void:
+	var fur := _fur()
+	var belly := fur.lightened(0.22)
+	var body_rx := 34.0
+	var body_ry := 18.0
+	var body_y := 10.0
+	var head_r := 16.0
+	var head := Vector2(30, 4)
+	var stroke_w := 4.0
+	match stage:
+		"baby":
+			body_rx = 26.0
+			body_ry = 14.0
+			body_y = 14.0
+			head_r = 13.0
+			head = Vector2(24, 8)
+			stroke_w = 3.2
+		"young":
+			body_rx = 30.0
+			body_ry = 16.0
+			body_y = 12.0
+			head_r = 14.5
+			head = Vector2(27, 6)
+		"teen":
+			body_rx = 33.0
+			body_ry = 17.0
+			body_y = 11.0
+			head_r = 15.5
+			head = Vector2(29, 5)
+		"adult":
+			body_rx = 38.0
+			body_ry = 20.0
+			body_y = 8.0
+			head_r = 17.5
+			head = Vector2(34, 2)
+			stroke_w = 5.0
+	var body := c + Vector2(0, body_y)
+	# Curled tail
+	draw_polyline(
+		PackedVector2Array([
+			body + Vector2(-body_rx + 4, 2),
+			body + Vector2(-body_rx - 14, -10),
+			body + Vector2(-body_rx - 6, -18),
+		]),
+		Color("5a5a64"),
+		stroke_w,
+		true
+	)
+	_ellipse(body + Vector2(-body_rx - 4, -16), Vector2(3.2, 2.6), Color(0.78, 0.78, 0.82, 0.7))
+	# Tucked paws
+	_ellipse(body + Vector2(-10, body_ry - 2), Vector2(7, 4), Color("3a3a44"))
+	_ellipse(body + Vector2(6, body_ry), Vector2(6.5, 3.6), Color("3a3a44"))
+	_ellipse(body, Vector2(body_rx, body_ry), fur)
+	_ellipse(body + Vector2(2, 2), Vector2(body_rx * 0.55, body_ry * 0.55), Color(belly.r, belly.g, belly.b, 0.45))
+	_ellipse(body + Vector2(head.x - 8, body_ry - 4), Vector2(5.5, 3.2), Color("3a3a44"))
+	_ellipse(body + Vector2(head.x - 2, body_ry - 2), Vector2(5, 3), Color("3a3a44"))
+	# Head resting
+	var hp := body + head
+	_ellipse(hp, Vector2(head_r, head_r * 0.92), fur.lightened(0.04))
+	draw_set_transform(hp + Vector2(-4, -head_r * 0.55), deg_to_rad(-18.0), Vector2.ONE)
+	_ellipse(Vector2.ZERO, Vector2(head_r * 0.38, head_r * 0.55), Color("4a4a54"))
+	_ellipse(Vector2.ZERO, Vector2(head_r * 0.17, head_r * 0.3), Color("e2cdb2"))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_set_transform(hp + Vector2(6, -head_r * 0.5), deg_to_rad(12.0), Vector2.ONE)
+	_ellipse(Vector2.ZERO, Vector2(head_r * 0.34, head_r * 0.5), Color("4a4a54"))
+	_ellipse(Vector2.ZERO, Vector2(head_r * 0.15, head_r * 0.28), Color("e2cdb2"))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_ellipse(hp + Vector2(1, 1), Vector2(head_r * 0.7, head_r * 0.4), Color(0.11, 0.11, 0.13, 0.9))
+	# Closed eyes
+	draw_polyline(
+		PackedVector2Array([hp + Vector2(-6, 1), hp + Vector2(-2, 4), hp + Vector2(2, 1)]),
+		Color("2a2a32"),
+		1.8,
+		true
+	)
+	draw_polyline(
+		PackedVector2Array([hp + Vector2(4, 0), hp + Vector2(8, 3.2), hp + Vector2(12, 0)]),
+		Color("2a2a32"),
+		1.7,
+		true
+	)
+	_ellipse(hp + Vector2(4, head_r * 0.38), Vector2(head_r * 0.26, head_r * 0.16), Color("c9a292"))
+	draw_circle(hp + Vector2(4, head_r * 0.28), 1.4, Color("2a2a32"))
 
 
 func _side_eye(p: Vector2, r: float, gleam: Color = Color("faf6ec")) -> void:

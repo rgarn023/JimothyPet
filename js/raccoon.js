@@ -789,6 +789,112 @@ const RaccoonArt = (() => {
     return hex;
   }
 
+  /** Stick-and-leaf nest Jimothy curls into when sleeping. */
+  function nestBed() {
+    return `
+      <g class="sleep-nest" aria-hidden="true">
+        <ellipse cx="60" cy="104" rx="46" ry="14" fill="#3a2a18" opacity="0.55"/>
+        <ellipse cx="60" cy="102" rx="42" ry="11" fill="#4a3520" opacity="0.7"/>
+        <!-- sticks -->
+        <path d="M22 98 Q40 90 58 96" fill="none" stroke="#6b4a2a" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M30 106 Q55 112 82 104" fill="none" stroke="#5a3c22" stroke-width="2.8" stroke-linecap="round"/>
+        <path d="M38 92 Q62 88 90 98" fill="none" stroke="#7a5530" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M24 102 Q48 108 74 100" fill="none" stroke="#4a3018" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M48 110 Q70 114 96 100" fill="none" stroke="#6a4828" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M18 100 L34 94" fill="none" stroke="#5c3e20" stroke-width="2" stroke-linecap="round"/>
+        <path d="M92 96 L104 102" fill="none" stroke="#5c3e20" stroke-width="2" stroke-linecap="round"/>
+        <!-- leaves -->
+        <ellipse cx="28" cy="100" rx="7" ry="3.5" fill="#4a7a48" transform="rotate(-28 28 100)" opacity="0.9"/>
+        <ellipse cx="40" cy="108" rx="8" ry="3.8" fill="#3d6b4f" transform="rotate(18 40 108)" opacity="0.85"/>
+        <ellipse cx="72" cy="109" rx="9" ry="4" fill="#548a62" transform="rotate(-12 72 109)" opacity="0.9"/>
+        <ellipse cx="88" cy="102" rx="7.5" ry="3.4" fill="#6fbf84" transform="rotate(22 88 102)" opacity="0.8"/>
+        <ellipse cx="56" cy="112" rx="8" ry="3.2" fill="#3d6b4f" transform="rotate(8 56 112)" opacity="0.75"/>
+        <ellipse cx="64" cy="94" rx="6" ry="2.8" fill="#5a8a58" transform="rotate(-35 64 94)" opacity="0.7"/>
+        <ellipse cx="48" cy="96" rx="5.5" ry="2.6" fill="#6fbf84" transform="rotate(40 48 96)" opacity="0.65"/>
+      </g>`;
+  }
+
+  /** Jimothy lying on his side in the nest. */
+  function sleepingCreature(stage, form, genes) {
+    const color = moodFur(formFur(stage, form || "", genes), false, false);
+    const belly = lighten(color, 0.22);
+    let bodyRx = 34;
+    let bodyRy = 18;
+    let bodyX = 58;
+    let bodyY = 78;
+    let headR = 16;
+    let headX = 88;
+    let headY = 72;
+    let strokeW = 4;
+    if (stage === "baby") {
+      bodyRx = 26;
+      bodyRy = 14;
+      bodyY = 82;
+      headR = 13;
+      headX = 82;
+      headY = 76;
+      strokeW = 3.2;
+    } else if (stage === "young") {
+      bodyRx = 30;
+      bodyRy = 16;
+      bodyY = 80;
+      headR = 14.5;
+      headX = 85;
+      headY = 74;
+    } else if (stage === "teen") {
+      bodyRx = 33;
+      bodyRy = 17;
+      bodyY = 79;
+      headR = 15.5;
+      headX = 87;
+      headY = 73;
+    } else if (stage === "adult") {
+      bodyRx = 38;
+      bodyRy = 20;
+      bodyY = 76;
+      headR = 17.5;
+      headX = 92;
+      headY = 70;
+      strokeW = 5;
+    }
+
+    const snout = "#c9a292";
+    const mask = "#1c1c22";
+    const earRx = headR * 0.38;
+    const earRy = headR * 0.55;
+
+    return svg(`
+      ${nestBed()}
+      <!-- curled tail -->
+      <path d="M${bodyX - bodyRx + 4} ${bodyY + 2} Q${bodyX - bodyRx - 14} ${bodyY - 10} ${bodyX - bodyRx - 6} ${bodyY - 18}"
+        fill="none" stroke="#5a5a64" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <ellipse cx="${bodyX - bodyRx - 4}" cy="${bodyY - 16}" rx="3.2" ry="2.6" fill="#c8c8d0" opacity="0.7"/>
+      <!-- tucked hind paws -->
+      <ellipse cx="${bodyX - 10}" cy="${bodyY + bodyRy - 2}" rx="7" ry="4" fill="#3a3a44"/>
+      <ellipse cx="${bodyX + 6}" cy="${bodyY + bodyRy}" rx="6.5" ry="3.6" fill="#3a3a44"/>
+      <!-- body lying on side -->
+      <ellipse class="body" cx="${bodyX}" cy="${bodyY}" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
+      <ellipse cx="${bodyX + 2}" cy="${bodyY + 2}" rx="${bodyRx * 0.55}" ry="${bodyRy * 0.55}" fill="${belly}" opacity="0.45"/>
+      <!-- front paws tucked under chin -->
+      <ellipse cx="${headX - 8}" cy="${bodyY + bodyRy - 4}" rx="5.5" ry="3.2" fill="#3a3a44"/>
+      <ellipse cx="${headX - 2}" cy="${bodyY + bodyRy - 2}" rx="5" ry="3" fill="#3a3a44"/>
+      <!-- head resting -->
+      <ellipse class="head" cx="${headX}" cy="${headY}" rx="${headR}" ry="${headR * 0.92}" fill="${lighten(color, 0.04)}"/>
+      <ellipse cx="${headX - 4}" cy="${headY - headR * 0.55}" rx="${earRx}" ry="${earRy}" fill="#4a4a54" transform="rotate(-18 ${headX - 4} ${headY - headR * 0.55})"/>
+      <ellipse cx="${headX - 4}" cy="${headY - headR * 0.55}" rx="${earRx * 0.45}" ry="${earRy * 0.55}" fill="#e2cdb2" transform="rotate(-18 ${headX - 4} ${headY - headR * 0.55})"/>
+      <ellipse cx="${headX + 6}" cy="${headY - headR * 0.5}" rx="${earRx * 0.9}" ry="${earRy * 0.9}" fill="#4a4a54" transform="rotate(12 ${headX + 6} ${headY - headR * 0.5})"/>
+      <ellipse cx="${headX + 6}" cy="${headY - headR * 0.5}" rx="${earRx * 0.4}" ry="${earRy * 0.5}" fill="#e2cdb2" transform="rotate(12 ${headX + 6} ${headY - headR * 0.5})"/>
+      <ellipse cx="${headX + 1}" cy="${headY + 1}" rx="${headR * 0.7}" ry="${headR * 0.4}" fill="${mask}" opacity="0.9"/>
+      <!-- closed sleepy eyes -->
+      <path d="M${headX - 6} ${headY + 1} Q${headX - 2} ${headY + 4} ${headX + 2} ${headY + 1}"
+        fill="none" stroke="#2a2a32" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M${headX + 4} ${headY} Q${headX + 8} ${headY + 3.2} ${headX + 12} ${headY}"
+        fill="none" stroke="#2a2a32" stroke-width="1.7" stroke-linecap="round"/>
+      <ellipse cx="${headX + 4}" cy="${headY + headR * 0.38}" rx="${headR * 0.26}" ry="${headR * 0.16}" fill="${snout}"/>
+      <circle cx="${headX + 4}" cy="${headY + headR * 0.28}" r="1.4" fill="#2a2a32"/>
+    `);
+  }
+
   /** Front-facing Jimothy — looks at the player / screen. */
   function frontCreature(stage, form, genes, smiling = false, sick = false, stubborn = false, sleeping = false) {
     const color = moodFur(formFur(stage, form || "", genes), sick, stubborn);
@@ -974,26 +1080,28 @@ const RaccoonArt = (() => {
     const smiling = !!profile.smiling && !sick && !stubborn && !sleeping;
     const view = profile.view || "side";
     if (stage === "bush") return bush(profile.ageSec || 0);
+    const form =
+      stage === "young"
+        ? profile.youngForm || "puff"
+        : stage === "teen"
+          ? profile.teenForm || "bounder"
+          : stage === "adult"
+            ? profile.adultForm || "saint"
+            : "";
+    // Dedicated nest + lying pose whenever he's asleep.
+    if (sleeping) return sleepingCreature(stage, form, genes);
     if (view === "front") {
-      const form =
-        stage === "young"
-          ? profile.youngForm || "puff"
-          : stage === "teen"
-            ? profile.teenForm || "bounder"
-            : stage === "adult"
-              ? profile.adultForm || "saint"
-              : "";
       return frontCreature(stage, form, genes, smiling, sick, stubborn, sleeping);
     }
     switch (stage) {
       case "baby":
         return baby(genes, smiling, sick, stubborn, sleeping);
       case "young":
-        return young(genes, profile.youngForm || "puff", smiling, sick, stubborn, sleeping);
+        return young(genes, form, smiling, sick, stubborn, sleeping);
       case "teen":
-        return teen(genes, profile.teenForm || "bounder", smiling, sick, stubborn, sleeping);
+        return teen(genes, form, smiling, sick, stubborn, sleeping);
       case "adult":
-        return adult(genes, profile.adultForm || "saint", smiling, sick, stubborn, sleeping);
+        return adult(genes, form, smiling, sick, stubborn, sleeping);
       default:
         return bush(0);
     }
