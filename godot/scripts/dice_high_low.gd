@@ -146,6 +146,11 @@ func start_game() -> void:
 	_reset()
 	visible = true
 	_idle = true
+	set_process(true)
+	# Ensure die control has a drawable size before first paint.
+	if _die:
+		_die.custom_minimum_size = Vector2(220, 220)
+		_die.queue_redraw()
 
 
 func _reset() -> void:
@@ -262,6 +267,7 @@ func _on_done() -> void:
 	visible = false
 	_rolling = false
 	_idle = false
+	set_process(false)
 
 
 func _rotate_vec(v: Vector3, r: Vector3) -> Vector3:

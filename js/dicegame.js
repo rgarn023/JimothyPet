@@ -12,8 +12,8 @@ const DiceHighLow = (() => {
   let ctx = null;
   let bound = false;
   let idle = false;
+  let reported = false;
 
-  // Regular icosahedron (golden-ratio vertices)
   const PHI = (1 + Math.sqrt(5)) / 2;
   const RAW = [
     [0, 1, PHI],
@@ -33,7 +33,6 @@ const DiceHighLow = (() => {
     return [v[0] / len, v[1] / len, v[2] / len];
   });
 
-  // 20 triangular faces (vertex indices)
   const FACES = [
     [0, 1, 8],
     [0, 8, 4],
@@ -57,12 +56,11 @@ const DiceHighLow = (() => {
     [3, 10, 6],
   ];
 
-  // Numbers 1–20 mapped to faces (standard-ish opposite pairing vibe)
   const FACE_NUMS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11];
 
   let rot = { x: -0.35, y: 0.45, z: 0.1 };
   let targetRot = { x: -0.35, y: 0.45, z: 0.1 };
-  let faceNormals = [];
+  const faceNormals = FACES.map(faceNormal);
 
   function $(id) {
     return document.getElementById(id);
@@ -82,7 +80,6 @@ const DiceHighLow = (() => {
     let ny = uz * vx - ux * vz;
     let nz = ux * vy - uy * vx;
     const len = Math.hypot(nx, ny, nz) || 1;
-    // Point outward from origin
     const cx = (a[0] + b[0] + c[0]) / 3;
     const cy = (a[1] + b[1] + c[1]) / 3;
     const cz = (a[2] + b[2] + c[2]) / 3;
@@ -94,27 +91,21 @@ const DiceHighLow = (() => {
     return [nx / len, ny / len, nz / len];
   }
 
-  faceNormals = FACES.map(faceNormal);
-
   function rotatePoint(p, r) {
     let [x, y, z] = p;
-    // X
     let y1 = y * Math.cos(r.x) - z * Math.sin(r.x);
     let z1 = y * Math.sin(r.x) + z * Math.cos(r.x);
     y = y1;
     z = z1;
-    // Y
     let x2 = x * Math.cos(r.y) + z * Math.sin(r.y);
     let z2 = -x * Math.sin(r.y) + z * Math.cos(r.y);
     x = x2;
     z = z2;
-    // Z
     let x3 = x * Math.cos(r.z) - y * Math.sin(r.z);
     let y3 = x * Math.sin(r.z) + y * Math.cos(r.z);
     return [x3, y3, z];
   }
 
-  /** Rotation that aims a face normal toward +Z (camera). */
   function rotationForFace(faceIndex) {
     const n = faceNormals[faceIndex];
     const yaw = Math.atan2(n[0], n[2]);
@@ -130,10 +121,12 @@ const DiceHighLow = (() => {
     if (!ctx) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const css = 220;
-    canvas.width = css * dpr;
-    canvas.height = css * dpr;
-    canvas.style.width = `${css}px`;
-    canvas.style.height = `${css}px`;
+    if (canvas.width !== css * dpr || canvas.height !== css * dpr) {
+      canvas.width = css * dpr;
+      canvas.height = css * dpr;
+      canvas.style.width = `${css}px`;
+      canvas.style.height = `${css}px`;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return true;
   }
@@ -146,7 +139,7 @@ const DiceHighLow = (() => {
   }
 
   function drawDie(opts = {}) {
-    if (!ctx && !ensureCanvas()) return;
+    if (!ensureCanvas()) return;
     const w = 220;
     const h = 220;
     const cx = w / 2;
@@ -240,6 +233,20 @@ const DiceHighLow = (() => {
       });
   }
 
+  function setResultBadge(text, mode) {
+    const badge = $("diceResultBadge");
+    if (!badge) return;
+    if (!text) {
+      badge.hidden = true;
+      badge.textContent = "";
+      badge.dataset.mode = "";
+      return;
+    }
+    badge.hidden = false;
+    badge.textContent = text;
+    badge.dataset.mode = mode || "";
+  }
+
   function resetUi() {
     const stage = $("diceStage");
     const status = $("diceStatus");
@@ -251,62 +258,79 @@ const DiceHighLow = (() => {
     if (again) again.hidden = true;
     if (picks) picks.hidden = false;
     if (stage) stage.dataset.state = "ready";
+    setResultBadge("", "");
     chosen = null;
     rolling = false;
+    reported = false;
     result = 0;
     rot = { x: -0.35, y: 0.45, z: 0.1 };
     ensureCanvas();
     drawDie();
   }
 
-  function onModalClick(e) {
-    const t = e.target;
-    if (!t || !t.id) return;
-    if (t.id === "diceLow") pick("low");
-    else if (t.id === "diceHigh") pick("high");
-    else if (t.id === "diceClose") close(false);
-    else if (t.id === "diceAgain") {
-      resetUi();
-      idleSpin(true);
-    }
+  function onPickLow(e) {
+    if (e) e.preventDefault();
+    pick("low");
+  }
+  function onPickHigh(e) {
+    if (e) e.preventDefault();
+    pick("high");
+  }
+  function onCloseBtn(e) {
+    if (e) e.preventDefault();
+    close(false);
+  }
+  function onAgainBtn(e) {
+    if (e) e.preventDefault();
+    resetUi();
+    idleSpin(true);
   }
 
   function bind() {
     if (bound) return;
-    const modal = $("diceModal");
-    if (!modal) return;
-    modal.addEventListener("click", onModalClick);
+    const low = $("diceLow");
+    const high = $("diceHigh");
+    const closeBtn = $("diceClose");
+    const again = $("diceAgain");
+    if (low) low.addEventListener("click", onPickLow);
+    if (high) high.addEventListener("click", onPickHigh);
+    if (closeBtn) closeBtn.addEventListener("click", onCloseBtn);
+    if (again) again.addEventListener("click", onAgainBtn);
     bound = true;
   }
 
-  function unbind() {
-    const modal = $("diceModal");
-    if (modal && bound) modal.removeEventListener("click", onModalClick);
-    bound = false;
+  function report(payload) {
+    if (reported) return;
+    reported = true;
+    const cb = onDone;
+    if (typeof cb === "function") {
+      try {
+        cb(payload);
+      } catch (err) {
+        console.error("DiceHighLow onDone error", err);
+      }
+    }
   }
 
   function start(doneCallback) {
     onDone = doneCallback;
+    reported = false;
     const modal = $("diceModal");
     if (!modal) {
-      if (typeof onDone === "function") {
-        onDone({ completed: false, correct: false, roll: 0, guess: null, bailed: true });
-      }
+      report({ completed: false, correct: false, roll: 0, guess: null, bailed: true });
+      onDone = null;
       return;
     }
     modal.hidden = false;
     bind();
-    // Init canvas after the modal is visible so layout/CSS apply.
-    requestAnimationFrame(() => {
-      if (modal.hidden) return;
-      resetUi();
-      idleSpin(true);
-    });
+    // Synchronous init — no nested rAF race that can wipe a fast pick.
+    resetUi();
+    idleSpin(true);
   }
 
   function idleSpin(on) {
-    idle = on;
-    if (!on) return;
+    idle = !!on;
+    if (!idle) return;
     const tick = (now) => {
       if (!idle || rolling || $("diceModal")?.hidden) {
         idle = false;
@@ -321,24 +345,26 @@ const DiceHighLow = (() => {
     rafId = requestAnimationFrame(tick);
   }
 
-  function close(bail = true) {
+  function close(_bail = true) {
     idle = false;
     cancelAnimationFrame(rafId);
     rolling = false;
     const modal = $("diceModal");
     if (modal) modal.hidden = true;
-    if (bail && typeof onDone === "function") {
-      onDone({ completed: false, correct: false, roll: 0, guess: null, bailed: true });
-    }
+    setResultBadge("", "");
+    // Never bail-report: pet rewards are applied when the die lands.
+    // Closing mid-roll simply cancels without punishing/rewarding.
     onDone = null;
   }
 
   function pick(guess) {
     if (rolling) return;
-    if ($("diceModal")?.hidden) return;
+    const modal = $("diceModal");
+    if (!modal || modal.hidden) return;
     idle = false;
     cancelAnimationFrame(rafId);
     chosen = guess;
+    reported = false;
     result = 1 + Math.floor(Math.random() * 20);
     const picks = $("dicePicks");
     const status = $("diceStatus");
@@ -349,13 +375,14 @@ const DiceHighLow = (() => {
         guess === "high" ? "You called High (11–20)…" : "You called Low (1–10)…";
     }
     if (stage) stage.dataset.state = "spinning";
+    setResultBadge("…", "spin");
     beginSpin();
   }
 
   function beginSpin() {
     rolling = true;
     ensureCanvas();
-    const duration = 2600;
+    const duration = 2200;
     const startT = performance.now();
     const startRot = { ...rot };
     const faceIdx = FACE_NUMS.indexOf(result);
@@ -409,19 +436,18 @@ const DiceHighLow = (() => {
         ? `d20 shows ${result} — ${band}! Jimothy is thrilled.`
         : `d20 shows ${result} — ${band}. Jimothy droops.`;
     }
+    setResultBadge(String(result), correct ? "win" : "lose");
     const again = $("diceAgain");
     if (again) again.hidden = false;
 
-    const payload = {
+    // Apply pet outcome immediately so Done can't cancel the reward.
+    report({
       completed: true,
       correct,
       roll: result,
       guess: chosen,
       bailed: false,
-    };
-    setTimeout(() => {
-      if (typeof onDone === "function") onDone(payload);
-    }, 650);
+    });
   }
 
   return { start, close };

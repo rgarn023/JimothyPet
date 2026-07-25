@@ -1343,13 +1343,17 @@
   function openDiceGame() {
     closePlayPicker();
     if (canStartPlay({ rollStubborn: false }) !== "ok") return;
-    if (!window.DiceHighLow) {
-      say("High or Low couldn’t load — try a refresh.");
+    if (!window.DiceHighLow || typeof DiceHighLow.start !== "function") {
+      say("High or Low couldn’t load — try a hard refresh.");
       return;
     }
     sfx("play");
-    // Show modal first so canvas sizing / paint land correctly.
-    requestAnimationFrame(() => DiceHighLow.start(onDiceDone));
+    try {
+      DiceHighLow.start(onDiceDone);
+    } catch (err) {
+      console.error(err);
+      say("High or Low hit a snag — try again.");
+    }
   }
 
   function closeGame() {

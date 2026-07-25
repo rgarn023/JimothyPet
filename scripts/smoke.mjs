@@ -109,6 +109,7 @@ await page.click("#btnPlay", { force: true });
 await page.waitForSelector("#playPickModal:not([hidden])");
 await page.click("#pickDice", { force: true });
 await page.waitForSelector("#diceModal:not([hidden])");
+const sessionsBefore = await page.evaluate(() => window.JimothyDebug.getState().playSessions);
 await page.click("#diceHigh", { force: true });
 await page.waitForFunction(
   () => {
@@ -117,6 +118,14 @@ await page.waitForFunction(
   },
   { timeout: 6000 }
 );
+// Rewards must apply as soon as the die lands (not after Done).
+await page.waitForFunction(
+  (before) => window.JimothyDebug.getState().playSessions > before,
+  sessionsBefore,
+  { timeout: 2000 }
+);
+const diceBadge = ((await page.locator("#diceResultBadge").textContent()) || "").trim();
+const sessionsAfterDice = await page.evaluate(() => window.JimothyDebug.getState().playSessions);
 await page.screenshot({
   path: "/opt/cursor/artifacts/screenshots/jimothy-dice.png",
 });
@@ -187,6 +196,8 @@ const summary = {
   resetPresent,
   viewFacing,
   notifyPresent,
+  diceBadge,
+  diceApplied: sessionsAfterDice > sessionsBefore,
   realtime,
   manifestOk,
   errors,
@@ -204,6 +215,8 @@ summary.ok =
   summary.resetPresent &&
   summary.viewFacing.hasFrontApi &&
   summary.notifyPresent &&
+  summary.diceApplied &&
+  /^\d+$/.test(summary.diceBadge) &&
   summary.realtime.uncapped &&
   summary.realtime.hungerDropped &&
   summary.manifestOk;

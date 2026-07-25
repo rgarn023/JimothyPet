@@ -1240,6 +1240,43 @@ button {
   height: 220px;
   display: block;
   filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+
+.dice-result-badge {
+  position: absolute;
+  right: 0.35rem;
+  top: 0.35rem;
+  min-width: 2.6rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1;
+  text-align: center;
+  background: rgba(20, 28, 22, 0.88);
+  border: 1px solid rgba(240, 197, 122, 0.45);
+  color: var(--amber-soft);
+  pointer-events: none;
+}
+
+.dice-result-badge[data-mode="win"] {
+  color: #d8f5e0;
+  border-color: rgba(111, 191, 132, 0.7);
+  background: rgba(28, 52, 36, 0.92);
+}
+
+.dice-result-badge[data-mode="lose"] {
+  color: #ffe0d8;
+  border-color: rgba(196, 92, 74, 0.7);
+  background: rgba(52, 28, 28, 0.92);
+}
+
+.dice-picks .dice-pick {
+  min-height: 3rem;
+  font-size: 1rem;
+  z-index: 2;
 }
 
 .dice-stage[data-state="spinning"] #d20Canvas {

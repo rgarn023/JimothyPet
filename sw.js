@@ -1,5 +1,5 @@
 /* Jimothy service worker — offline shell + care notification clicks */
-const CACHE = "jimothy-v7";
+const CACHE = "jimothy-v8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -41,6 +41,29 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  const isScript =
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith("/");
+
+  // Network-first for app shell/scripts so High or Low fixes aren't stuck behind old cache.
+  if (isScript) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok && response.type === "basic") {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {
