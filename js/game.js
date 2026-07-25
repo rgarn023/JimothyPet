@@ -120,8 +120,6 @@
     sleepHour: 22,
     /** False until the player confirms wake/sleep for this kit. */
     scheduleSet: false,
-    /** Manual lights-off puts him to bed even outside sleep hours. */
-    lightsOff: false,
   };
 
   let wasSleeping = false;
@@ -386,7 +384,25 @@
     if (!state.alive || state.ascending || state.stage === "bush") return false;
     if (devSleepOverride === "sleep") return true;
     if (devSleepOverride === "awake") return false;
-    return !!state.lightsOff || isInSleepWindow();
+    return isInSleepWindow();
+  }
+
+  /** Daytime sky roughly 6:00–20:00 local; night otherwise. */
+  function isDaytime() {
+    const d = new Date();
+    const h = d.getHours() + d.getMinutes() / 60;
+    return h >= 6 && h < 20;
+  }
+
+  function syncDayNight() {
+    const day = isDaytime();
+    const atm = $("atmosphere");
+    if (atm) {
+      atm.classList.toggle("is-day", day);
+      atm.classList.toggle("is-night", !day);
+    }
+    document.body.classList.toggle("is-day", day);
+    document.body.classList.toggle("is-night", !day);
   }
 
   function formProfile() {
@@ -426,6 +442,7 @@
     if (isSleeping()) {
       say(["zzz…", "Soft snuffles.", "He’s deep in a nest nap."][Math.floor(Math.random() * 3)]);
       pulseAnim("sleep");
+      sfx("pet");
       render();
       return "sleep";
     }
@@ -464,21 +481,23 @@
       say(["He grins at you.", "Happy raccoon eyes!", "He leans into the pets."][Math.floor(Math.random() * 3)]);
       smileUntil = performance.now() + 950;
       bounceHappy();
-      sfx("pet");
+      sfx("smile");
     } else if (kind === "hop") {
       say(["Boing!", "He hops for attention.", "Tiny cryptid bounce!"][Math.floor(Math.random() * 3)]);
       smileUntil = performance.now() + 700;
-      sfx("pet");
+      sfx("hop");
     } else if (kind === "nuzzle") {
       say(["He nuzzles your finger.", "Soft headbonk.", "Purr-adjacent chitter."][Math.floor(Math.random() * 3)]);
       smileUntil = performance.now() + 900;
-      sfx("pet");
+      sfx("nuzzle");
     } else if (kind === "spin") {
       say(["Zoomies!", "A silly spin!", "He whirls in place."][Math.floor(Math.random() * 3)]);
       smileUntil = performance.now() + 850;
-      sfx("pet");
+      sfx("spin");
     } else if (kind === "refuse") {
       sfx("refuse");
+    } else if (kind === "sniff") {
+      sfx("pet");
     }
 
     pulseAnim(kind);
@@ -533,7 +552,6 @@
       wakeHour: state.wakeHour == null ? 7 : state.wakeHour,
       sleepHour: state.sleepHour == null ? 22 : state.sleepHour,
       scheduleSet: false,
-      lightsOff: false,
     });
     state.youngForm = pickYoungForm(state.genes);
     wasSleeping = false;
@@ -611,37 +629,6 @@
     save({ touchTick: false });
   }
 
-  function toggleLights() {
-    if (!state.alive || state.ascending || state.stage === "bush") {
-      say("Nothing to light yet.");
-      return;
-    }
-    state.lightsOff = !state.lightsOff;
-    sfx("lights");
-    if (state.lightsOff) {
-      say("Lights out. He’s settling in…");
-      // Sleep SFX + fallAsleep anim come from syncSleepVisuals.
-    } else if (isInSleepWindow()) {
-      say("Lights on — but it’s still his sleep hours.");
-    } else {
-      say("Lights on. He’s waking up.");
-      // Wake stretch SFX comes from syncSleepVisuals.
-    }
-    closeActionMenu();
-    render();
-    save({ touchTick: false });
-  }
-
-  function refreshLightsButton() {
-    const btn = $("btnLights");
-    if (!btn) return;
-    const label = btn.querySelector("span:last-child");
-    const text = state.lightsOff ? "Lights: Off" : "Lights: On";
-    if (label) label.textContent = text;
-    else btn.textContent = text;
-    btn.setAttribute("aria-pressed", state.lightsOff ? "true" : "false");
-  }
-
   function ensureSleepZzz(show) {
     const wrap = $("raccoonWrap");
     if (!wrap) return;
@@ -661,14 +648,10 @@
 
   function syncSleepVisuals() {
     const sleeping = isSleeping();
-    const screen = $("screen");
     const wrap = $("raccoonWrap");
-    if (screen) {
-      screen.classList.toggle("lights-off", !!state.lightsOff);
-      screen.classList.toggle("is-sleeping", sleeping);
-    }
     if (wrap) wrap.classList.toggle("sleeping", sleeping);
     ensureSleepZzz(sleeping && state.alive && !state.ascending);
+    syncDayNight();
 
     if (sleeping && !wasSleeping && state.alive && !state.ascending) {
       pulseAnim("fallAsleep");
@@ -755,7 +738,7 @@
       if (state.wakeHour == null) state.wakeHour = 7;
       if (state.sleepHour == null) state.sleepHour = 22;
       if (state.scheduleSet == null) state.scheduleSet = false;
-      if (state.lightsOff == null) state.lightsOff = false;
+      delete state.lightsOff;
       state.illnessEvents = pruneDayEvents(
         Array.isArray(state.illnessEvents) ? state.illnessEvents : []
       );
@@ -839,7 +822,6 @@
     state.wakeHour = keepWake;
     state.sleepHour = keepSleep;
     state.scheduleSet = false;
-    state.lightsOff = false;
     save();
     if (window.RaccoonAnim) RaccoonAnim.reset();
     render();
@@ -1391,7 +1373,6 @@
     if ($("btnAction")) {
       $("btnAction").classList.toggle("needs-attention", canScold || canHeal || canClean);
     }
-    refreshLightsButton();
     syncSleepVisuals();
 
     refreshDevButton();
@@ -1404,9 +1385,8 @@
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
     } else if (isSleeping()) {
-      $("hint").textContent = state.lightsOff
-        ? "Lights out — Jimothy is sleeping. Action → Lights to wake the nest."
-        : "Sleep hours — Jimothy is dozing. He’ll wake at his wake time.";
+      $("hint").textContent =
+        "Sleep hours — Jimothy is dozing in his nest. He’ll wake at his wake time.";
     } else if (state.sick) {
       $("hint").textContent = "He’s under the weather — open Action → Heal.";
     } else if (state.stubborn) {
@@ -2013,12 +1993,10 @@
         return;
       }
       devSleepOverride = "sleep";
-      state.lightsOff = true;
       say("Dev: put to sleep.");
       // Sleep anim + SFX come from syncSleepVisuals.
     } else {
       devSleepOverride = "awake";
-      state.lightsOff = false;
       say("Dev: woke up.");
       // Wake stretch anim + SFX come from syncSleepVisuals.
     }
@@ -2125,7 +2103,6 @@
     setMenuIcon("btnDiscipline", RaccoonArt.icons.scold);
     setMenuIcon("btnHeal", RaccoonArt.icons.heal);
     setMenuIcon("btnClean", RaccoonArt.icons.clean);
-    setMenuIcon("btnLights", RaccoonArt.icons.lights || RaccoonArt.icons.action);
 
     document.querySelectorAll(".food-btn").forEach((btn) => {
       const key = btn.dataset.food;
@@ -2178,7 +2155,6 @@
     if ($("btnDiscipline")) $("btnDiscipline").addEventListener("click", discipline);
     if ($("btnClean")) $("btnClean").addEventListener("click", clean);
     if ($("btnHeal")) $("btnHeal").addEventListener("click", treatIllness);
-    if ($("btnLights")) $("btnLights").addEventListener("click", toggleLights);
     if ($("scheduleSave")) $("scheduleSave").addEventListener("click", saveScheduleFromModal);
     const wrap = $("raccoonWrap");
     if (wrap) {

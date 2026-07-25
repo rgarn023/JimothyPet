@@ -56,28 +56,48 @@ button {
   display: none !important;
 }
 
-/* Atmosphere */
+/* Atmosphere — day/night from local time of day */
 .atmosphere {
   position: fixed;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
+  transition: background 1.2s ease;
+}
+
+.atmosphere.is-night {
   background:
     radial-gradient(ellipse 80% 55% at 70% 8%, rgba(224, 160, 74, 0.18), transparent 55%),
     radial-gradient(ellipse 60% 40% at 20% 20%, rgba(111, 191, 132, 0.08), transparent 50%),
     linear-gradient(180deg, #0c1410 0%, #17241c 45%, #1a281e 100%);
-  pointer-events: none;
 }
 
-.moon {
+.atmosphere.is-day {
+  background:
+    radial-gradient(ellipse 70% 50% at 78% 10%, rgba(255, 220, 120, 0.55), transparent 55%),
+    radial-gradient(ellipse 80% 55% at 25% 25%, rgba(160, 210, 255, 0.35), transparent 55%),
+    linear-gradient(180deg, #7eb6e8 0%, #b5d9a8 48%, #6f9f62 100%);
+}
+
+.sky-orb {
   position: absolute;
   top: 7%;
   right: 12%;
   width: 72px;
   height: 72px;
   border-radius: 50%;
+  animation: moon-drift 12s ease-in-out infinite;
+  transition: background 1.2s ease, box-shadow 1.2s ease, opacity 1.2s ease;
+}
+
+.atmosphere.is-night .sky-orb {
   background: radial-gradient(circle at 35% 35%, #fff6d8, #e8c878 55%, #c9a24a);
   box-shadow: 0 0 40px rgba(240, 197, 122, 0.35);
-  animation: moon-drift 12s ease-in-out infinite;
+}
+
+.atmosphere.is-day .sky-orb {
+  background: radial-gradient(circle at 35% 35%, #fffaf0, #ffe08a 45%, #f0b040);
+  box-shadow: 0 0 56px rgba(255, 200, 80, 0.55);
 }
 
 .mist {
@@ -89,6 +109,7 @@ button {
   filter: blur(18px);
   opacity: 0.35;
   pointer-events: none;
+  transition: background 1.2s ease, opacity 1.2s ease;
 }
 .mist-a {
   top: 48%;
@@ -97,6 +118,14 @@ button {
 .mist-b {
   top: 58%;
   background: radial-gradient(ellipse, rgba(40, 70, 55, 0.3), transparent 70%);
+}
+.atmosphere.is-day .mist-a {
+  background: radial-gradient(ellipse, rgba(200, 230, 180, 0.4), transparent 70%);
+  opacity: 0.45;
+}
+.atmosphere.is-day .mist-b {
+  background: radial-gradient(ellipse, rgba(180, 220, 200, 0.35), transparent 70%);
+  opacity: 0.4;
 }
 
 .forest-back,
@@ -117,6 +146,12 @@ button {
     radial-gradient(ellipse 34% 82% at 68% 100%, #0b1611 0 41%, transparent 42%),
     radial-gradient(ellipse 42% 88% at 88% 100%, #0a1510 0 43%, transparent 44%);
   opacity: 0.85;
+  transition: filter 1.2s ease, opacity 1.2s ease;
+}
+
+.atmosphere.is-day .forest-back {
+  filter: brightness(1.55) saturate(1.15);
+  opacity: 0.7;
 }
 
 .trees {
@@ -130,6 +165,12 @@ button {
     linear-gradient(95deg, transparent 0 78%, #0d1611 78% 88%, transparent 88%),
     linear-gradient(180deg, transparent, #0a120e 70%);
   opacity: 0.95;
+  transition: filter 1.2s ease, opacity 1.2s ease;
+}
+
+.atmosphere.is-day .trees {
+  filter: brightness(1.65) saturate(1.1);
+  opacity: 0.75;
 }
 
 .forest-front {
@@ -141,6 +182,12 @@ button {
     radial-gradient(ellipse 50% 72% at 72% 105%, #142419 0 52%, transparent 53%),
     radial-gradient(ellipse 46% 68% at 95% 100%, #17301f 0 50%, transparent 51%);
   opacity: 0.9;
+  transition: filter 1.2s ease, opacity 1.2s ease;
+}
+
+.atmosphere.is-day .forest-front {
+  filter: brightness(1.7) saturate(1.2);
+  opacity: 0.85;
 }
 
 .ground {
@@ -156,6 +203,19 @@ button {
       rgba(40, 28, 14, 0.15) 0 8px,
       transparent 8px 22px
     );
+  transition: filter 1.2s ease;
+}
+
+.atmosphere.is-day .ground {
+  filter: brightness(1.8) saturate(1.15);
+}
+
+.fireflies {
+  transition: opacity 1.2s ease;
+}
+
+.atmosphere.is-day .fireflies {
+  opacity: 0;
 }
 
 .fireflies span {
@@ -294,22 +354,6 @@ button {
   gap: 0.55rem;
   overflow: hidden;
   position: relative;
-}
-
-.screen::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: rgba(8, 14, 12, 0.18);
-  pointer-events: none;
-  z-index: 0;
-  transition: background 0.45s ease;
-}
-
-.screen.lights-off::before,
-.screen.is-sleeping::before {
-  background: rgba(2, 4, 8, 0.72);
 }
 
 .screen > * {

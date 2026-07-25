@@ -129,8 +129,6 @@ var wake_hour: int = 7
 var sleep_hour: int = 22
 ## False until the player confirms wake/sleep for this kit.
 var schedule_set: bool = false
-## Manual lights-off puts him to bed even outside sleep hours.
-var lights_off: bool = false
 var _was_sleeping: bool = false
 ## Session-only Dev override: "" | "sleep" | "awake".
 var dev_sleep_override: String = ""
@@ -239,7 +237,6 @@ func reset_pet() -> void:
 	wake_hour = keep_wake
 	sleep_hour = keep_sleep
 	schedule_set = false
-	lights_off = false
 	dev_sleep_override = ""
 	_was_sleeping = false
 	save_game()
@@ -269,7 +266,7 @@ func is_sleeping() -> bool:
 		return true
 	if dev_sleep_override == "awake":
 		return false
-	return lights_off or is_in_sleep_window()
+	return is_in_sleep_window()
 
 
 func set_schedule(wake: int, sleep: int) -> bool:
@@ -283,24 +280,6 @@ func set_schedule(wake: int, sleep: int) -> bool:
 	save_game()
 	state_changed.emit()
 	return true
-
-
-func toggle_lights() -> void:
-	if not alive or ascending or stage == "bush":
-		speech.emit("Nothing to light yet.")
-		return
-	lights_off = not lights_off
-	anim_impulse.emit("lights")
-	if lights_off:
-		speech.emit("Lights out. He’s settling in…")
-	elif is_in_sleep_window():
-		speech.emit("Lights on — but it’s still his sleep hours.")
-	else:
-		speech.emit("Lights on. He’s waking up.")
-	# fallAsleep / stretch SFX come from sync_sleep_transition.
-	save_game()
-	state_changed.emit()
-	sync_sleep_transition()
 
 
 func sync_sleep_transition() -> void:
@@ -423,11 +402,9 @@ func dev_set_sleep(on: bool) -> void:
 			speech.emit("Dev: need a living kit (not bush) to sleep.")
 			return
 		dev_sleep_override = "sleep"
-		lights_off = true
 		speech.emit("Dev: put to sleep.")
 	else:
 		dev_sleep_override = "awake"
-		lights_off = false
 		speech.emit("Dev: woke up.")
 	state_changed.emit()
 	save_game()
@@ -1018,6 +995,7 @@ func interact_tap() -> String:
 		var lines := ["zzz…", "Soft snuffles.", "He’s deep in a nest nap."]
 		speech.emit(lines[randi() % lines.size()])
 		anim_impulse.emit("sleep")
+		anim_impulse.emit("pet")
 		state_changed.emit()
 		return "sleep"
 
@@ -1255,7 +1233,6 @@ func to_dict() -> Dictionary:
 		"wake_hour": wake_hour,
 		"sleep_hour": sleep_hour,
 		"schedule_set": schedule_set,
-		"lights_off": lights_off,
 	}
 
 
@@ -1320,7 +1297,6 @@ func from_dict(d: Dictionary) -> void:
 	wake_hour = int(d.get("wake_hour", 7))
 	sleep_hour = int(d.get("sleep_hour", 22))
 	schedule_set = bool(d.get("schedule_set", false))
-	lights_off = bool(d.get("lights_off", false))
 	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.
 	if not alive:
 		ascending = false

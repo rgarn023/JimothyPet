@@ -29,7 +29,6 @@ var btn_play: Button
 var btn_scold: Button
 var btn_heal: Button
 var btn_sfx: Button
-var btn_lights: Button
 @onready var utility_row: HBoxContainer = $Margin/VBox/UtilityRow
 @onready var brand_label: Label = $Margin/VBox/Brand
 @onready var feed_panel: Control = %FeedPanel
@@ -59,7 +58,6 @@ var _settings_panel: ColorRect
 var _schedule_panel: ColorRect
 var _wake_option: OptionButton
 var _sleep_option: OptionButton
-var _lights_dim: ColorRect
 var _brand_tap_times: Array[float] = []
 
 
@@ -102,15 +100,6 @@ func _make_panels_transparent() -> void:
 		device_panel.add_theme_stylebox_override("panel", empty)
 	if screen_panel:
 		screen_panel.add_theme_stylebox_override("panel", empty)
-	# Soft sleep dim over the stage
-	_lights_dim = ColorRect.new()
-	_lights_dim.name = "LightsDim"
-	_lights_dim.color = Color(0.02, 0.03, 0.06, 0.0)
-	_lights_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_lights_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	if screen_panel:
-		screen_panel.add_child(_lights_dim)
-		screen_panel.move_child(_lights_dim, 0)
 
 
 func _process(_delta: float) -> void:
@@ -650,12 +639,6 @@ func _build_action_panel() -> void:
 	btn_clean.pressed.connect(_on_clean_pressed)
 	vbox.add_child(btn_clean)
 
-	btn_lights = Button.new()
-	btn_lights.text = "Lights: On"
-	btn_lights.tooltip_text = "Dim the nest and put Jimothy to bed"
-	btn_lights.pressed.connect(_on_lights_pressed)
-	vbox.add_child(btn_lights)
-
 	var close := Button.new()
 	close.text = "Close"
 	close.pressed.connect(func(): _action_panel.visible = false)
@@ -791,13 +774,6 @@ func _on_schedule_save() -> void:
 	_refresh()
 
 
-func _on_lights_pressed() -> void:
-	if _action_panel:
-		_action_panel.visible = false
-	PetState.toggle_lights()
-	_refresh()
-
-
 func _refresh() -> void:
 	age_label.text = _format_age(PetState.age_sec)
 	stage_chip.text = PetState.stage_label()
@@ -817,11 +793,6 @@ func _refresh() -> void:
 	elif PetState.stubborn:
 		mood = "stubborn"
 	raccoon.set_look(PetState.stage, PetState.adult_form, mood)
-	if btn_lights:
-		btn_lights.text = "Lights: Off" if PetState.lights_off else "Lights: On"
-	if _lights_dim:
-		var dim_a := 0.72 if PetState.is_sleeping() else (0.55 if PetState.lights_off else 0.0)
-		_lights_dim.color = Color(0.02, 0.03, 0.06, dim_a)
 	PetState.sync_sleep_transition()
 	if mess_mark and mess_mark.has_method("set_pile_count"):
 		var piles := PetState.mess_count if PetState.alive and not PetState.ascending else 0
@@ -862,11 +833,7 @@ func _refresh() -> void:
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
 	elif PetState.is_sleeping():
-		hint_label.text = (
-			"Lights out — Jimothy is sleeping. Action → Lights to wake the nest."
-			if PetState.lights_off
-			else "Sleep hours — Jimothy is dozing. He’ll wake at his wake time."
-		)
+		hint_label.text = "Sleep hours — Jimothy is dozing in his nest. He’ll wake at his wake time."
 	elif PetState.sick:
 		hint_label.text = "He’s under the weather — open Action → Heal."
 	elif PetState.stubborn:

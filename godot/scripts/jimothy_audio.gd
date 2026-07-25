@@ -170,21 +170,24 @@ func _on_anim(kind: String) -> void:
 		"ascend":
 			play("ascend", -1.0)
 		"jump", "hop", "happy", "play", "chirp":
-			play("chirp", -6.0)
+			play("chirp", 1.5)
+			play("chitter", -1.0)
 			if kind == "play":
-				play("rustle", -5.0)
-				play("chitter", -7.0)
+				play("rustle", -3.0)
 		"sad":
 			play("grumble", -3.0)
-		"smile", "nuzzle", "pet":
-			play("chitter", -5.0)
+		"smile", "nuzzle", "pet", "sniff":
+			# Tap reactions — loud so pets read clearly.
+			play("chitter", 2.0)
+			play("chirp", 0.5)
 		"spin":
-			play("chirp", -4.0)
-			play("chitter", -8.0)
+			play("chirp", 1.5)
+			play("chitter", 0.0)
 		"rustle", "clean":
-			play("rustle", -3.0)
+			play("rustle", 0.0)
+			play("chitter", -2.0)
 			if kind == "clean":
-				play("chitter", -9.0)
+				pass
 		"heal":
 			play("heal", -2.0)
 			play("chirp", -8.0)

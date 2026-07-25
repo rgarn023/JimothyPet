@@ -210,7 +210,8 @@ const JimothySound = (() => {
         play("chitter", 0.45);
         break;
       case "bush":
-        play("rustle", 0.7);
+        play("rustle", 0.95);
+        play("chitter", 0.55);
         break;
       case "play":
         play("rustle", 0.6);
@@ -223,14 +224,16 @@ const JimothySound = (() => {
       case "pet":
       case "smile":
       case "nuzzle":
-        play("chitter", 0.55);
+        // Tap reactions — intentionally loud so pets read clearly.
+        play("chitter", 1.0);
+        play("chirp", 0.9);
         break;
       case "chirp":
       case "hop":
       case "spin":
       case "happy":
-        play("chirp", 0.55);
-        play("chitter", 0.3);
+        play("chirp", 1.0);
+        play("chitter", 0.85);
         break;
       case "speech":
         if (Math.random() < 0.55) play("chitter", 0.35);
