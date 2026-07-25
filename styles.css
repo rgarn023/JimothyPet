@@ -590,7 +590,7 @@ button {
 
 .utility-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0.55rem;
   margin-top: 0.15rem;
 }

@@ -97,6 +97,8 @@ var forms_unlocked: Dictionary = {
 	"adult": {},
 }
 var dev_mode: bool = false
+## When true, night ambience + raccoon SFX are muted (persists).
+var sound_muted: bool = false
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
@@ -177,9 +179,11 @@ func _reset_defaults() -> void:
 func reset_pet() -> void:
 	var keep_forms := forms_unlocked.duplicate(true)
 	var keep_dev := dev_mode
+	var keep_mute := sound_muted
 	_reset_defaults()
 	forms_unlocked = keep_forms
 	dev_mode = keep_dev
+	sound_muted = keep_mute
 	save_game()
 	speech.emit("A roadside bush shivers… something’s in there.")
 	stage_changed.emit(stage)
@@ -830,6 +834,7 @@ func to_dict() -> Dictionary:
 		"energy": energy,
 		"forms_unlocked": forms_unlocked,
 		"dev_mode": dev_mode,
+		"sound_muted": sound_muted,
 	}
 
 
@@ -877,6 +882,7 @@ func from_dict(d: Dictionary) -> void:
 	if typeof(fu) == TYPE_DICTIONARY:
 		forms_unlocked = fu
 	dev_mode = bool(d.get("dev_mode", false))
+	sound_muted = bool(d.get("sound_muted", false))
 	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.
 	if not alive:
 		ascending = false

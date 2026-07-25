@@ -22,6 +22,7 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var btn_play: Button = %BtnPlay
 @onready var btn_scold: Button = %BtnScold
 @onready var btn_clean: Button = %BtnClean
+@onready var btn_sound: Button = %BtnSound
 @onready var btn_forms: Button = %BtnForms
 @onready var btn_dev: Button = %BtnDev
 @onready var feed_panel: Control = %FeedPanel
@@ -51,6 +52,7 @@ func _ready() -> void:
 	message_panel.visible = false
 	_build_forms_panel()
 	_build_dev_panel()
+	_refresh_sound_button()
 	_refresh()
 	# Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
 	if not PetState.alive:
@@ -335,6 +337,26 @@ func _show_message(title: String, body: String) -> void:
 	message_panel.visible = true
 
 
+func _refresh_sound_button() -> void:
+	if btn_sound == null:
+		return
+	var on := true
+	if JimothyAudio:
+		on = JimothyAudio.enabled
+	elif PetState:
+		on = not PetState.sound_muted
+	btn_sound.text = "Sound: On" if on else "Sound: Off"
+
+
+func _on_sound_pressed() -> void:
+	if JimothyAudio:
+		JimothyAudio.toggle()
+	elif PetState:
+		PetState.sound_muted = not PetState.sound_muted
+		PetState.save_game()
+	_refresh_sound_button()
+
+
 func _on_forms_pressed() -> void:
 	_refresh_forms_panel()
 	_forms_panel.visible = true
@@ -365,11 +387,16 @@ func _on_play_pressed() -> void:
 		return
 	if PetState.can_start_play() != "ok":
 		return
+	if JimothyAudio:
+		JimothyAudio.play("rustle", -3.0)
+		JimothyAudio.play("chitter", -6.0)
 	dumpster.start_game()
 
 
 func _on_dive_finished(score: int, stars: int, completed: bool) -> void:
 	PetState.apply_play_result(score, stars, completed)
+	if JimothyAudio and completed:
+		JimothyAudio.play("chirp", -4.0)
 
 
 func _on_scold_pressed() -> void:
@@ -378,6 +405,8 @@ func _on_scold_pressed() -> void:
 
 func _on_clean_pressed() -> void:
 	PetState.clean_mess()
+	if JimothyAudio and not PetState.has_mess:
+		JimothyAudio.play("rustle", -5.0)
 
 
 func _on_message_ok() -> void:

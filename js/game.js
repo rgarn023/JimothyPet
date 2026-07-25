@@ -106,6 +106,7 @@
     energy: 80,
     formsUnlocked: { young: {}, teen: {}, adult: {} },
     devMode: false,
+    soundMuted: false,
   };
 
   const YOUNG_FORMS = ["puff", "looper", "shadow", "nub"];
@@ -249,6 +250,7 @@
       say("Jimothy’s life is over. He rises into the sky…");
     }
     pulseAnim("ascend");
+    sfx("ascend");
     render();
     save();
     // After the rise, clear the pet and show the rustling bush under the farewell.
@@ -361,9 +363,29 @@
       energy: 80,
       formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
       devMode: !!state.devMode,
+      soundMuted: !!state.soundMuted,
     });
     state.youngForm = pickYoungForm(state.genes);
     if ($("messageOk")) $("messageOk").textContent = "OK";
+  }
+
+  function sfx(kind) {
+    if (window.JimothySound) JimothySound.cue(kind);
+  }
+
+  function refreshSoundButton() {
+    const btn = $("btnSound");
+    if (!btn) return;
+    const on = window.JimothySound ? JimothySound.isEnabled() : !state.soundMuted;
+    btn.textContent = on ? "Sound: On" : "Sound: Off";
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  function setSoundEnabled(on) {
+    state.soundMuted = !on;
+    if (window.JimothySound) JimothySound.setEnabled(on);
+    refreshSoundButton();
+    save({ touchTick: false });
   }
 
   function load() {
@@ -386,6 +408,7 @@
       if (state.satiety == null) state.satiety = 0;
       if (!state.formsUnlocked) state.formsUnlocked = { young: {}, teen: {}, adult: {} };
       if (state.devMode == null) state.devMode = false;
+      if (state.soundMuted == null) state.soundMuted = false;
       unlockCurrentForm();
       syncRealtime({ announceDeath: false });
       return true;
@@ -438,13 +461,16 @@
   function resetPet() {
     const keepForms = JSON.parse(JSON.stringify(state.formsUnlocked || { young: {}, teen: {}, adult: {} }));
     const keepDev = !!state.devMode;
+    const keepMute = !!state.soundMuted;
     resetDefaults();
     state.formsUnlocked = keepForms;
     state.devMode = keepDev;
+    state.soundMuted = keepMute;
     save();
     if (window.RaccoonAnim) RaccoonAnim.reset();
     render();
     say("A roadside bush shivers… something’s in there.");
+    sfx("bush");
   }
 
   function setDevMode(on) {
@@ -598,6 +624,7 @@
       state.happy = clamp(state.happy + 10);
       say("The bush explodes in leaves — baby kit Jimothy!");
       pulseAnim("pop");
+      sfx("baby");
       showMessage(
         "Baby Kit!",
         "Jimothy burst from the bush. Keep him fed — young kit in ~1 hour."
@@ -608,6 +635,7 @@
       state.weight = 3.5;
       say(`He’s a young kit now — form: ${capitalize(state.youngForm)}.`);
       pulseAnim("stretch");
+      sfx("stage");
       unlockCurrentForm();
       showMessage(
         "Young Kit!",
@@ -620,6 +648,7 @@
       state.teenDuration = randRange(TEEN_SEC_MIN, TEEN_SEC_MAX);
       say(`Teen kit era. He’s turning into a ${state.teenForm}.`);
       pulseAnim("run");
+      sfx("stage");
       unlockCurrentForm();
       showMessage(
         "Teen Kit!",
@@ -649,6 +678,7 @@
       state.genes.roundness = clamp(state.genes.roundness * 0.4 + 0.65, 0, 1);
       say(`Fully grown — ${adultFormTitle()} Jimothy, midnight cryptid.`);
       pulseAnim("lope");
+      sfx("stage");
       unlockCurrentForm();
       showMessage(
         "Adult Cryptid!",
@@ -900,6 +930,7 @@
 
     if (state.satiety >= 85) {
       say("He turns his nose away — still digesting.");
+      sfx("refuse");
       closeFeed();
       render();
       return;
@@ -907,6 +938,7 @@
 
     if (state.stubborn && food.type === "healthy") {
       say(`Nope. He buries the ${food.name.toLowerCase()} under a leaf.`);
+      sfx("refuse");
       closeFeed();
       render();
       return;
@@ -923,6 +955,7 @@
       state.lifespanPenalty = (state.lifespanPenalty || 0) + 3600;
       say(`Jimothy bats the ${food.name.toLowerCase()} away!`);
       pulseAnim("refuse");
+      sfx("refuse");
       closeFeed();
       render();
       save();
@@ -946,6 +979,7 @@
       } else {
         say(`He stash-eats the ${food.name}.`);
         pulseAnim("eat");
+        sfx("eat");
         bounceHappy();
       }
     } else {
@@ -956,6 +990,7 @@
       state.discipline = clamp(state.discipline + 1.5);
       say(`He forages the ${food.name} carefully.`);
       pulseAnim("eat");
+      sfx("eat");
       bounceHappy();
     }
 
@@ -981,6 +1016,7 @@
     state.careScore += 1;
     say("A firm chitter. He listens… for now.");
     pulseAnim("scold");
+    sfx("scold");
     render();
     save();
   }
@@ -992,6 +1028,7 @@
     state.health = clamp(state.health + 2);
     state.careScore += 1;
     say("Nest cleared. He sniffs approval.");
+    sfx("clean");
     render();
     save();
   }
@@ -1028,6 +1065,7 @@
 
   function openGame() {
     if (canStartPlay() !== "ok") return;
+    sfx("play");
     $("gameModal").hidden = false;
     DumpsterDive.start(onGameDone);
   }
@@ -1100,6 +1138,12 @@
     $("btnPlay").addEventListener("click", openGame);
     $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
+    if ($("btnSound")) {
+      $("btnSound").addEventListener("click", () => {
+        const next = window.JimothySound ? !JimothySound.isEnabled() : state.soundMuted;
+        setSoundEnabled(next);
+      });
+    }
     $("feedClose").addEventListener("click", closeFeed);
     $("gameClose").addEventListener("click", closeGame);
     $("messageOk").addEventListener("click", () => {
@@ -1175,6 +1219,14 @@
       resetDefaults();
       say("A roadside bush shivers… something’s in there.");
     }
+    if (window.JimothySound) {
+      JimothySound.setOnChange((on) => {
+        state.soundMuted = !on;
+        refreshSoundButton();
+      });
+      JimothySound.setEnabled(!state.soundMuted, { announce: false });
+    }
+    refreshSoundButton();
     save({ touchTick: false });
     if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
     render();
