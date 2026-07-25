@@ -231,10 +231,10 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -78.0
-offset_top = -56.0
-offset_right = -28.0
-offset_bottom = -20.0
+offset_left = -86.0
+offset_top = -118.0
+offset_right = -36.0
+offset_bottom = -82.0
 grow_horizontal = 0
 grow_vertical = 0
 script = ExtResource("5_mess")
@@ -331,13 +331,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Start a new bush (keeps unlocked forms)"
 text = "Reset"
-
-[node name="BtnDev" type="Button" parent="Margin/VBox/UtilityRow"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Dev"
 
 [node name="FeedPanel" type="ColorRect" parent="."]
 unique_name_in_owner = true
@@ -578,7 +571,6 @@ text = "Bail Out"
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnAlerts" to="." method="_on_alerts_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnForms" to="." method="_on_forms_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnReset" to="." method="_on_reset_pressed"]
-[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnDev" to="." method="_on_dev_pressed"]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnBerries" to="." method="_on_food" binds= ["berries"]]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnCrickets" to="." method="_on_food" binds= ["crickets"]]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnFish" to="." method="_on_food" binds= ["fish"]]

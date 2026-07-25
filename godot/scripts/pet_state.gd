@@ -190,14 +190,14 @@ func _reset_defaults() -> void:
 
 func reset_pet() -> void:
 	var keep_forms := forms_unlocked.duplicate(true)
-	var keep_dev := dev_mode
-	var keep_dev_unlocked := dev_unlocked
 	var keep_mute := sound_muted
 	var keep_alerts := alerts_enabled
+	# Dev unlock is session-only — do not carry cheats across a kit reset.
+	var keep_dev_unlocked := dev_unlocked
 	_reset_defaults()
 	forms_unlocked = keep_forms
-	dev_mode = keep_dev
-	dev_unlocked = keep_dev_unlocked or keep_dev
+	dev_mode = false
+	dev_unlocked = keep_dev_unlocked
 	sound_muted = keep_mute
 	alerts_enabled = keep_alerts
 	save_game()
@@ -252,6 +252,54 @@ func set_dev_mode(on: bool) -> void:
 	if on:
 		dev_unlocked = true
 	dev_mode = on
+	state_changed.emit()
+	save_game()
+
+
+func dev_set_stat(stat: String, value: float) -> void:
+	if not dev_unlocked:
+		return
+	var v := clampf(value, 0.0, 100.0)
+	match stat:
+		"hunger":
+			hunger = v
+		"happy":
+			happy = v
+		"health":
+			health = v
+		"discipline":
+			discipline = v
+		"energy":
+			energy = v
+		"satiety":
+			satiety = v
+		_:
+			return
+	state_changed.emit()
+	save_game()
+
+
+func dev_set_mess(on: bool) -> void:
+	if not dev_unlocked:
+		return
+	has_mess = on and alive and stage != "bush"
+	state_changed.emit()
+	save_game()
+
+
+func dev_set_sick(on: bool) -> void:
+	if not dev_unlocked:
+		return
+	sick = on and alive
+	state_changed.emit()
+	save_game()
+
+
+func dev_set_stubborn(on: bool) -> void:
+	if not dev_unlocked:
+		return
+	stubborn = on and alive
+	stubborn_reason = "dev override" if stubborn else ""
 	state_changed.emit()
 	save_game()
 
@@ -948,8 +996,7 @@ func to_dict() -> Dictionary:
 		"play_sessions": play_sessions,
 		"energy": energy,
 		"forms_unlocked": forms_unlocked,
-		"dev_mode": dev_mode,
-		"dev_unlocked": dev_unlocked,
+		"dev_mode": false,
 		"sound_muted": sound_muted,
 		"alerts_enabled": alerts_enabled,
 	}
@@ -998,8 +1045,9 @@ func from_dict(d: Dictionary) -> void:
 	var fu = d.get("forms_unlocked", {})
 	if typeof(fu) == TYPE_DICTIONARY:
 		forms_unlocked = fu
-	dev_mode = bool(d.get("dev_mode", false))
-	dev_unlocked = bool(d.get("dev_unlocked", false)) or dev_mode
+	# Dev stays session-only — never restore a visible Dev button from disk.
+	dev_mode = false
+	dev_unlocked = false
 	sound_muted = bool(d.get("sound_muted", false))
 	alerts_enabled = bool(d.get("alerts_enabled", false))
 	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.

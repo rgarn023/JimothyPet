@@ -26,7 +26,7 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var btn_alerts: Button = %BtnAlerts
 @onready var btn_forms: Button = %BtnForms
 @onready var btn_reset: Button = %BtnReset
-@onready var btn_dev: Button = %BtnDev
+@onready var utility_row: HBoxContainer = $Margin/VBox/UtilityRow
 @onready var brand_label: Label = $Margin/VBox/Brand
 @onready var feed_panel: Control = %FeedPanel
 @onready var message_panel: Control = %MessagePanel
@@ -35,12 +35,14 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var dumpster: Control = %DumpsterDive
 @onready var btn_message_ok: Button = %BtnMessageOk
 
+var btn_dev: Button
 var _speech_timer: SceneTreeTimer
 var _awaiting_new_kit: bool = false
 var _forms_panel: ColorRect
 var _forms_list: VBoxContainer
 var _dev_panel: ColorRect
 var _dev_status: Label
+var _dev_stat_labels: Dictionary = {}
 var _play_pick_panel: ColorRect
 var _dice: ColorRect
 var _reset_panel: ColorRect
@@ -134,7 +136,7 @@ func _build_forms_panel() -> void:
 
 
 func _build_dev_panel() -> void:
-	var built := _build_overlay_panel("Developer mode")
+	var built := _build_overlay_panel("Developer tools")
 	_dev_panel = built.dim
 	var list: VBoxContainer = built.list
 
@@ -152,8 +154,45 @@ func _build_dev_panel() -> void:
 	)
 	list.add_child(toggle)
 
+	var waste_on := Button.new()
+	waste_on.text = "Drop waste on screen"
+	waste_on.pressed.connect(func(): PetState.dev_set_mess(true); _refresh_dev_panel())
+	list.add_child(waste_on)
+	var waste_off := Button.new()
+	waste_off.text = "Clear waste"
+	waste_off.pressed.connect(func(): PetState.dev_set_mess(false); _refresh_dev_panel())
+	list.add_child(waste_off)
+
+	var sick_on := Button.new()
+	sick_on.text = "Make sick"
+	sick_on.pressed.connect(func(): PetState.dev_set_sick(true); _refresh_dev_panel())
+	list.add_child(sick_on)
+	var sick_off := Button.new()
+	sick_off.text = "Clear sick"
+	sick_off.pressed.connect(func(): PetState.dev_set_sick(false); _refresh_dev_panel())
+	list.add_child(sick_off)
+
+	var stub_on := Button.new()
+	stub_on.text = "Make stubborn"
+	stub_on.pressed.connect(func(): PetState.dev_set_stubborn(true); _refresh_dev_panel())
+	list.add_child(stub_on)
+	var stub_off := Button.new()
+	stub_off.text = "Clear stubborn"
+	stub_off.pressed.connect(func(): PetState.dev_set_stubborn(false); _refresh_dev_panel())
+	list.add_child(stub_off)
+
+	var meters_note := Label.new()
+	meters_note.text = "Meters — tap − / + (hold values for testing)."
+	meters_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	meters_note.add_theme_color_override("font_color", Color("9aab9c"))
+	meters_note.add_theme_font_size_override("font_size", 12)
+	list.add_child(meters_note)
+
+	for stat in ["hunger", "happy", "health", "discipline", "energy", "satiety"]:
+		list.add_child(_make_dev_stat_row(stat))
+
 	var note := Label.new()
-	note.text = "Fast-forward wall-clock age to each stage (for testing)."
+	note.text = "Stage skips (Dev Mode ON)."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.add_theme_color_override("font_color", Color("9aab9c"))
 	note.add_theme_font_size_override("font_size", 12)
@@ -178,6 +217,60 @@ func _build_dev_panel() -> void:
 			_dev_panel.visible = false
 		)
 		list.add_child(b)
+
+
+func _make_dev_stat_row(stat: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var name := Label.new()
+	name.text = stat.capitalize()
+	name.custom_minimum_size = Vector2(90, 0)
+	name.add_theme_color_override("font_color", Color("9aab9c"))
+	name.add_theme_font_size_override("font_size", 13)
+	row.add_child(name)
+	var minus := Button.new()
+	minus.text = "−10"
+	minus.pressed.connect(func(): _dev_nudge_stat(stat, -10.0))
+	row.add_child(minus)
+	var val := Label.new()
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val.custom_minimum_size = Vector2(36, 0)
+	val.add_theme_color_override("font_color", Color("f0c57a"))
+	val.add_theme_font_size_override("font_size", 13)
+	row.add_child(val)
+	_dev_stat_labels[stat] = val
+	var plus := Button.new()
+	plus.text = "+10"
+	plus.pressed.connect(func(): _dev_nudge_stat(stat, 10.0))
+	row.add_child(plus)
+	var fill := Button.new()
+	fill.text = "100"
+	fill.pressed.connect(func(): PetState.dev_set_stat(stat, 100.0); _refresh_dev_panel())
+	row.add_child(fill)
+	var zero := Button.new()
+	zero.text = "0"
+	zero.pressed.connect(func(): PetState.dev_set_stat(stat, 0.0); _refresh_dev_panel())
+	row.add_child(zero)
+	return row
+
+
+func _dev_nudge_stat(stat: String, delta: float) -> void:
+	var cur := 0.0
+	match stat:
+		"hunger":
+			cur = PetState.hunger
+		"happy":
+			cur = PetState.happy
+		"health":
+			cur = PetState.health
+		"discipline":
+			cur = PetState.discipline
+		"energy":
+			cur = PetState.energy
+		"satiety":
+			cur = PetState.satiety
+	PetState.dev_set_stat(stat, cur + delta)
+	_refresh_dev_panel()
 
 
 func _refresh_forms_panel() -> void:
@@ -295,20 +388,55 @@ func _form_mark(bucket: String, form_id: String) -> String:
 
 func _refresh_dev_panel() -> void:
 	if _dev_status:
-		_dev_status.text = "Dev Mode: %s\nCurrent stage: %s · age %s" % [
+		_dev_status.text = "Dev Mode: %s · Waste: %s · Sick: %s · Stubborn: %s\nStage: %s · %s" % [
 			"ON" if PetState.dev_mode else "OFF",
+			"yes" if PetState.has_mess else "no",
+			"yes" if PetState.sick else "no",
+			"yes" if PetState.stubborn else "no",
 			PetState.stage_label(),
 			_format_age(PetState.age_sec),
 		]
+	for stat in _dev_stat_labels.keys():
+		var lbl: Label = _dev_stat_labels[stat]
+		var cur := 0.0
+		match str(stat):
+			"hunger":
+				cur = PetState.hunger
+			"happy":
+				cur = PetState.happy
+			"health":
+				cur = PetState.health
+			"discipline":
+				cur = PetState.discipline
+			"energy":
+				cur = PetState.energy
+			"satiety":
+				cur = PetState.satiety
+		lbl.text = str(int(round(cur)))
 	_refresh_dev_button()
 
 
+func _ensure_dev_button() -> void:
+	if btn_dev != null and is_instance_valid(btn_dev):
+		return
+	if utility_row == null:
+		return
+	btn_dev = Button.new()
+	btn_dev.text = "Dev"
+	btn_dev.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_dev.pressed.connect(_on_dev_pressed)
+	utility_row.add_child(btn_dev)
+
+
 func _refresh_dev_button() -> void:
-	# Don't re-emit state_changed here (would loop via _refresh).
-	if PetState.dev_mode and not PetState.dev_unlocked:
-		PetState.dev_unlocked = true
-	btn_dev.visible = PetState.dev_unlocked
-	btn_dev.text = "Dev mode ✓" if PetState.dev_mode else "Dev mode"
+	# Only inject the Dev button after the secret unlock (never in the base layout).
+	if not PetState.dev_unlocked:
+		if btn_dev != null and is_instance_valid(btn_dev):
+			btn_dev.visible = false
+		return
+	_ensure_dev_button()
+	btn_dev.visible = true
+	btn_dev.text = "Dev mode ✓" if PetState.dev_mode else "Dev"
 
 
 func _wire_brand_secret() -> void:
@@ -588,6 +716,9 @@ func _confirm_reset() -> void:
 func _on_dev_pressed() -> void:
 	if not PetState.dev_unlocked:
 		return
+	# Opening tools implies access; enable cheats if toggle was off.
+	if not PetState.dev_mode:
+		PetState.set_dev_mode(true)
 	_refresh_dev_panel()
 	_dev_panel.visible = true
 

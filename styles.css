@@ -855,8 +855,8 @@ button {
 
 .mess {
   position: absolute;
-  bottom: 30px;
-  right: 22px;
+  bottom: 78px;
+  right: 28px;
   width: 48px;
   height: 36px;
   background: none;
@@ -885,16 +885,52 @@ button {
   margin-top: 0.15rem;
 }
 
+.utility-row.has-dev {
+  grid-template-columns: 1fr 1fr;
+}
+
 @media (min-width: 420px) {
   .utility-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .utility-row.has-dev {
     grid-template-columns: repeat(5, 1fr);
   }
 }
 
 @media (min-width: 380px) and (max-width: 419px) {
   .utility-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .utility-row.has-dev {
     grid-template-columns: 1fr 1fr 1fr;
   }
+}
+
+.dev-meters {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.dev-meters label {
+  display: grid;
+  grid-template-columns: 88px 1fr 36px;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.dev-meters input[type="range"] {
+  width: 100%;
+  accent-color: var(--amber-soft);
+}
+
+.dev-meters span {
+  text-align: right;
+  color: var(--amber-soft);
+  font-variant-numeric: tabular-nums;
 }
 
 .utility-btn[aria-pressed="true"] {
@@ -1145,12 +1181,6 @@ button {
   background: linear-gradient(180deg, #c45c4a, #8a3a2e);
   border-color: rgba(196, 92, 74, 0.55);
   box-shadow: 0 1px 0 #5a241c;
-}
-
-.brand {
-  cursor: default;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 @keyframes card-up {

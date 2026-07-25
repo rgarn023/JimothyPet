@@ -122,7 +122,6 @@
         <button type="button" class="utility-btn" id="btnAlerts" aria-pressed="false" title="Care notifications">Alerts: Off</button>
         <button type="button" class="utility-btn" id="btnForms">Forms</button>
         <button type="button" class="utility-btn" id="btnReset" title="Start a new bush (keeps unlocked forms)">Reset</button>
-        <button type="button" class="utility-btn" id="btnDev" hidden>Dev</button>
       </div>
     </main>
 
@@ -251,11 +250,27 @@
     </div>
 
     <div class="modal" id="devModal" hidden>
-      <div class="modal-card" role="dialog" aria-labelledby="devTitle">
-        <h2 id="devTitle">Developer mode</h2>
-        <p class="modal-copy" id="devStatus">Dev Mode: OFF</p>
+      <div class="modal-card wide" role="dialog" aria-labelledby="devTitle">
+        <h2 id="devTitle">Developer tools</h2>
+        <p class="modal-copy" id="devStatus">Stage · age</p>
         <div class="dev-grid">
-          <button type="button" class="utility-btn" id="devToggle">Toggle Dev Mode ON/OFF</button>
+          <button type="button" class="utility-btn" id="devToggle">Dev Mode: Off</button>
+          <button type="button" class="food-btn" id="devWasteOn">Drop waste on screen</button>
+          <button type="button" class="food-btn" id="devWasteOff">Clear waste</button>
+          <button type="button" class="food-btn" id="devSickOn">Make sick</button>
+          <button type="button" class="food-btn" id="devSickOff">Clear sick</button>
+          <button type="button" class="food-btn" id="devStubbornOn">Make stubborn</button>
+          <button type="button" class="food-btn" id="devStubbornOff">Clear stubborn</button>
+        </div>
+        <div class="dev-meters" id="devMeters">
+          <label>Hunger <input type="range" min="0" max="100" value="70" data-dev-stat="hunger" /><span data-dev-val="hunger">70</span></label>
+          <label>Happy <input type="range" min="0" max="100" value="70" data-dev-stat="happy" /><span data-dev-val="happy">70</span></label>
+          <label>Health <input type="range" min="0" max="100" value="100" data-dev-stat="health" /><span data-dev-val="health">100</span></label>
+          <label>Discipline <input type="range" min="0" max="100" value="50" data-dev-stat="discipline" /><span data-dev-val="discipline">50</span></label>
+          <label>Energy <input type="range" min="0" max="100" value="80" data-dev-stat="energy" /><span data-dev-val="energy">80</span></label>
+          <label>Satiety <input type="range" min="0" max="100" value="0" data-dev-stat="satiety" /><span data-dev-val="satiety">0</span></label>
+        </div>
+        <div class="dev-grid">
           <button type="button" class="food-btn" data-dev-skip="bush">Skip → Bush</button>
           <button type="button" class="food-btn" data-dev-skip="baby">Skip → Baby kit</button>
           <button type="button" class="food-btn" data-dev-skip="young">Skip → Young kit</button>

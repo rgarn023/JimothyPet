@@ -120,7 +120,8 @@
   let lastAnimPulse = performance.now();
   let tapCooldown = 0;
   let smileUntil = 0;
-  let devUnlocked = localStorage.getItem("jimothy-dev-unlocked") === "1";
+  // Session-only — never ship a visible Dev control; secret unlock each visit.
+  let devUnlocked = false;
   let brandTapTimes = [];
 
   const $ = (id) => document.getElementById(id);
@@ -439,7 +440,7 @@
       playSessions: 0,
       energy: 80,
       formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
-      devMode: !!state.devMode,
+      devMode: false,
       soundMuted: !!state.soundMuted,
       alertsEnabled: !!state.alertsEnabled,
     });
@@ -532,7 +533,8 @@
       if (state.fitness == null) state.fitness = 40;
       if (state.satiety == null) state.satiety = 0;
       if (!state.formsUnlocked) state.formsUnlocked = { young: {}, teen: {}, adult: {} };
-      if (state.devMode == null) state.devMode = false;
+      // Dev is session-only — never restore a published Dev button from saves.
+      state.devMode = false;
       if (state.soundMuted == null) state.soundMuted = false;
       if (state.alertsEnabled == null) state.alertsEnabled = false;
       unlockCurrentForm();
@@ -545,7 +547,8 @@
 
   function save({ touchTick = true } = {}) {
     if (touchTick) state.lastTick = nowMs();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const payload = { ...state, devMode: false };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   }
 
   function syncRealtime({ announceDeath = true } = {}) {
@@ -586,12 +589,12 @@
 
   function resetPet() {
     const keepForms = JSON.parse(JSON.stringify(state.formsUnlocked || { young: {}, teen: {}, adult: {} }));
-    const keepDev = !!state.devMode;
     const keepMute = !!state.soundMuted;
     const keepAlerts = !!state.alertsEnabled;
+    const keepSessionDev = devUnlocked;
     resetDefaults();
     state.formsUnlocked = keepForms;
-    state.devMode = keepDev;
+    state.devMode = keepSessionDev;
     state.soundMuted = keepMute;
     state.alertsEnabled = keepAlerts;
     save();
@@ -603,8 +606,8 @@
 
   function setDevMode(on) {
     state.devMode = !!on;
+    // Don't persist Dev Mode into public saves.
     render();
-    save({ touchTick: false });
   }
 
   function devSkipTo(target) {
@@ -1183,7 +1186,10 @@
   function refreshDevStatus() {
     const el = $("devStatus");
     if (!el) return;
-    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Stage: ${stageLabel()} · ${formatAge()}`;
+    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Waste: ${state.hasMess ? "yes" : "no"} · Sick: ${state.sick ? "yes" : "no"} · Stubborn: ${state.stubborn ? "yes" : "no"} · ${stageLabel()} · ${formatAge()}`;
+    const toggle = $("devToggle");
+    if (toggle) toggle.textContent = state.devMode ? "Dev Mode: On" : "Dev Mode: Off";
+    syncDevMeters();
   }
 
   function openFeed() {
@@ -1439,10 +1445,12 @@
 
   function unlockDevAccess({ open = false } = {}) {
     devUnlocked = true;
-    localStorage.setItem("jimothy-dev-unlocked", "1");
+    ensureDevButton();
     refreshDevButton();
     if (open) {
+      if (!state.devMode) setDevMode(true);
       refreshDevStatus();
+      syncDevMeters();
       if ($("devModal")) $("devModal").hidden = false;
     }
   }
@@ -1457,13 +1465,86 @@
     say("Dev tools unlocked.", 3200);
   }
 
+  function ensureDevButton() {
+    if ($("btnDev")) return;
+    const row = document.querySelector(".utility-row");
+    if (!row) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "utility-btn";
+    btn.id = "btnDev";
+    btn.textContent = "Dev";
+    btn.addEventListener("click", () => {
+      if (!devUnlocked) return;
+      if (!state.devMode) setDevMode(true);
+      refreshDevStatus();
+      syncDevMeters();
+      $("devModal").hidden = false;
+    });
+    row.appendChild(btn);
+    row.classList.add("has-dev");
+  }
+
   function refreshDevButton() {
+    // Never show Dev in the base layout — only inject after this-session secret unlock.
+    if (!devUnlocked) {
+      const existing = $("btnDev");
+      if (existing) existing.remove();
+      const row = document.querySelector(".utility-row");
+      if (row) row.classList.remove("has-dev");
+      return;
+    }
+    ensureDevButton();
     const btnDev = $("btnDev");
     if (!btnDev) return;
-    // Stay available if already unlocked, or if a save left Dev Mode on.
-    if (state.devMode) unlockDevAccess();
-    btnDev.hidden = !devUnlocked;
-    btnDev.textContent = state.devMode ? "Dev mode ✓" : "Dev mode";
+    btnDev.textContent = state.devMode ? "Dev mode ✓" : "Dev";
+  }
+
+  function syncDevMeters() {
+    document.querySelectorAll("[data-dev-stat]").forEach((input) => {
+      const key = input.dataset.devStat;
+      const val = Math.round(Number(state[key] ?? 0));
+      input.value = String(val);
+      const label = document.querySelector(`[data-dev-val="${key}"]`);
+      if (label) label.textContent = String(val);
+    });
+  }
+
+  function applyDevStat(key, value) {
+    if (!devUnlocked) return;
+    const v = clamp(Number(value));
+    if (!["hunger", "happy", "health", "discipline", "energy", "satiety"].includes(key)) return;
+    state[key] = v;
+    render();
+    save({ touchTick: false });
+    syncDevMeters();
+    refreshDevStatus();
+  }
+
+  function setDevMess(on) {
+    if (!devUnlocked) return;
+    state.hasMess = !!(on && state.alive && state.stage !== "bush");
+    render();
+    save({ touchTick: false });
+    refreshDevStatus();
+    say(state.hasMess ? "Dev: waste dropped." : "Dev: waste cleared.");
+  }
+
+  function setDevSick(on) {
+    if (!devUnlocked) return;
+    state.sick = !!(on && state.alive);
+    render();
+    save({ touchTick: false });
+    refreshDevStatus();
+  }
+
+  function setDevStubborn(on) {
+    if (!devUnlocked) return;
+    state.stubborn = !!(on && state.alive);
+    state.stubbornReason = state.stubborn ? "dev override" : "";
+    render();
+    save({ touchTick: false });
+    refreshDevStatus();
   }
 
   let lastArtKey = "";
@@ -1632,7 +1713,6 @@
     });
 
     const btnForms = $("btnForms");
-    const btnDev = $("btnDev");
     if (btnForms) {
       btnForms.addEventListener("click", () => {
         refreshFormsList();
@@ -1642,13 +1722,6 @@
     if ($("formsClose")) {
       $("formsClose").addEventListener("click", () => {
         $("formsModal").hidden = true;
-      });
-    }
-    if (btnDev) {
-      btnDev.addEventListener("click", () => {
-        if (!devUnlocked) return;
-        refreshDevStatus();
-        $("devModal").hidden = false;
       });
     }
     if ($("devClose")) {
@@ -1662,6 +1735,15 @@
         refreshDevStatus();
       });
     }
+    if ($("devWasteOn")) $("devWasteOn").addEventListener("click", () => setDevMess(true));
+    if ($("devWasteOff")) $("devWasteOff").addEventListener("click", () => setDevMess(false));
+    if ($("devSickOn")) $("devSickOn").addEventListener("click", () => setDevSick(true));
+    if ($("devSickOff")) $("devSickOff").addEventListener("click", () => setDevSick(false));
+    if ($("devStubbornOn")) $("devStubbornOn").addEventListener("click", () => setDevStubborn(true));
+    if ($("devStubbornOff")) $("devStubbornOff").addEventListener("click", () => setDevStubborn(false));
+    document.querySelectorAll("[data-dev-stat]").forEach((input) => {
+      input.addEventListener("input", () => applyDevStat(input.dataset.devStat, input.value));
+    });
     document.querySelectorAll("[data-dev-skip]").forEach((btn) => {
       btn.addEventListener("click", () => {
         devSkipTo(btn.dataset.devSkip);
