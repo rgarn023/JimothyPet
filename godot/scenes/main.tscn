@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3 uid="uid://jimothy_main"]
+[gd_scene load_steps=6 format=3 uid="uid://jimothy_main"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/raccoon_view.gd" id="2_raccoon"]
 [ext_resource type="Script" path="res://scripts/dumpster_dive.gd" id="3_dive"]
+[ext_resource type="Script" path="res://scripts/forest_bg.gd" id="4_forest"]
+[ext_resource type="Script" path="res://scripts/mess_pile.gd" id="5_mess"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -13,7 +15,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -21,7 +23,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.0784314, 0.12549, 0.0980392, 1)
+script = ExtResource("4_forest")
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -220,7 +222,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_raccoon")
 
-[node name="MessMark" type="ColorRect" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
+[node name="MessMark" type="Control" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -229,13 +231,13 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -70.0
-offset_top = -48.0
-offset_right = -36.0
-offset_bottom = -28.0
+offset_left = -78.0
+offset_top = -56.0
+offset_right = -28.0
+offset_bottom = -20.0
 grow_horizontal = 0
 grow_vertical = 0
-color = Color(0.42, 0.29, 0.16, 1)
+script = ExtResource("5_mess")
 
 [node name="StageName" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
 unique_name_in_owner = true
@@ -300,6 +302,22 @@ theme_override_font_sizes/font_size = 13
 text = "Keep Jimothy fed, exercised, and in line."
 horizontal_alignment = 1
 autowrap_mode = 3
+
+[node name="UtilityRow" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnForms" type="Button" parent="Margin/VBox/UtilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Forms unlocked"
+
+[node name="BtnDev" type="Button" parent="Margin/VBox/UtilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Dev mode"
 
 [node name="FeedPanel" type="ColorRect" parent="."]
 unique_name_in_owner = true
@@ -536,6 +554,8 @@ text = "Bail Out"
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnPlay" to="." method="_on_play_pressed"]
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnScold" to="." method="_on_scold_pressed"]
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnClean" to="." method="_on_clean_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnForms" to="." method="_on_forms_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnDev" to="." method="_on_dev_pressed"]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnBerries" to="." method="_on_food" binds= ["berries"]]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnCrickets" to="." method="_on_food" binds= ["crickets"]]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnFish" to="." method="_on_food" binds= ["fish"]]

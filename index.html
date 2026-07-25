@@ -25,9 +25,14 @@
   <body>
     <div class="atmosphere" aria-hidden="true">
       <div class="moon"></div>
+      <div class="mist mist-a"></div>
+      <div class="mist mist-b"></div>
+      <div class="forest-back"></div>
       <div class="trees"></div>
+      <div class="forest-front"></div>
+      <div class="ground"></div>
       <div class="fireflies">
-        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
       </div>
     </div>
 
@@ -73,7 +78,17 @@
               <div class="raccoon-wrap" id="raccoonWrap">
                 <div class="raccoon" id="raccoon" data-stage="bush" data-mood="idle"></div>
               </div>
-              <div class="mess" id="mess" hidden aria-label="Mess to clean"></div>
+              <div class="clearing-floor" aria-hidden="true"></div>
+              <div class="mess" id="mess" hidden aria-label="Mess to clean">
+                <svg viewBox="0 0 48 36" aria-hidden="true">
+                  <ellipse cx="24" cy="30" rx="16" ry="5" fill="rgba(20,16,10,0.35)" />
+                  <ellipse cx="18" cy="20" rx="11" ry="8" fill="#52361c" />
+                  <ellipse cx="28" cy="18" rx="10" ry="7" fill="#463016" />
+                  <ellipse cx="23" cy="14" rx="8" ry="6" fill="#5c3c20" />
+                  <ellipse cx="31" cy="22" rx="6" ry="5" fill="#3f2914" />
+                  <ellipse cx="20" cy="16" rx="3" ry="2" fill="rgba(90,60,30,0.55)" />
+                </svg>
+              </div>
               <p class="stage-name" id="stageName">Rustling Bush</p>
             </div>
 
@@ -102,6 +117,10 @@
       </section>
 
       <p class="hint" id="hint">Watch the bush. In about a minute, a baby kit may pop out.</p>
+      <div class="utility-row">
+        <button type="button" class="utility-btn" id="btnForms">Forms unlocked</button>
+        <button type="button" class="utility-btn" id="btnDev">Dev mode</button>
+      </div>
     </main>
 
     <div class="modal" id="feedModal" hidden>
@@ -165,6 +184,32 @@
         <h2 id="messageTitle">Hey</h2>
         <p class="modal-copy" id="messageBody"></p>
         <button type="button" class="primary-btn" id="messageOk">OK</button>
+      </div>
+    </div>
+
+    <div class="modal" id="formsModal" hidden>
+      <div class="modal-card" role="dialog" aria-labelledby="formsTitle">
+        <h2 id="formsTitle">Forms unlocked</h2>
+        <p class="modal-copy">Variants you’ve discovered across kits. Locked forms appear as you raise more Jimothys.</p>
+        <div id="formsList" class="forms-list"></div>
+        <button type="button" class="modal-close" id="formsClose">Close</button>
+      </div>
+    </div>
+
+    <div class="modal" id="devModal" hidden>
+      <div class="modal-card" role="dialog" aria-labelledby="devTitle">
+        <h2 id="devTitle">Developer mode</h2>
+        <p class="modal-copy" id="devStatus">Dev Mode: OFF</p>
+        <div class="dev-grid">
+          <button type="button" class="utility-btn" id="devToggle">Toggle Dev Mode ON/OFF</button>
+          <button type="button" class="food-btn" data-dev-skip="bush">Skip → Bush</button>
+          <button type="button" class="food-btn" data-dev-skip="baby">Skip → Baby kit</button>
+          <button type="button" class="food-btn" data-dev-skip="young">Skip → Young kit</button>
+          <button type="button" class="food-btn" data-dev-skip="teen">Skip → Teen kit</button>
+          <button type="button" class="food-btn" data-dev-skip="adult">Skip → Adult</button>
+          <button type="button" class="food-btn" data-dev-skip="ascend">Skip → Ascend finale</button>
+        </div>
+        <button type="button" class="modal-close" id="devClose">Close</button>
       </div>
     </div>
 

@@ -104,7 +104,13 @@
     healthyMeals: 0,
     playSessions: 0,
     energy: 80,
+    formsUnlocked: { young: {}, teen: {}, adult: {} },
+    devMode: false,
   };
+
+  const YOUNG_FORMS = ["puff", "looper", "shadow", "nub"];
+  const TEEN_FORMS = ["dumpling", "bounder", "nightlane", "scruff"];
+  const ADULT_FORMS = ["saint", "legend", "alley_ghost", "ballard_blip"];
 
   let speechTimer = 0;
   let tickHandle = 0;
@@ -347,6 +353,8 @@
       healthyMeals: 0,
       playSessions: 0,
       energy: 80,
+      formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
+      devMode: !!state.devMode,
     });
     state.youngForm = pickYoungForm(state.genes);
     if ($("messageOk")) $("messageOk").textContent = "OK";
@@ -370,6 +378,9 @@
       if (state.energy == null) state.energy = 80;
       if (state.fitness == null) state.fitness = 40;
       if (state.satiety == null) state.satiety = 0;
+      if (!state.formsUnlocked) state.formsUnlocked = { young: {}, teen: {}, adult: {} };
+      if (state.devMode == null) state.devMode = false;
+      unlockCurrentForm();
       syncRealtime({ announceDeath: false });
       return true;
     } catch {
@@ -393,12 +404,114 @@
     return elapsed;
   }
 
+  function unlockForm(bucket, formId) {
+    if (!formId) return;
+    if (!state.formsUnlocked[bucket]) state.formsUnlocked[bucket] = {};
+    if (!state.formsUnlocked[bucket][formId]) {
+      state.formsUnlocked[bucket][formId] = true;
+      say(`Form unlocked: ${capitalize(bucket)} ${prettyForm(formId)}`);
+    }
+  }
+
+  function unlockCurrentForm() {
+    if (state.stage === "young") unlockForm("young", state.youngForm);
+    if (state.stage === "teen" && state.teenForm) unlockForm("teen", state.teenForm);
+    if (state.stage === "adult" && state.adultForm) unlockForm("adult", state.adultForm);
+  }
+
+  function prettyForm(id) {
+    return String(id || "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  function isFormUnlocked(bucket, formId) {
+    return !!(state.formsUnlocked[bucket] && state.formsUnlocked[bucket][formId]);
+  }
+
   function resetPet() {
+    const keepForms = JSON.parse(JSON.stringify(state.formsUnlocked || { young: {}, teen: {}, adult: {} }));
+    const keepDev = !!state.devMode;
     resetDefaults();
+    state.formsUnlocked = keepForms;
+    state.devMode = keepDev;
     save();
     if (window.RaccoonAnim) RaccoonAnim.reset();
     render();
     say("A roadside bush shivers… something’s in there.");
+  }
+
+  function setDevMode(on) {
+    state.devMode = !!on;
+    render();
+    save({ touchTick: false });
+  }
+
+  function devSkipTo(target) {
+    if (!state.devMode) {
+      say("Turn Dev Mode ON first.");
+      return;
+    }
+    state.alive = true;
+    state.ascending = false;
+    state.deathReason = "";
+    state.stubborn = false;
+    state.hasMess = false;
+    state.sick = false;
+    state.hunger = 75;
+    state.happy = 75;
+    state.health = 95;
+    state.energy = 80;
+    state.satiety = 20;
+
+    if (target === "bush") {
+      state.stage = "bush";
+      state.ageSec = 5;
+    } else if (target === "baby") {
+      state.stage = "baby";
+      state.ageSec = bushEnd() + 2;
+      state.weight = 1.2;
+    } else if (target === "young") {
+      state.stage = "young";
+      state.ageSec = babyEnd() + 2;
+      state.youngForm = pickYoungForm(state.genes);
+      state.weight = 3.5;
+      unlockCurrentForm();
+    } else if (target === "teen") {
+      state.stage = "teen";
+      state.ageSec = youngEnd() + 2;
+      if (!state.youngForm) state.youngForm = pickYoungForm(state.genes);
+      unlockForm("young", state.youngForm);
+      state.teenForm = pickTeenForm(state.youngForm, state.genes);
+      state.teenDuration = randRange(TEEN_SEC_MIN, TEEN_SEC_MAX);
+      state.weight = 7;
+      unlockCurrentForm();
+    } else if (target === "adult") {
+      state.stage = "adult";
+      if (!state.youngForm) state.youngForm = pickYoungForm(state.genes);
+      unlockForm("young", state.youngForm);
+      if (!state.teenForm) state.teenForm = pickTeenForm(state.youngForm, state.genes);
+      unlockForm("teen", state.teenForm);
+      state.adultForm = pickAdultForm(state.teenForm);
+      state.adultDuration = randRange(ADULT_SEC_MIN, ADULT_SEC_MAX);
+      state.ageSec = teenEnd() + 2;
+      state.genes.legginess = clamp(state.genes.legginess * 0.5 + 0.55, 0, 1);
+      state.genes.roundness = clamp(state.genes.roundness * 0.4 + 0.65, 0, 1);
+      state.weight = 11;
+      unlockCurrentForm();
+    } else if (target === "ascend") {
+      if (state.stage !== "adult") devSkipTo("adult");
+      endLife("lifespan");
+      return;
+    } else {
+      return;
+    }
+
+    state.lastTick = nowMs();
+    say(`Dev: jumped to ${target}.`);
+    pulseAnim(target === "baby" ? "pop" : "stretch");
+    render();
+    save();
   }
 
   function applyDecay(seconds) {
@@ -489,6 +602,7 @@
       state.weight = 3.5;
       say(`He’s a young kit now — form: ${capitalize(state.youngForm)}.`);
       pulseAnim("stretch");
+      unlockCurrentForm();
       showMessage(
         "Young Kit!",
         `Form: ${capitalize(state.youngForm)}. His teen/adult path is already leaning this way.`
@@ -500,6 +614,7 @@
       state.teenDuration = randRange(TEEN_SEC_MIN, TEEN_SEC_MAX);
       say(`Teen kit era. He’s turning into a ${state.teenForm}.`);
       pulseAnim("run");
+      unlockCurrentForm();
       showMessage(
         "Teen Kit!",
         `Form: ${capitalize(state.teenForm)}. Adult Jimothy arrives in 1–3 real days.`
@@ -528,6 +643,7 @@
       state.genes.roundness = clamp(state.genes.roundness * 0.4 + 0.65, 0, 1);
       say(`Fully grown — ${adultFormTitle()} Jimothy, midnight cryptid.`);
       pulseAnim("lope");
+      unlockCurrentForm();
       showMessage(
         "Adult Cryptid!",
         `${adultFormTitle()} Jimothy — care well and he may linger longer; neglect shortens his sky-bound days.`
@@ -714,11 +830,14 @@
     $("btnDiscipline").classList.toggle("needs-attention", state.stubborn && state.alive);
     $("btnClean").classList.toggle("needs-attention", state.hasMess && state.alive);
 
+    const btnDev = $("btnDev");
+    if (btnDev) btnDev.textContent = state.devMode ? "Dev mode ✓" : "Dev mode";
+
     if (state.ascending) {
       $("hint").textContent = "Watch… Jimothy grows wings and rises into the sky.";
     } else if (state.stage === "bush") {
       $("hint").textContent =
-        "Watch the bush. In about a minute, a baby kit may pop out.";
+        "A forest bush is rustling. In about a minute, a baby kit may pop out.";
     } else if (!state.alive) {
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
@@ -727,8 +846,37 @@
         "Too tiny for a full night run — feed him forage and let him wobble.";
     } else {
       $("hint").textContent =
-        "Feed real forage or junk, run Dumpster Dive for exercise, scold when he digs in.";
+        "Good care lengthens his days. Check Forms unlocked for variants you’ve seen.";
     }
+  }
+
+  function refreshFormsList() {
+    const root = $("formsList");
+    if (!root) return;
+    const sections = [
+      ["Young kit", "young", YOUNG_FORMS],
+      ["Teen kit", "teen", TEEN_FORMS],
+      ["Adult", "adult", ADULT_FORMS],
+    ];
+    root.innerHTML = sections
+      .map(([label, bucket, forms]) => {
+        const rows = forms
+          .map((f) => {
+            const unlocked = isFormUnlocked(bucket, f);
+            return `<div class="forms-row ${unlocked ? "" : "locked"}">${
+              unlocked ? "✓" : "🔒"
+            }  ${prettyForm(f)}</div>`;
+          })
+          .join("");
+        return `<div class="forms-section">${label}</div>${rows}`;
+      })
+      .join("");
+  }
+
+  function refreshDevStatus() {
+    const el = $("devStatus");
+    if (!el) return;
+    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Stage: ${stageLabel()} · ${formatAge()}`;
   }
 
   function openFeed() {
@@ -953,16 +1101,54 @@
       hideMessage();
       if (shouldReset) {
         $("messageOk").dataset.reset = "";
+        $("messageOk").textContent = "OK";
         resetPet();
       }
     });
 
     document.querySelectorAll(".food-btn").forEach((btn) => {
-      btn.addEventListener("click", () => feed(btn.dataset.food));
+      if (btn.dataset.food) btn.addEventListener("click", () => feed(btn.dataset.food));
     });
 
     $("feedModal").addEventListener("click", (e) => {
       if (e.target === $("feedModal")) closeFeed();
+    });
+
+    const btnForms = $("btnForms");
+    const btnDev = $("btnDev");
+    if (btnForms) {
+      btnForms.addEventListener("click", () => {
+        refreshFormsList();
+        $("formsModal").hidden = false;
+      });
+    }
+    if ($("formsClose")) {
+      $("formsClose").addEventListener("click", () => {
+        $("formsModal").hidden = true;
+      });
+    }
+    if (btnDev) {
+      btnDev.addEventListener("click", () => {
+        refreshDevStatus();
+        $("devModal").hidden = false;
+      });
+    }
+    if ($("devClose")) {
+      $("devClose").addEventListener("click", () => {
+        $("devModal").hidden = true;
+      });
+    }
+    if ($("devToggle")) {
+      $("devToggle").addEventListener("click", () => {
+        setDevMode(!state.devMode);
+        refreshDevStatus();
+      });
+    }
+    document.querySelectorAll("[data-dev-skip]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        devSkipTo(btn.dataset.devSkip);
+        $("devModal").hidden = true;
+      });
     });
   }
 
@@ -1043,6 +1229,8 @@
     },
     reset: resetPet,
     endLife,
+    setDevMode,
+    devSkipTo,
     FOOD,
   };
 })();

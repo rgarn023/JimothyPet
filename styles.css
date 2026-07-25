@@ -80,17 +80,82 @@ button {
   animation: moon-drift 12s ease-in-out infinite;
 }
 
+.mist {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 18%;
+  border-radius: 50%;
+  filter: blur(18px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.mist-a {
+  top: 48%;
+  background: radial-gradient(ellipse, rgba(70, 110, 85, 0.35), transparent 70%);
+}
+.mist-b {
+  top: 58%;
+  background: radial-gradient(ellipse, rgba(40, 70, 55, 0.3), transparent 70%);
+}
+
+.forest-back,
+.forest-front {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.forest-back {
+  bottom: 22%;
+  height: 42%;
+  background:
+    radial-gradient(ellipse 40% 80% at 12% 100%, #0a1510 0 42%, transparent 43%),
+    radial-gradient(ellipse 36% 85% at 28% 100%, #0c1812 0 40%, transparent 41%),
+    radial-gradient(ellipse 38% 78% at 48% 100%, #09140f 0 44%, transparent 45%),
+    radial-gradient(ellipse 34% 82% at 68% 100%, #0b1611 0 41%, transparent 42%),
+    radial-gradient(ellipse 42% 88% at 88% 100%, #0a1510 0 43%, transparent 44%);
+  opacity: 0.85;
+}
+
 .trees {
   position: absolute;
   inset: auto 0 0;
-  height: 38%;
+  height: 42%;
   background:
     linear-gradient(120deg, transparent 0 18%, #0a120e 18% 22%, transparent 22%),
     linear-gradient(100deg, transparent 0 34%, #0d1611 34% 41%, transparent 41%),
     linear-gradient(80deg, transparent 0 58%, #0a120e 58% 66%, transparent 66%),
     linear-gradient(95deg, transparent 0 78%, #0d1611 78% 88%, transparent 88%),
     linear-gradient(180deg, transparent, #0a120e 70%);
+  opacity: 0.95;
+}
+
+.forest-front {
+  bottom: 0;
+  height: 28%;
+  background:
+    radial-gradient(ellipse 55% 70% at 8% 100%, #15261c 0 50%, transparent 51%),
+    radial-gradient(ellipse 48% 65% at 30% 110%, #183022 0 48%, transparent 49%),
+    radial-gradient(ellipse 50% 72% at 72% 105%, #142419 0 52%, transparent 53%),
+    radial-gradient(ellipse 46% 68% at 95% 100%, #17301f 0 50%, transparent 51%);
   opacity: 0.9;
+}
+
+.ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18%;
+  background:
+    linear-gradient(180deg, transparent, #0a120e 35%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(40, 28, 14, 0.15) 0 8px,
+      transparent 8px 22px
+    );
 }
 
 .fireflies span {
@@ -485,21 +550,95 @@ button {
   color: var(--amber-soft);
 }
 
+.clearing-floor {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 34px;
+  height: 28px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(40, 55, 40, 0.55), transparent 70%),
+    radial-gradient(ellipse at 30% 60%, rgba(55, 40, 20, 0.25), transparent 60%);
+  pointer-events: none;
+}
+
 .mess {
   position: absolute;
-  bottom: 28px;
-  right: 28px;
-  width: 28px;
-  height: 22px;
-  border-radius: 40% 40% 50% 50%;
-  background: radial-gradient(circle at 40% 40%, #6b4a2a, #3a2614);
-  box-shadow: 6px 0 0 #4a3220;
+  bottom: 30px;
+  right: 22px;
+  width: 48px;
+  height: 36px;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
   animation: mess-plop 0.4s ease;
+  z-index: 2;
+}
+
+.mess svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
 }
 
 @keyframes mess-plop {
   from { transform: scale(0); }
   to { transform: scale(1); }
+}
+
+.utility-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.utility-btn {
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #355744, #24382d);
+  border: 1px solid rgba(111, 191, 132, 0.28);
+  color: var(--mist);
+  box-shadow: 0 3px 0 #1a281e;
+}
+
+.utility-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1a281e;
+}
+
+.forms-list {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 45vh;
+  overflow: auto;
+  margin-bottom: 0.4rem;
+}
+
+.forms-section {
+  margin-top: 0.45rem;
+  font-family: var(--font-display);
+  color: var(--amber-soft);
+  font-size: 0.95rem;
+}
+
+.forms-row {
+  font-size: 0.9rem;
+  color: var(--mist);
+  padding: 0.25rem 0.1rem;
+}
+
+.forms-row.locked {
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.dev-grid {
+  display: grid;
+  gap: 0.45rem;
 }
 
 .alert-banner {

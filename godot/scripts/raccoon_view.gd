@@ -190,6 +190,7 @@ func _fur() -> Color:
 
 
 func _draw() -> void:
+	_draw_clearing()
 	var c := size * 0.5 + Vector2(_pose_x, _pose_y)
 	if stage == "bush" and _anim != "ascend":
 		_draw_bush(size * 0.5)
@@ -259,6 +260,22 @@ func _draw_wings(c: Vector2, face: float, span: float) -> void:
 		draw_circle(c + Vector2(sx, sy), 1.6, Color(1, 0.95, 0.7, 0.35 + span * 0.4))
 	if face < 0.0:
 		pass
+
+
+func _draw_clearing() -> void:
+	# Forest floor inside the pet screen
+	var ground_y := size.y * 0.78
+	_ellipse(Vector2(size.x * 0.5, ground_y), Vector2(size.x * 0.48, 18), Color(0.12, 0.18, 0.12, 0.55))
+	_ellipse(Vector2(size.x * 0.35, ground_y + 2), Vector2(22, 7), Color(0.18, 0.14, 0.08, 0.25))
+	_ellipse(Vector2(size.x * 0.65, ground_y + 1), Vector2(18, 6), Color(0.16, 0.22, 0.12, 0.3))
+	# Leaf flecks
+	for i in 5:
+		var lx := size.x * (0.2 + float(i) * 0.14)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(lx, ground_y - 2),
+			Vector2(lx + 5, ground_y),
+			Vector2(lx + 1, ground_y + 3),
+		]), Color(0.35, 0.22, 0.1, 0.45))
 
 
 func _draw_bush(c: Vector2) -> void:

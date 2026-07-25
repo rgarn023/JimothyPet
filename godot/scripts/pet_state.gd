@@ -90,6 +90,13 @@ var treat_streak: int = 0
 var healthy_meals: int = 0
 var play_sessions: int = 0
 var energy: float = 80.0
+## Lifetime unlocks across kits (persists through reset).
+var forms_unlocked: Dictionary = {
+	"young": {},
+	"teen": {},
+	"adult": {},
+}
+var dev_mode: bool = false
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
@@ -168,11 +175,134 @@ func _reset_defaults() -> void:
 
 
 func reset_pet() -> void:
+	var keep_forms := forms_unlocked.duplicate(true)
+	var keep_dev := dev_mode
 	_reset_defaults()
+	forms_unlocked = keep_forms
+	dev_mode = keep_dev
 	save_game()
 	speech.emit("A roadside bush shivers… something’s in there.")
 	stage_changed.emit(stage)
 	state_changed.emit()
+
+
+func unlock_current_form() -> void:
+	match stage:
+		"young":
+			_unlock_form("young", young_form)
+		"teen":
+			if teen_form != "":
+				_unlock_form("teen", teen_form)
+		"adult":
+			if adult_form != "":
+				_unlock_form("adult", adult_form)
+
+
+func _unlock_form(bucket: String, form_id: String) -> void:
+	if form_id == "":
+		return
+	if not forms_unlocked.has(bucket):
+		forms_unlocked[bucket] = {}
+	var bag: Dictionary = forms_unlocked[bucket]
+	if not bag.has(form_id):
+		bag[form_id] = true
+		forms_unlocked[bucket] = bag
+		speech.emit("Form unlocked: %s %s" % [bucket.capitalize(), form_id.capitalize()])
+
+
+func unlocked_list(bucket: String) -> Array:
+	if not forms_unlocked.has(bucket):
+		return []
+	return (forms_unlocked[bucket] as Dictionary).keys()
+
+
+func is_form_unlocked(bucket: String, form_id: String) -> bool:
+	if not forms_unlocked.has(bucket):
+		return false
+	return bool((forms_unlocked[bucket] as Dictionary).get(form_id, false))
+
+
+func set_dev_mode(on: bool) -> void:
+	dev_mode = on
+	state_changed.emit()
+	save_game()
+
+
+## Developer fast-forward — jumps wall-clock age to the start of a stage.
+func dev_skip_to(target: String) -> void:
+	if not dev_mode:
+		return
+	alive = true
+	ascending = false
+	death_reason = ""
+	stubborn = false
+	has_mess = false
+	sick = false
+	hunger = 75.0
+	happy = 75.0
+	health = 95.0
+	energy = 80.0
+	satiety = 20.0
+
+	match target:
+		"bush":
+			stage = "bush"
+			age_sec = 5.0
+		"baby":
+			stage = "baby"
+			age_sec = bush_end() + 2.0
+			weight = 1.2
+		"young":
+			stage = "young"
+			age_sec = baby_end() + 2.0
+			young_form = _pick_young_form(genes)
+			weight = 3.5
+			unlock_current_form()
+		"teen":
+			stage = "teen"
+			age_sec = young_end() + 2.0
+			if young_form == "":
+				young_form = _pick_young_form(genes)
+			_unlock_form("young", young_form)
+			teen_form = _pick_teen_form(young_form, genes)
+			teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
+			weight = 7.0
+			unlock_current_form()
+		"adult":
+			stage = "adult"
+			if young_form == "":
+				young_form = _pick_young_form(genes)
+			_unlock_form("young", young_form)
+			if teen_form == "":
+				teen_form = _pick_teen_form(young_form, genes)
+			_unlock_form("teen", teen_form)
+			adult_form = _pick_adult_form(teen_form)
+			var care_q := clampf(
+				(float(care_score) * 0.04 + float(healthy_meals) * 0.03 + fitness * 0.004)
+				- float(care_mistakes) * 0.05,
+				0.0,
+				1.0
+			)
+			adult_duration = lerpf(ADULT_SEC_MIN, ADULT_SEC_MAX, care_q)
+			age_sec = teen_end() + 2.0
+			genes.legginess = clampf(float(genes.legginess) * 0.5 + 0.55, 0.0, 1.0)
+			genes.roundness = clampf(float(genes.roundness) * 0.4 + 0.65, 0.0, 1.0)
+			weight = 11.0
+			unlock_current_form()
+		"ascend":
+			if stage != "adult":
+				dev_skip_to("adult")
+			end_life("lifespan")
+			return
+		_:
+			return
+
+	last_tick = _now()
+	speech.emit("Dev: jumped to %s." % target)
+	stage_changed.emit(stage)
+	anim_impulse.emit("pop" if target == "baby" else "stretch")
+	state_changed.emit()
+	save_game()
 
 
 func _now() -> int:
@@ -398,6 +528,7 @@ func _evolve_if_needed() -> void:
 		weight = 3.5
 		speech.emit("He’s a young kit now — form: %s." % young_form.capitalize())
 		anim_impulse.emit("stretch")
+		unlock_current_form()
 	elif stage == "young" and age_sec >= young_end():
 		stage = "teen"
 		teen_form = _pick_teen_form(young_form, genes)
@@ -406,6 +537,7 @@ func _evolve_if_needed() -> void:
 		teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
 		speech.emit("Teen kit era. He’s turning into a %s." % teen_form)
 		anim_impulse.emit("run")
+		unlock_current_form()
 	elif stage == "teen" and age_sec >= teen_end():
 		stage = "adult"
 		adult_form = _pick_adult_form(teen_form if teen_form != "" else _pick_teen_form(young_form, genes))
@@ -424,6 +556,7 @@ func _evolve_if_needed() -> void:
 		genes.roundness = clampf(float(genes.roundness) * 0.4 + 0.65, 0.0, 1.0)
 		speech.emit("Fully grown — %s Jimothy, midnight cryptid." % adult_form_title())
 		anim_impulse.emit("lope")
+		unlock_current_form()
 
 	if prev != stage:
 		stage_changed.emit(stage)
@@ -695,6 +828,8 @@ func to_dict() -> Dictionary:
 		"healthy_meals": healthy_meals,
 		"play_sessions": play_sessions,
 		"energy": energy,
+		"forms_unlocked": forms_unlocked,
+		"dev_mode": dev_mode,
 	}
 
 
@@ -738,9 +873,15 @@ func from_dict(d: Dictionary) -> void:
 	healthy_meals = int(d.get("healthy_meals", 0))
 	play_sessions = int(d.get("play_sessions", 0))
 	energy = float(d.get("energy", 80.0))
+	var fu = d.get("forms_unlocked", {})
+	if typeof(fu) == TYPE_DICTIONARY:
+		forms_unlocked = fu
+	dev_mode = bool(d.get("dev_mode", false))
 	# If save left him dead mid-ascension, finish the UI flow on load.
 	if not alive and not ascending:
 		ascending = true
+	# Seed unlocks from current kit if migrating old saves
+	unlock_current_form()
 
 
 func save_game() -> void:
