@@ -58,12 +58,25 @@ const RaccoonArt = (() => {
     `;
   }
 
-  function mask(cx, cy, rx, ry, eye, maskGene) {
+  function mask(cx, cy, rx, ry, eye, maskGene, smiling = false) {
     const maskC = maskGene > 0.7 ? "#1c1c22" : "#2a2a32";
+    if (smiling) {
+      const ey = cy - 1;
+      return `
+        <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${maskC}"/>
+        <path class="smile-eye" d="M${cx - eye * 1.7} ${ey} Q${cx - eye} ${ey - 3} ${cx - eye * 0.35} ${ey}"
+              fill="none" stroke="#faf6ec" stroke-width="2.2" stroke-linecap="round"/>
+        <path class="smile-eye" d="M${cx + eye * 0.35} ${ey} Q${cx + eye} ${ey - 3} ${cx + eye * 1.7} ${ey}"
+              fill="none" stroke="#faf6ec" stroke-width="2.2" stroke-linecap="round"/>
+        <ellipse cx="${cx}" cy="${cy + eye * 1.35}" rx="${eye * 1.5}" ry="${eye * 0.85}" fill="#c9a292"/>
+        <ellipse class="blush" cx="${cx - eye * 2.1}" cy="${cy + eye * 0.6}" rx="${eye * 0.7}" ry="${eye * 0.4}" fill="rgba(230,140,140,0.4)"/>
+        <ellipse class="blush" cx="${cx + eye * 2.1}" cy="${cy + eye * 0.6}" rx="${eye * 0.7}" ry="${eye * 0.4}" fill="rgba(230,140,140,0.4)"/>
+      `;
+    }
     return `
       <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${maskC}"/>
-      <circle cx="${cx - eye * 1.35}" cy="${cy - 1}" r="${eye}" fill="#faf6ec"/>
-      <circle cx="${cx + eye * 1.35}" cy="${cy - 1}" r="${eye}" fill="#faf6ec"/>
+      <circle class="eye" cx="${cx - eye * 1.35}" cy="${cy - 1}" r="${eye}" fill="#faf6ec"/>
+      <circle class="eye" cx="${cx + eye * 1.35}" cy="${cy - 1}" r="${eye}" fill="#faf6ec"/>
       <circle cx="${cx - eye * 1.15}" cy="${cy - 0.3}" r="${eye * 0.45}" fill="#101014"/>
       <circle cx="${cx + eye * 1.55}" cy="${cy - 0.3}" r="${eye * 0.45}" fill="#101014"/>
       <ellipse cx="${cx}" cy="${cy + eye * 1.15}" rx="${eye * 1.1}" ry="${eye * 0.7}" fill="#c9a292"/>
@@ -117,7 +130,7 @@ const RaccoonArt = (() => {
     `);
   }
 
-  function baby(genes) {
+  function baby(genes, smiling = false) {
     const color = fur(genes, "baby");
     const flare = g(genes, "ear_flare");
     return svg(`
@@ -125,13 +138,13 @@ const RaccoonArt = (() => {
       <ellipse class="body" cx="60" cy="74" rx="18" ry="14" fill="${color}"/>
       <circle class="head" cx="60" cy="58" r="14" fill="${lighten(color, 0.05)}"/>
       ${ears(60, 58, 11, 10, flare)}
-      ${mask(60, 60, 11, 7, 2.6, g(genes, "mask"))}
+      ${mask(60, 60, 11, 7, 2.6, g(genes, "mask"), smiling)}
       <ellipse cx="50" cy="88" rx="5" ry="3" fill="#3a3a44"/>
       <ellipse cx="70" cy="88" rx="5" ry="3" fill="#3a3a44"/>
     `);
   }
 
-  function young(genes, form) {
+  function young(genes, form, smiling = false) {
     const color = fur(genes, "young");
     const roundness = g(genes, "roundness");
     let legsMul = 0.7 + g(genes, "legginess") * 0.8;
@@ -154,11 +167,11 @@ const RaccoonArt = (() => {
       <ellipse class="body" cx="60" cy="66" rx="${bodyRx}" ry="${bodyRy}" fill="${shade}"/>
       <circle class="head" cx="60" cy="52" r="${16 + roundness * 3}" fill="${lighten(shade, 0.04)}"/>
       ${ears(60, 52, 14, 12, g(genes, "ear_flare"))}
-      ${mask(60, 54, 14, 9, 3.3, g(genes, "mask"))}
+      ${mask(60, 54, 14, 9, 3.3, g(genes, "mask"), smiling)}
     `);
   }
 
-  function teen(genes, form) {
+  function teen(genes, form, smiling = false) {
     const color = fur(genes, "teen");
     let legsMul = 1 + g(genes, "legginess") * 0.7;
     let roundness = g(genes, "roundness");
@@ -176,11 +189,11 @@ const RaccoonArt = (() => {
       <ellipse class="body" cx="60" cy="62" rx="${26 + roundness * 6}" ry="${20 + (1 - roundness) * 3}" fill="${color}"/>
       <circle class="head" cx="60" cy="50" r="18" fill="${lighten(color, 0.03)}"/>
       ${ears(60, 50, 16, 14, g(genes, "ear_flare"))}
-      ${mask(60, 52, 16, 10, 3.8, g(genes, "mask"))}
+      ${mask(60, 52, 16, 10, 3.8, g(genes, "mask"), smiling)}
     `);
   }
 
-  function adult(genes, form) {
+  function adult(genes, form, smiling = false) {
     const color = fur(genes, "adult", form);
     const legsMul = 1.25 + g(genes, "legginess") * 0.45;
     const roundness = 0.7 + g(genes, "roundness") * 0.3;
@@ -212,7 +225,7 @@ const RaccoonArt = (() => {
       </g>
       <ellipse class="body" cx="60" cy="52" rx="${bodyRx}" ry="${bodyRy}" fill="${color}"/>
       ${ears(60, 52, 20, 24, g(genes, "ear_flare"))}
-      ${mask(60, 50, 20, 12, 4.6, g(genes, "mask"))}
+      ${mask(60, 50, 20, 12, 4.6, g(genes, "mask"), smiling)}
       ${flair}
       <path d="M40 56 h-8 M40 60 h-7 M80 56 h8 M80 60 h7"
             stroke="#d0d0d8" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
@@ -234,17 +247,18 @@ const RaccoonArt = (() => {
   function render(profile = {}) {
     const stage = profile.stage || "bush";
     const genes = profile.genes || {};
+    const smiling = !!profile.smiling;
     switch (stage) {
       case "bush":
         return bush(profile.ageSec || 0);
       case "baby":
-        return baby(genes);
+        return baby(genes, smiling);
       case "young":
-        return young(genes, profile.youngForm || "puff");
+        return young(genes, profile.youngForm || "puff", smiling);
       case "teen":
-        return teen(genes, profile.teenForm || "bounder");
+        return teen(genes, profile.teenForm || "bounder", smiling);
       case "adult":
-        return adult(genes, profile.adultForm || "saint");
+        return adult(genes, profile.adultForm || "saint", smiling);
       default:
         return bush(0);
     }
@@ -409,6 +423,23 @@ const RaccoonAnim = (() => {
       case "sniff":
         animDur = 1;
         break;
+      case "smile":
+      case "happy":
+        animDur = 0.95;
+        break;
+      case "hop":
+        animDur = 0.7;
+        jumpPeak = 22 + Math.random() * 12;
+        break;
+      case "nuzzle":
+        animDur = 0.9;
+        break;
+      case "spin":
+        animDur = 0.85;
+        break;
+      case "rustle":
+        animDur = 0.7;
+        break;
       case "refuse":
         animDur = 0.95;
         break;
@@ -455,10 +486,12 @@ const RaccoonAnim = (() => {
 
     wrap.style.opacity = "1";
     if (stage === "bush") {
-      poseX = Math.sin(t * 9) * 2 + Math.sin(t * 3.3) * 1.5;
-      poseY = Math.sin(t * 7) * 1.5;
+      const amp = anim === "rustle" ? 5 + Math.sin(animT * 28) * 2 : 2;
+      poseX = Math.sin(t * 9) * amp + Math.sin(t * 3.3) * (amp * 0.7);
+      poseY = Math.sin(t * 7) * (amp * 0.7);
       facing = 1;
       wrap.classList.add("is-bush");
+      if (anim === "rustle" && animT >= animDur) anim = "idle";
       applyTransform();
       return;
     }
@@ -574,6 +607,54 @@ const RaccoonAnim = (() => {
           anim = "idle";
           headDip = 0;
         }
+        break;
+      }
+      case "smile":
+      case "happy": {
+        const u = Math.min(1, animT / animDur);
+        poseY = Math.sin(u * Math.PI) * 3;
+        headDip = -Math.sin(u * Math.PI) * 2;
+        if (animT >= animDur) {
+          anim = "idle";
+          poseY = 0;
+          headDip = 0;
+        }
+        break;
+      }
+      case "hop": {
+        const u = Math.min(1, animT / animDur);
+        poseY = -Math.sin(u * Math.PI) * jumpPeak;
+        if (u >= 1) {
+          anim = "idle";
+          poseY = 0;
+        }
+        break;
+      }
+      case "nuzzle": {
+        const u = Math.min(1, animT / animDur);
+        poseX += Math.sin(t * 10) * 0.8;
+        headDip = 4 + Math.sin(u * Math.PI) * 5;
+        facing = Math.sin(t * 6) > 0 ? 1 : -1;
+        if (animT >= animDur) {
+          anim = "idle";
+          headDip = 0;
+        }
+        break;
+      }
+      case "spin": {
+        const u = Math.min(1, animT / animDur);
+        facing = Math.floor(u * 8) % 2 === 0 ? 1 : -1;
+        poseY = -Math.sin(u * Math.PI) * 10;
+        poseX += Math.sin(t * 20) * 1.2;
+        if (animT >= animDur) {
+          anim = "idle";
+          poseY = 0;
+        }
+        break;
+      }
+      case "rustle": {
+        // Handled in bush branch with stronger amp via dataset
+        if (animT >= animDur) anim = "idle";
         break;
       }
       case "stubborn":

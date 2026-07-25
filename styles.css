@@ -558,6 +558,51 @@ button {
   animation: sniff-nose 0.35s ease-in-out infinite alternate;
 }
 
+.raccoon-wrap {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.raccoon-wrap:focus-visible {
+  outline: 2px solid rgba(240, 197, 122, 0.55);
+  outline-offset: 4px;
+  border-radius: 16px;
+}
+
+.raccoon-wrap[data-anim="smile"] .raccoon,
+.raccoon-wrap[data-anim="nuzzle"] .raccoon,
+.raccoon-wrap[data-anim="happy"] .raccoon {
+  animation: pet-wiggle 0.45s ease;
+}
+
+.raccoon-wrap[data-anim="hop"] .raccoon {
+  animation: pet-hop 0.7s ease;
+}
+
+.raccoon-wrap[data-anim="spin"] .raccoon {
+  animation: pet-spin 0.85s ease-in-out;
+}
+
+@keyframes pet-wiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  30% { transform: rotate(-4deg) scale(1.03); }
+  60% { transform: rotate(4deg) scale(1.02); }
+}
+
+@keyframes pet-hop {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  40% { transform: translateY(-18px) scaleY(1.06); }
+  70% { transform: translateY(-4px) scaleY(0.98); }
+}
+
+@keyframes pet-spin {
+  0% { transform: scaleX(1); }
+  25% { transform: scaleX(-1); }
+  50% { transform: scaleX(1) translateY(-8px); }
+  75% { transform: scaleX(-1); }
+  100% { transform: scaleX(1); }
+}
+
 @keyframes chew-bob {
   0%, 100% { transform: translateY(0) scaleY(1); }
   50% { transform: translateY(2px) scaleY(0.97); }

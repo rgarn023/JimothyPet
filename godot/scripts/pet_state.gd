@@ -717,6 +717,59 @@ func discipline_pet() -> void:
 	save_game()
 
 
+## Tap / pet Jimothy — smile, hop, nuzzle, etc.
+func interact_tap() -> String:
+	if ascending:
+		return ""
+	if not alive:
+		return ""
+	if stage == "bush":
+		speech.emit("The bush shivers under your hand…")
+		anim_impulse.emit("rustle")
+		state_changed.emit()
+		return "rustle"
+
+	var kind := "smile"
+	var roll := randf()
+	if stubborn:
+		kind = "refuse" if roll < 0.55 else "sniff"
+		speech.emit("He side-eyes you. Still sulking.")
+	elif sick:
+		kind = "sniff"
+		speech.emit("A weak little chitter.")
+	elif stage == "baby":
+		kind = "hop" if roll < 0.45 else ("smile" if roll < 0.8 else "nuzzle")
+	elif energy < 25.0:
+		kind = "nuzzle" if roll < 0.6 else "smile"
+	elif happy > 70.0 and roll < 0.35:
+		kind = "hop"
+	elif roll < 0.28:
+		kind = "hop"
+	elif roll < 0.5:
+		kind = "nuzzle"
+	elif roll < 0.62:
+		kind = "spin"
+	else:
+		kind = "smile"
+
+	happy = clamp01(happy + (4.0 if kind in ["smile", "hop", "nuzzle", "spin"] else 1.0))
+	if kind == "smile":
+		speech.emit(["He grins at you.", "Happy raccoon eyes!", "He leans into the pets."][randi() % 3])
+	elif kind == "hop":
+		speech.emit(["Boing!", "He hops for attention.", "Tiny cryptid bounce!"][randi() % 3])
+	elif kind == "nuzzle":
+		speech.emit(["He nuzzles your finger.", "Soft headbonk.", "Purr-adjacent chitter."][randi() % 3])
+	elif kind == "spin":
+		speech.emit(["Zoomies!", "A silly spin!", "He whirls in place."][randi() % 3])
+
+	anim_impulse.emit(kind)
+	state_changed.emit()
+	# Soft save — tapping is frequent
+	if randf() < 0.35:
+		save_game()
+	return kind
+
+
 func clean_mess() -> void:
 	if not alive or not has_mess:
 		return

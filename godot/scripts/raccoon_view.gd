@@ -25,12 +25,16 @@ var _eat_flash: float = 0.0
 var _eat_food: String = "berry"
 var _head_dip: float = 0.0
 var _body_squash: float = 1.0
+var _smile: float = 0.0
 var _wing_span: float = 0.0
 var _fade: float = 1.0
 var _ascend_done_emitted: bool = false
+var _tap_cooldown: float = 0.0
 
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	gui_input.connect(_on_gui_input)
 	if PetState:
 		PetState.anim_impulse.connect(play_anim)
 		PetState.state_changed.connect(_sync_from_state)
@@ -38,6 +42,29 @@ func _ready() -> void:
 		# Only resume an in-progress ascension — never replay for a dead save.
 		if PetState.ascending and not PetState.alive:
 			play_anim("ascend")
+
+
+func _on_gui_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch and event.pressed:
+		_try_tap()
+		accept_event()
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_try_tap()
+		accept_event()
+
+
+func _try_tap() -> void:
+	if _tap_cooldown > 0.0:
+		return
+	if PetState == null:
+		return
+	if PetState.ascending or not PetState.alive:
+		return
+	# Don't interrupt eat / ascend mid-motion
+	if _anim in ["eat", "ascend"]:
+		return
+	_tap_cooldown = 0.55
+	PetState.interact_tap()
 
 
 func clear_ascend() -> void:
@@ -133,6 +160,23 @@ func play_anim(kind: String) -> void:
 			_anim_dur = 1.1
 		"sniff":
 			_anim_dur = 1.0
+		"smile":
+			_anim_dur = 0.95
+			_smile = 1.0
+		"hop":
+			_anim_dur = 0.7
+			_jump_peak = randf_range(22.0, 34.0)
+		"nuzzle":
+			_anim_dur = 0.9
+			_smile = 0.7
+		"spin":
+			_anim_dur = 0.85
+		"rustle":
+			_anim_dur = 0.7
+		"happy":
+			_anim_dur = 0.8
+			_smile = 1.0
+			_jump_peak = 16.0
 		_:
 			_anim_dur = randf_range(1.0, 2.0)
 			_speed = 0.0
@@ -141,7 +185,10 @@ func play_anim(kind: String) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_anim_t += delta
+	_tap_cooldown = maxf(0.0, _tap_cooldown - delta)
 	_eat_flash = maxf(0.0, _eat_flash - delta * 0.85)
+	if _anim not in ["smile", "nuzzle", "happy"]:
+		_smile = maxf(0.0, _smile - delta * 1.8)
 
 	if _anim == "ascend":
 		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
@@ -156,8 +203,13 @@ func _process(delta: float) -> void:
 		return
 
 	if stage == "bush":
-		_pose_x = sin(_t * 9.0) * 2.0 + sin(_t * 3.3) * 1.5
-		_pose_y = sin(_t * 7.0) * 1.5
+		var bush_amp := 2.0
+		if _anim == "rustle":
+			bush_amp = 5.0 + sin(_anim_t * 28.0) * 2.0
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+		_pose_x = sin(_t * 9.0) * bush_amp + sin(_t * 3.3) * (bush_amp * 0.7)
+		_pose_y = sin(_t * 7.0) * (bush_amp * 0.7)
 		queue_redraw()
 		return
 
@@ -251,6 +303,42 @@ func _process(delta: float) -> void:
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_head_dip = 0.0
+		"smile":
+			var sm := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_smile = 1.0
+			_pose_y = sin(sm * PI) * 3.0
+			_head_dip = -sin(sm * PI) * 2.0
+			_body_squash = 1.0 + sin(sm * PI) * 0.04
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+		"hop", "happy":
+			var hu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_pose_y = -sin(hu * PI) * _jump_peak
+			_smile = 0.85
+			_body_squash = 1.0 + sin(hu * PI) * 0.1
+			if hu >= 1.0:
+				_anim = "idle"
+				_pose_y = 0.0
+				_body_squash = 1.0
+		"nuzzle":
+			var nu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_pose_x += sin(_t * 10.0) * 0.8
+			_head_dip = 4.0 + sin(nu * PI) * 5.0
+			_facing = 1.0 if sin(_t * 6.0) > 0.0 else -1.0
+			_smile = 0.8
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_head_dip = 0.0
+		"spin":
+			var su2 := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_facing = 1.0 if int(su2 * 8.0) % 2 == 0 else -1.0
+			_pose_y = -sin(su2 * PI) * 10.0
+			_pose_x += sin(_t * 20.0) * 1.2
+			_smile = 0.6
+			if _anim_t >= _anim_dur:
+				_anim = "idle"
+				_pose_y = 0.0
 		"stubborn", "sick":
 			_pose_x += sin(_t * 16.0) * 0.55
 			_head_dip = 2.0
@@ -446,11 +534,23 @@ func _ears(c: Vector2, spread: float, up: float, face: float) -> void:
 func _mask(c: Vector2, rx: float, ry: float, eye: float, face: float) -> void:
 	var mask_c := Color("1c1c22").lightened((1.0 - _g("mask")) * 0.15)
 	_ellipse(c, Vector2(rx, ry), mask_c)
-	draw_circle(c + Vector2(-eye * 1.35 * face, -1), eye, Color("faf6ec"))
-	draw_circle(c + Vector2(eye * 1.35 * face, -1), eye, Color("faf6ec"))
-	draw_circle(c + Vector2(-eye * 1.15 * face, -0.3), eye * 0.45, Color("101014"))
-	draw_circle(c + Vector2(eye * 1.55 * face, -0.3), eye * 0.45, Color("101014"))
-	_ellipse(c + Vector2(0, eye * 1.15), Vector2(eye * 1.1, eye * 0.7), Color("c9a292"))
+	if _smile > 0.35:
+		# Happy closed eyes + soft grin
+		var eye_y := -1.0 - _smile
+		draw_line(c + Vector2(-eye * 1.7 * face, eye_y), c + Vector2(-eye * 0.85 * face, eye_y - 1.5 * _smile), Color("faf6ec"), 2.2)
+		draw_line(c + Vector2(-eye * 0.85 * face, eye_y - 1.5 * _smile), c + Vector2(-eye * 0.35 * face, eye_y), Color("faf6ec"), 2.2)
+		draw_line(c + Vector2(eye * 0.35 * face, eye_y), c + Vector2(eye * 0.85 * face, eye_y - 1.5 * _smile), Color("faf6ec"), 2.2)
+		draw_line(c + Vector2(eye * 0.85 * face, eye_y - 1.5 * _smile), c + Vector2(eye * 1.7 * face, eye_y), Color("faf6ec"), 2.2)
+		_ellipse(c + Vector2(0, eye * 1.35), Vector2(eye * (1.35 + _smile * 0.35), eye * 0.85), Color("c9a292"))
+		# Pink cheek blush
+		_ellipse(c + Vector2(-eye * 2.1 * face, eye * 0.6), Vector2(eye * 0.7, eye * 0.4), Color(0.9, 0.55, 0.55, 0.35 * _smile))
+		_ellipse(c + Vector2(eye * 2.1 * face, eye * 0.6), Vector2(eye * 0.7, eye * 0.4), Color(0.9, 0.55, 0.55, 0.35 * _smile))
+	else:
+		draw_circle(c + Vector2(-eye * 1.35 * face, -1), eye, Color("faf6ec"))
+		draw_circle(c + Vector2(eye * 1.35 * face, -1), eye, Color("faf6ec"))
+		draw_circle(c + Vector2(-eye * 1.15 * face, -0.3), eye * 0.45, Color("101014"))
+		draw_circle(c + Vector2(eye * 1.55 * face, -0.3), eye * 0.45, Color("101014"))
+		_ellipse(c + Vector2(0, eye * 1.15), Vector2(eye * 1.1, eye * 0.7), Color("c9a292"))
 
 
 func _tail(base: Vector2, scale: float, face: float) -> void:

@@ -145,6 +145,17 @@ const JimothySound = (() => {
       case "clean":
         play("rustle", 0.45);
         break;
+      case "pet":
+      case "smile":
+      case "nuzzle":
+        play("chitter", 0.55);
+        break;
+      case "hop":
+      case "spin":
+      case "happy":
+        play("chirp", 0.55);
+        play("chitter", 0.3);
+        break;
       case "speech":
         if (Math.random() < 0.55) play("chitter", 0.35);
         break;

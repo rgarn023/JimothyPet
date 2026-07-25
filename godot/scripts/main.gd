@@ -301,11 +301,13 @@ func _refresh() -> void:
 	if PetState.ascending:
 		hint_label.text = "Watch… Jimothy grows wings and rises into the sky."
 	elif PetState.stage == "bush":
-		hint_label.text = "A forest bush is rustling. In about a minute, a baby kit may pop out."
+		hint_label.text = "Tap the bush — it rustles. In about a minute, a baby kit may pop out."
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
+	elif PetState.stage == "baby":
+		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for a full night run yet."
 	else:
-		hint_label.text = "Good care lengthens his days. Check Forms unlocked for variants you’ve seen."
+		hint_label.text = "Tap Jimothy to pet him. Good care lengthens his days — check Form paths."
 
 
 func _format_age(sec: float) -> String:

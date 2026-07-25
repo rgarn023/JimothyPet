@@ -119,9 +119,15 @@ func _on_anim(kind: String) -> void:
 			play("chirp", -4.0)
 		"ascend":
 			play("ascend", -1.0)
-		"jump":
-			if randf() < 0.4:
-				play("chirp", -10.0)
+		"jump", "hop", "happy":
+			play("chirp", -6.0)
+		"smile", "nuzzle":
+			play("chitter", -5.0)
+		"spin":
+			play("chirp", -4.0)
+			play("chitter", -8.0)
+		"rustle":
+			play("rustle", -3.0)
 		_:
 			pass
 

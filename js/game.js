@@ -117,6 +117,8 @@
   let tickHandle = 0;
   let animCooldown = 0;
   let lastAnimPulse = performance.now();
+  let tapCooldown = 0;
+  let smileUntil = 0;
 
   const $ = (id) => document.getElementById(id);
 
@@ -324,7 +326,79 @@
       genes: state.genes,
       fitness: state.fitness,
       ageSec: state.ageSec,
+      smiling: performance.now() < smileUntil,
     };
+  }
+
+  function interactTap() {
+    if (state.ascending || !state.alive) return "";
+    if (tapCooldown > 0) return "";
+    tapCooldown = 0.55;
+
+    if (state.stage === "bush") {
+      say("The bush shivers under your hand…");
+      pulseAnim("rustle");
+      sfx("bush");
+      render();
+      return "rustle";
+    }
+
+    const roll = Math.random();
+    let kind = "smile";
+    if (state.stubborn) {
+      kind = roll < 0.55 ? "refuse" : "sniff";
+      say("He side-eyes you. Still sulking.");
+    } else if (state.sick) {
+      kind = "sniff";
+      say("A weak little chitter.");
+    } else if (state.stage === "baby") {
+      kind = roll < 0.45 ? "hop" : roll < 0.8 ? "smile" : "nuzzle";
+    } else if (state.energy < 25) {
+      kind = roll < 0.6 ? "nuzzle" : "smile";
+    } else if (state.happy > 70 && roll < 0.35) {
+      kind = "hop";
+    } else if (roll < 0.28) {
+      kind = "hop";
+    } else if (roll < 0.5) {
+      kind = "nuzzle";
+    } else if (roll < 0.62) {
+      kind = "spin";
+    } else {
+      kind = "smile";
+    }
+
+    if (["smile", "hop", "nuzzle", "spin"].includes(kind)) {
+      state.happy = clamp(state.happy + 4);
+    } else {
+      state.happy = clamp(state.happy + 1);
+    }
+
+    if (kind === "smile") {
+      say(["He grins at you.", "Happy raccoon eyes!", "He leans into the pets."][Math.floor(Math.random() * 3)]);
+      smileUntil = performance.now() + 950;
+      bounceHappy();
+      sfx("pet");
+    } else if (kind === "hop") {
+      say(["Boing!", "He hops for attention.", "Tiny cryptid bounce!"][Math.floor(Math.random() * 3)]);
+      smileUntil = performance.now() + 700;
+      sfx("pet");
+    } else if (kind === "nuzzle") {
+      say(["He nuzzles your finger.", "Soft headbonk.", "Purr-adjacent chitter."][Math.floor(Math.random() * 3)]);
+      smileUntil = performance.now() + 900;
+      sfx("pet");
+    } else if (kind === "spin") {
+      say(["Zoomies!", "A silly spin!", "He whirls in place."][Math.floor(Math.random() * 3)]);
+      smileUntil = performance.now() + 850;
+      sfx("pet");
+    } else if (kind === "refuse") {
+      sfx("refuse");
+    }
+
+    pulseAnim(kind);
+    render();
+    if (Math.random() < 0.35) save({ touchTick: false });
+    setTimeout(() => render(), 1000);
+    return kind;
   }
 
   function resetDefaults() {
@@ -768,6 +842,7 @@
   }
 
   function ambientAnim(dt) {
+    tapCooldown = Math.max(0, tapCooldown - dt);
     if (!state.alive || state.ascending || state.stage === "bush") return;
     animCooldown -= dt;
     if (animCooldown > 0) return;
@@ -883,16 +958,16 @@
       $("hint").textContent = "Watch… Jimothy grows wings and rises into the sky.";
     } else if (state.stage === "bush") {
       $("hint").textContent =
-        "A forest bush is rustling. In about a minute, a baby kit may pop out.";
+        "Tap the bush to rustle it. A baby kit may pop out soon.";
     } else if (!state.alive) {
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
-        "Too tiny for a full night run — feed him forage and let him wobble.";
+        "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
     } else {
       $("hint").textContent =
-        "Good care lengthens his days. Check Forms unlocked for variants you’ve seen.";
+        "Tap Jimothy to pet him. Good care lengthens his days — check Form paths.";
     }
   }
 
@@ -1197,6 +1272,24 @@
     $("btnPlay").addEventListener("click", openGame);
     $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
+    const wrap = $("raccoonWrap");
+    if (wrap) {
+      wrap.style.cursor = "pointer";
+      wrap.setAttribute("role", "button");
+      wrap.setAttribute("aria-label", "Pet Jimothy");
+      wrap.tabIndex = 0;
+      wrap.addEventListener("pointerdown", (e) => {
+        // Avoid stealing clicks from mess clean overlay if present
+        if (e.target.closest && e.target.closest("#mess")) return;
+        interactTap();
+      });
+      wrap.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          interactTap();
+        }
+      });
+    }
     if ($("btnSound")) {
       $("btnSound").addEventListener("click", () => {
         const next = window.JimothySound ? !JimothySound.isEnabled() : state.soundMuted;
