@@ -96,7 +96,7 @@
     careMistakes: 0,
     stubborn: false,
     stubbornReason: "",
-    hasMess: false,
+    messCount: 0,
     sick: false,
     alive: true,
     ascending: false,
@@ -119,6 +119,23 @@
   const DAY_MS = 86400000;
   const MAX_ILLNESS_PER_DAY = 2;
   const MAX_TANTRUM_PER_DAY = 3;
+  const MAX_MESS = 6;
+  const MESS_PILE_SVG = `<svg viewBox="0 0 48 36" aria-hidden="true">
+    <ellipse cx="24" cy="30" rx="16" ry="5" fill="rgba(20,16,10,0.35)" />
+    <ellipse cx="18" cy="20" rx="11" ry="8" fill="#52361c" />
+    <ellipse cx="28" cy="18" rx="10" ry="7" fill="#463016" />
+    <ellipse cx="23" cy="14" rx="8" ry="6" fill="#5c3c20" />
+    <ellipse cx="31" cy="22" rx="6" ry="5" fill="#3f2914" />
+    <ellipse cx="20" cy="16" rx="3" ry="2" fill="rgba(90,60,30,0.55)" />
+  </svg>`;
+  const MESS_SLOTS = [
+    { left: "62%", bottom: "78px" },
+    { left: "48%", bottom: "72px" },
+    { left: "74%", bottom: "70px" },
+    { left: "36%", bottom: "76px" },
+    { left: "22%", bottom: "68px" },
+    { left: "55%", bottom: "64px" },
+  ];
 
   const YOUNG_FORMS = ["puff", "looper", "shadow", "nub"];
   const TEEN_FORMS = ["dumpling", "bounder", "nightlane", "scruff"];
@@ -246,7 +263,7 @@
     if (state.hunger < 25) rate += 2.2;
     if (state.happy < 20) rate += 1.4;
     if (state.health < 35) rate += 2.8;
-    if (state.hasMess) rate += 0.8;
+    if (state.messCount > 0) rate += 0.35 + state.messCount * 0.2;
     if (state.sick) rate += 1.6;
     if (state.discipline < 25) rate += 0.4;
     state.lifespanPenalty = (state.lifespanPenalty || 0) + rate * seconds;
@@ -446,7 +463,7 @@
       careMistakes: 0,
       stubborn: false,
       stubbornReason: "",
-      hasMess: false,
+      messCount: 0,
       sick: false,
       alive: true,
       ascending: false,
@@ -581,6 +598,11 @@
       state.tantrumEvents = pruneDayEvents(
         Array.isArray(state.tantrumEvents) ? state.tantrumEvents : []
       );
+      if (state.messCount == null) {
+        state.messCount = state.hasMess ? 1 : 0;
+      }
+      state.messCount = Math.max(0, Math.min(MAX_MESS, state.messCount | 0));
+      delete state.hasMess;
       unlockCurrentForm();
       syncRealtime({ announceDeath: false });
       return true;
@@ -671,7 +693,7 @@
     state.ascending = false;
     state.deathReason = "";
     state.stubborn = false;
-    state.hasMess = false;
+    state.messCount = 0;
     state.sick = false;
     state.hunger = 75;
     state.happy = 75;
@@ -737,7 +759,7 @@
     const h = clamp(state.health, 0, 100);
     // Rare baseline even when well cared for; health is the main driver.
     let rate = 0.035 + Math.pow((100 - h) / 100, 1.35) * 1.5;
-    if (state.hasMess) rate *= 1.45;
+    if (state.messCount > 0) rate *= 1.15 + Math.min(state.messCount, MAX_MESS) * 0.08;
     if (state.hunger < 25) rate *= 1.35;
     if (state.treatStreak >= 2) rate *= 1.15 + state.treatStreak * 0.12;
     return Math.min(rate, 2.1);
@@ -803,9 +825,10 @@
     state.ageSec += seconds;
 
     // Health drains mainly from waste, hunger, and junk streak — kept slow.
-    if (state.hasMess) {
-      state.health = clamp(state.health - 0.00055 * seconds);
-      state.happy = clamp(state.happy - 0.0007 * seconds);
+    if (state.messCount > 0) {
+      const piles = Math.min(state.messCount, MAX_MESS);
+      state.health = clamp(state.health - 0.00035 * piles * seconds);
+      state.happy = clamp(state.happy - 0.0004 * piles * seconds);
     }
     if (state.hunger < 20 && state.stage !== "bush") {
       state.health = clamp(state.health - 0.00095 * seconds);
@@ -823,8 +846,12 @@
 
     applyNeglectPenalty(seconds);
 
-    if (state.stage !== "bush" && !state.hasMess && Math.random() < seconds * 0.00018) {
-      state.hasMess = true;
+    if (
+      state.stage !== "bush" &&
+      state.messCount < MAX_MESS &&
+      Math.random() < seconds * 0.00022
+    ) {
+      state.messCount += 1;
     }
 
     maybeIllness(seconds);
@@ -974,8 +1001,15 @@
     if (state.stubborn) {
       return { text: `Acting up — ${state.stubbornReason}. Scold him.`, danger: true };
     }
-    if (state.hasMess) {
-      return { text: "He’s marked the nest. Clean it up.", danger: false };
+    if (state.messCount > 0) {
+      const n = state.messCount;
+      return {
+        text:
+          n === 1
+            ? "He’s marked the nest. Clean it up."
+            : `${n} waste piles in the nest. Clean them up.`,
+        danger: n >= 4,
+      };
     }
     if (state.energy < 20) {
       return { text: "Winded. Let him rest before more exercise.", danger: false };
@@ -1136,7 +1170,7 @@
       });
     }
 
-    $("mess").hidden = !(state.hasMess && state.alive);
+    renderMessPiles();
 
     const alert = alertText();
     const banner = $("alertBanner");
@@ -1151,11 +1185,20 @@
     const canCare = state.alive && state.stage !== "bush" && !state.ascending;
     const canScold = !!(state.alive && state.stubborn);
     const canHeal = !!(state.alive && state.sick && state.stage !== "bush" && !state.ascending);
+    const canClean = !!(state.alive && state.messCount > 0);
     if ($("btnDiscipline")) {
       $("btnDiscipline").disabled = !canScold;
       $("btnDiscipline").classList.toggle("needs-attention", canScold);
     }
-    $("btnClean").disabled = !(state.alive && state.hasMess);
+    if ($("btnClean")) {
+      $("btnClean").disabled = !canClean;
+      $("btnClean").classList.toggle("needs-attention", canClean);
+      const cleanLabel = $("btnClean").querySelector("span:last-child");
+      if (cleanLabel) {
+        cleanLabel.textContent =
+          state.messCount > 1 ? `Clean (${state.messCount})` : "Clean";
+      }
+    }
     if ($("btnHeal")) {
       $("btnHeal").disabled = !canHeal;
       $("btnHeal").classList.toggle("needs-attention", canHeal);
@@ -1165,9 +1208,8 @@
       $("btnPlay").disabled =
         !state.alive || state.ascending || state.stage === "bush" || state.stage === "baby";
     }
-    $("btnClean").classList.toggle("needs-attention", state.hasMess && state.alive);
     if ($("btnAction")) {
-      $("btnAction").classList.toggle("needs-attention", canScold || canHeal);
+      $("btnAction").classList.toggle("needs-attention", canScold || canHeal || canClean);
     }
 
     refreshDevButton();
@@ -1183,12 +1225,13 @@
       $("hint").textContent = "He’s under the weather — open Action → Heal.";
     } else if (state.stubborn) {
       $("hint").textContent = "He’s acting up — open Action → Scold.";
+    } else if (state.messCount > 0) {
+      $("hint").textContent = "Waste in the nest — open Action → Clean.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
         "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
     } else {
-      $("hint").textContent =
-        "Tap Jimothy to pet him. Good care lengthens his days — check Form paths.";
+      $("hint").textContent = "Tap Jimothy to pet him. Good care lengthens his days.";
     }
   }
 
@@ -1327,7 +1370,7 @@
   function refreshDevStatus() {
     const el = $("devStatus");
     if (!el) return;
-    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Waste: ${state.hasMess ? "yes" : "no"} · Sick: ${state.sick ? "yes" : "no"} · Stubborn: ${state.stubborn ? "yes" : "no"} · ${stageLabel()} · ${formatAge()}`;
+    el.textContent = `Dev Mode: ${state.devMode ? "ON" : "OFF"} · Waste: ${state.messCount}/${MAX_MESS} · Sick: ${state.sick ? "yes" : "no"} · Stubborn: ${state.stubborn ? "yes" : "no"} · ${stageLabel()} · ${formatAge()}`;
     const toggle = $("devToggle");
     if (toggle) toggle.textContent = state.devMode ? "Dev Mode: On" : "Dev Mode: Off";
     syncDevMeters();
@@ -1346,8 +1389,18 @@
   }
 
   function openSoundMenu() {
+    closeSettingsMenu();
     refreshSoundButtons();
     if ($("soundModal")) $("soundModal").hidden = false;
+  }
+
+  function closeSettingsMenu() {
+    if ($("settingsModal")) $("settingsModal").hidden = true;
+  }
+
+  function openSettingsMenu() {
+    refreshAlertsButton();
+    if ($("settingsModal")) $("settingsModal").hidden = false;
   }
 
   function openFeed() {
@@ -1463,15 +1516,38 @@
   }
 
   function clean() {
-    if (!state.alive || !state.hasMess) return;
-    state.hasMess = false;
+    if (!state.alive || state.messCount <= 0) return;
+    state.messCount = Math.max(0, state.messCount - 1);
     state.happy = clamp(state.happy + 3);
     state.health = clamp(state.health + 2);
     state.careScore += 1;
-    say("Nest cleared. He sniffs approval.");
+    if (state.messCount <= 0) {
+      say("Nest cleared. He sniffs approval.");
+    } else {
+      say(`One pile gone — ${state.messCount} left.`);
+    }
     sfx("clean");
+    closeActionMenu();
     render();
     save();
+  }
+
+  function renderMessPiles() {
+    const layer = $("messLayer");
+    if (!layer) return;
+    const show = state.alive && !state.ascending && state.messCount > 0;
+    layer.hidden = !show;
+    if (!show) {
+      layer.innerHTML = "";
+      return;
+    }
+    const n = Math.min(MAX_MESS, Math.max(0, state.messCount | 0));
+    let html = "";
+    for (let i = 0; i < n; i++) {
+      const slot = MESS_SLOTS[i % MESS_SLOTS.length];
+      html += `<div class="mess" style="left:${slot.left};bottom:${slot.bottom}">${MESS_PILE_SVG}</div>`;
+    }
+    layer.innerHTML = html;
   }
 
   function treatIllness() {
@@ -1617,6 +1693,7 @@
   }
 
   function confirmReset() {
+    closeSettingsMenu();
     openResetModal();
   }
 
@@ -1706,11 +1783,15 @@
 
   function setDevMess(on) {
     if (!devUnlocked) return;
-    state.hasMess = !!(on && state.alive && state.stage !== "bush");
+    if (!on) {
+      state.messCount = 0;
+    } else if (state.alive && state.stage !== "bush") {
+      state.messCount = Math.min(MAX_MESS, (state.messCount || 0) + 1);
+    }
     render();
     save({ touchTick: false });
     refreshDevStatus();
-    say(state.hasMess ? "Dev: waste dropped." : "Dev: waste cleared.");
+    say(on ? `Dev: waste ${state.messCount}/${MAX_MESS}.` : "Dev: waste cleared.");
   }
 
   function setDevSick(on) {
@@ -1816,7 +1897,6 @@
     if ($("btnAction") && $("btnAction").querySelector(".ctrl-icon")) {
       $("btnAction").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.action;
     }
-    $("btnClean").querySelector(".ctrl-icon").innerHTML = RaccoonArt.icons.clean;
     const setMenuIcon = (id, icon) => {
       const el = $(id);
       if (!el) return;
@@ -1827,6 +1907,7 @@
     setMenuIcon("btnPlay", RaccoonArt.icons.play);
     setMenuIcon("btnDiscipline", RaccoonArt.icons.scold);
     setMenuIcon("btnHeal", RaccoonArt.icons.heal);
+    setMenuIcon("btnClean", RaccoonArt.icons.clean);
 
     document.querySelectorAll(".food-btn").forEach((btn) => {
       const key = btn.dataset.food;
@@ -1841,6 +1922,13 @@
     if ($("actionModal")) {
       $("actionModal").addEventListener("click", (e) => {
         if (e.target === $("actionModal")) closeActionMenu();
+      });
+    }
+    if ($("btnSettings")) $("btnSettings").addEventListener("click", openSettingsMenu);
+    if ($("settingsClose")) $("settingsClose").addEventListener("click", closeSettingsMenu);
+    if ($("settingsModal")) {
+      $("settingsModal").addEventListener("click", (e) => {
+        if (e.target === $("settingsModal")) closeSettingsMenu();
       });
     }
     if ($("btnSound")) $("btnSound").addEventListener("click", openSoundMenu);
@@ -1870,7 +1958,7 @@
       brand.style.cursor = "default";
     }
     if ($("btnDiscipline")) $("btnDiscipline").addEventListener("click", discipline);
-    $("btnClean").addEventListener("click", clean);
+    if ($("btnClean")) $("btnClean").addEventListener("click", clean);
     if ($("btnHeal")) $("btnHeal").addEventListener("click", treatIllness);
     const wrap = $("raccoonWrap");
     if (wrap) {
@@ -1879,8 +1967,6 @@
       wrap.setAttribute("aria-label", "Pet Jimothy");
       wrap.tabIndex = 0;
       wrap.addEventListener("pointerdown", (e) => {
-        // Avoid stealing clicks from mess clean overlay if present
-        if (e.target.closest && e.target.closest("#mess")) return;
         interactTap();
       });
       wrap.addEventListener("keydown", (e) => {
@@ -1930,18 +2016,7 @@
       if (e.target === $("feedModal")) closeFeed();
     });
 
-    const btnForms = $("btnForms");
-    if (btnForms) {
-      btnForms.addEventListener("click", () => {
-        refreshFormsList();
-        $("formsModal").hidden = false;
-      });
-    }
-    if ($("formsClose")) {
-      $("formsClose").addEventListener("click", () => {
-        $("formsModal").hidden = true;
-      });
-    }
+    // Forms gallery stays in the page for now but is hidden from the main UI.
     if ($("devClose")) {
       $("devClose").addEventListener("click", () => {
         $("devModal").hidden = true;

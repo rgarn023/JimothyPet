@@ -55,18 +55,19 @@ Full wall-clock catch-up when you return (no 1-hour cap). Saves use `jimothy-pet
 
 | Action | What it does |
 | --- | --- |
-| **Action** menu | **Feed**, **Play**, **Scold**, **Heal** |
+| **Action** menu | **Feed**, **Play**, **Scold**, **Heal**, **Clean** |
+| **Settings** menu | **Sound**, **Alerts**, **Reset** |
 | **Feed** | Wild Berries, Night Crickets, Stream Fish Bits — or Pizza Crust / Dumpster Fries |
 | **Play** | **Dumpster Dive** night forage, or **High or Low** d20 gamble — burns energy, builds mood/fitness |
 | **Scold** | Discipline when he acts up (max 3 times / 24h; likelier as discipline falls) |
-| **Clean** | Clear nest messes (still on the main row) |
+| **Clean** | Clears one waste pile (up to 6 can accumulate) |
 | **Heal** | Clear illness when he’s sick (max 2 times / 24h; likelier when health is low) |
 
 Health drains slowly from waste, hunger, and junk food. Discipline fades slowly over time. Illness can still appear rarely even with good care. Satiety stops overfeeding. Baby kits and the bush can’t run a full Dumpster Dive.
 
 ## Sound
 
-Open **Sound** for separate **BG** (night ambience / owl) and **Jimothy** (raccoon SFX) toggles. Preferences are saved.
+Open **Settings → Sound** for separate **BG** (night ambience / owl) and **Jimothy** (raccoon SFX) toggles. Preferences are saved.
 
 ## Care alerts
 

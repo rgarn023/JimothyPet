@@ -167,7 +167,7 @@ const JimothyNotify = (() => {
       );
     }
 
-    if (state.hasMess) {
+    if ((state.messCount || 0) > 0 || state.hasMess) {
       show(
         "waste",
         "Jimothy left a mess",

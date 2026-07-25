@@ -854,17 +854,21 @@ button {
   pointer-events: none;
 }
 
+.mess-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
 .mess {
   position: absolute;
-  bottom: 78px;
-  right: 28px;
-  width: 48px;
-  height: 36px;
+  width: 44px;
+  height: 34px;
   background: none;
   box-shadow: none;
   border-radius: 0;
   animation: mess-plop 0.4s ease;
-  z-index: 2;
 }
 
 .mess svg {
@@ -879,33 +883,20 @@ button {
   to { transform: scale(1); }
 }
 
+.menu-btn.danger-text {
+  color: #f0b4a8;
+  border-color: rgba(196, 92, 74, 0.45);
+}
+
 .utility-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 0.55rem;
   margin-top: 0.15rem;
 }
 
 .utility-row.has-dev {
   grid-template-columns: 1fr 1fr;
-}
-
-@media (min-width: 420px) {
-  .utility-row {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .utility-row.has-dev {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-
-@media (min-width: 380px) and (max-width: 419px) {
-  .utility-row {
-    grid-template-columns: 1fr 1fr;
-  }
-  .utility-row.has-dev {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
 }
 
 .dev-meters {
@@ -1061,7 +1052,7 @@ button {
 /* Controls */
 .controls {
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
+  grid-template-columns: 1fr;
   gap: 0.45rem;
   margin-top: 0.85rem;
 }

@@ -19,11 +19,11 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var raccoon: Control = %RaccoonView
 @onready var mess_mark: Control = %MessMark
 @onready var btn_action: Button = %BtnAction
-@onready var btn_clean: Button = %BtnClean
-@onready var btn_sound: Button = %BtnSound
-@onready var btn_alerts: Button = %BtnAlerts
-@onready var btn_forms: Button = %BtnForms
-@onready var btn_reset: Button = %BtnReset
+@onready var btn_settings: Button = %BtnSettings
+var btn_clean: Button
+var btn_sound: Button
+var btn_alerts: Button
+var btn_reset: Button
 var btn_feed: Button
 var btn_play: Button
 var btn_scold: Button
@@ -52,6 +52,7 @@ var _dice: ColorRect
 var _reset_panel: ColorRect
 var _action_panel: ColorRect
 var _sound_panel: ColorRect
+var _settings_panel: ColorRect
 var _brand_tap_times: Array[float] = []
 
 
@@ -66,12 +67,15 @@ func _ready() -> void:
 	feed_panel.visible = false
 	message_panel.visible = false
 	_build_forms_panel()
+	if _forms_panel:
+		_forms_panel.visible = false
 	_build_dev_panel()
 	_build_play_pick_panel()
 	_build_dice_panel()
 	_build_reset_panel()
 	_build_action_panel()
 	_build_sound_panel()
+	_build_settings_panel()
 	_wire_brand_secret()
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
@@ -398,7 +402,7 @@ func _refresh_dev_panel() -> void:
 	if _dev_status:
 		_dev_status.text = "Dev Mode: %s · Waste: %s · Sick: %s · Stubborn: %s\nStage: %s · %s" % [
 			"ON" if PetState.dev_mode else "OFF",
-			"yes" if PetState.has_mess else "no",
+			"%d/%d" % [PetState.mess_count, PetState.MAX_MESS],
 			"yes" if PetState.sick else "no",
 			"yes" if PetState.stubborn else "no",
 			PetState.stage_label(),
@@ -601,9 +605,44 @@ func _build_action_panel() -> void:
 	btn_heal.pressed.connect(_on_heal_pressed)
 	vbox.add_child(btn_heal)
 
+	btn_clean = Button.new()
+	btn_clean.text = "Clean"
+	btn_clean.disabled = true
+	btn_clean.tooltip_text = "Clean one waste pile"
+	btn_clean.pressed.connect(_on_clean_pressed)
+	vbox.add_child(btn_clean)
+
 	var close := Button.new()
 	close.text = "Close"
 	close.pressed.connect(func(): _action_panel.visible = false)
+	vbox.add_child(close)
+
+
+func _build_settings_panel() -> void:
+	var built := _build_menu_panel("Settings")
+	_settings_panel = built.dim
+	var vbox: VBoxContainer = built.vbox
+
+	btn_sound = Button.new()
+	btn_sound.text = "Sound"
+	btn_sound.tooltip_text = "Background and Jimothy sounds"
+	btn_sound.pressed.connect(_on_sound_pressed)
+	vbox.add_child(btn_sound)
+
+	btn_alerts = Button.new()
+	btn_alerts.text = "Alerts: Off"
+	btn_alerts.pressed.connect(_on_alerts_pressed)
+	vbox.add_child(btn_alerts)
+
+	btn_reset = Button.new()
+	btn_reset.text = "Reset"
+	btn_reset.tooltip_text = "Start a new bush (keeps unlocked forms)"
+	btn_reset.pressed.connect(_on_reset_pressed)
+	vbox.add_child(btn_reset)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(func(): _settings_panel.visible = false)
 	vbox.add_child(close)
 
 
@@ -655,7 +694,11 @@ func _refresh() -> void:
 	elif PetState.stubborn:
 		mood = "stubborn"
 	raccoon.set_look(PetState.stage, PetState.adult_form, mood)
-	mess_mark.visible = PetState.has_mess and PetState.alive and not PetState.ascending
+	if mess_mark and mess_mark.has_method("set_pile_count"):
+		var piles := PetState.mess_count if PetState.alive and not PetState.ascending else 0
+		mess_mark.set_pile_count(piles)
+	else:
+		mess_mark.visible = PetState.has_mess and PetState.alive and not PetState.ascending
 
 	var alert: Dictionary = PetState.alert_text()
 	if alert.is_empty():
@@ -668,13 +711,16 @@ func _refresh() -> void:
 	var can_care := PetState.alive and PetState.stage != "bush" and not PetState.ascending
 	var can_scold := PetState.alive and PetState.stubborn
 	var can_heal := PetState.alive and PetState.sick and PetState.stage != "bush" and not PetState.ascending
+	var can_clean := PetState.alive and PetState.mess_count > 0
 	if btn_feed:
 		btn_feed.disabled = not can_care
 	if btn_play:
 		btn_play.disabled = not PetState.alive or PetState.stage in ["bush", "baby"] or PetState.ascending
 	if btn_scold:
 		btn_scold.disabled = not can_scold
-	btn_clean.disabled = not (PetState.alive and PetState.has_mess)
+	if btn_clean:
+		btn_clean.disabled = not can_clean
+		btn_clean.text = "Clean (%d)" % PetState.mess_count if PetState.mess_count > 1 else "Clean"
 	if btn_heal:
 		btn_heal.disabled = not can_heal
 	_refresh_sound_buttons()
@@ -690,10 +736,12 @@ func _refresh() -> void:
 		hint_label.text = "He’s under the weather — open Action → Heal."
 	elif PetState.stubborn:
 		hint_label.text = "He’s acting up — open Action → Scold."
+	elif PetState.mess_count > 0:
+		hint_label.text = "Waste in the nest — open Action → Clean."
 	elif PetState.stage == "baby":
 		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for a full night run yet."
 	else:
-		hint_label.text = "Tap Jimothy to pet him. Good care lengthens his days — check Form paths."
+		hint_label.text = "Tap Jimothy to pet him. Good care lengthens his days."
 
 
 func _format_age(sec: float) -> String:
@@ -842,13 +890,23 @@ func _on_action_pressed() -> void:
 		_action_panel.visible = true
 
 
+func _on_settings_pressed() -> void:
+	_refresh_alerts_button()
+	if _settings_panel:
+		_settings_panel.visible = true
+
+
 func _on_sound_pressed() -> void:
+	if _settings_panel:
+		_settings_panel.visible = false
 	_refresh_sound_buttons()
 	if _sound_panel:
 		_sound_panel.visible = true
 
 
 func _on_reset_pressed() -> void:
+	if _settings_panel:
+		_settings_panel.visible = false
 	if _reset_panel:
 		_reset_panel.visible = true
 
@@ -1003,7 +1061,9 @@ func _on_scold_pressed() -> void:
 
 func _on_clean_pressed() -> void:
 	PetState.clean_mess()
-	if JimothyAudio and not PetState.has_mess:
+	if _action_panel:
+		_action_panel.visible = false
+	if JimothyAudio:
 		JimothyAudio.play("rustle", -5.0)
 
 

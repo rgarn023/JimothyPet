@@ -82,8 +82,14 @@ var care_score: int = 0
 var care_mistakes: int = 0
 var stubborn: bool = false
 var stubborn_reason: String = ""
-var has_mess: bool = false
+var mess_count: int = 0
 var sick: bool = false
+
+const MAX_MESS := 6
+
+var has_mess: bool:
+	get:
+		return mess_count > 0
 var alive: bool = true
 var ascending: bool = false
 var treat_streak: int = 0
@@ -190,7 +196,7 @@ func _reset_defaults() -> void:
 	care_mistakes = 0
 	stubborn = false
 	stubborn_reason = ""
-	has_mess = false
+	mess_count = 0
 	sick = false
 	alive = true
 	ascending = false
@@ -300,7 +306,10 @@ func dev_set_stat(stat: String, value: float) -> void:
 func dev_set_mess(on: bool) -> void:
 	if not dev_unlocked:
 		return
-	has_mess = on and alive and stage != "bush"
+	if not on:
+		mess_count = 0
+	elif alive and stage != "bush":
+		mess_count = mini(MAX_MESS, mess_count + 1)
 	state_changed.emit()
 	save_game()
 
@@ -330,7 +339,7 @@ func dev_skip_to(target: String) -> void:
 	ascending = false
 	death_reason = ""
 	stubborn = false
-	has_mess = false
+	mess_count = 0
 	sick = false
 	hunger = 75.0
 	happy = 75.0
@@ -500,8 +509,8 @@ func _apply_neglect_penalty(seconds: float) -> void:
 		rate += 1.4
 	if health < 35.0:
 		rate += 2.8
-	if has_mess:
-		rate += 0.8
+	if mess_count > 0:
+		rate += 0.35 + float(mess_count) * 0.2
 	if sick:
 		rate += 1.6
 	if discipline < 25.0:
@@ -555,8 +564,8 @@ func _prune_day_events(arr: Array, now_ms: int = -1) -> Array:
 func _illness_daily_rate() -> float:
 	var h := clampf(health, 0.0, 100.0)
 	var rate := 0.035 + pow((100.0 - h) / 100.0, 1.35) * 1.5
-	if has_mess:
-		rate *= 1.45
+	if mess_count > 0:
+		rate *= 1.15 + float(mini(mess_count, MAX_MESS)) * 0.08
 	if hunger < 25.0:
 		rate *= 1.35
 	if treat_streak >= 2:
@@ -621,9 +630,10 @@ func apply_decay(seconds: float) -> void:
 	age_sec += seconds
 
 	# Health drains mainly from waste, hunger, and junk streak — kept slow.
-	if has_mess:
-		health = clamp01(health - 0.00055 * seconds)
-		happy = clamp01(happy - 0.0007 * seconds)
+	if mess_count > 0:
+		var piles := float(mini(mess_count, MAX_MESS))
+		health = clamp01(health - 0.00035 * piles * seconds)
+		happy = clamp01(happy - 0.0004 * piles * seconds)
 	if hunger < 20.0 and stage != "bush":
 		health = clamp01(health - 0.00095 * seconds)
 		happy = clamp01(happy - 0.001 * seconds)
@@ -636,8 +646,8 @@ func apply_decay(seconds: float) -> void:
 
 	_apply_neglect_penalty(seconds)
 
-	if stage != "bush" and not has_mess and randf() < seconds * 0.00018:
-		has_mess = true
+	if stage != "bush" and mess_count < MAX_MESS and randf() < seconds * 0.00022:
+		mess_count += 1
 
 	_maybe_illness(seconds)
 	_maybe_tantrum(seconds)
@@ -788,8 +798,13 @@ func alert_text() -> Dictionary:
 		return {"text": "Upset stomach from too much junk food.", "danger": true}
 	if stubborn:
 		return {"text": "Acting up — %s. Scold him." % stubborn_reason, "danger": true}
-	if has_mess:
-		return {"text": "He’s marked the nest. Clean it up.", "danger": false}
+	if mess_count > 0:
+		if mess_count == 1:
+			return {"text": "He’s marked the nest. Clean it up.", "danger": false}
+		return {
+			"text": "%d waste piles in the nest. Clean them up." % mess_count,
+			"danger": mess_count >= 4,
+		}
 	if energy < 20.0:
 		return {"text": "Winded. Let him rest before more exercise.", "danger": false}
 	if satiety > 75.0:
@@ -955,13 +970,16 @@ func treat_illness() -> String:
 
 
 func clean_mess() -> void:
-	if not alive or not has_mess:
+	if not alive or mess_count <= 0:
 		return
-	has_mess = false
+	mess_count = maxi(0, mess_count - 1)
 	happy = clamp01(happy + 3.0)
 	health = clamp01(health + 2.0)
 	care_score += 1
-	speech.emit("Nest cleared. He sniffs approval.")
+	if mess_count <= 0:
+		speech.emit("Nest cleared. He sniffs approval.")
+	else:
+		speech.emit("One pile gone — %d left." % mess_count)
 	state_changed.emit()
 	save_game()
 
@@ -1099,7 +1117,8 @@ func to_dict() -> Dictionary:
 		"care_mistakes": care_mistakes,
 		"stubborn": stubborn,
 		"stubborn_reason": stubborn_reason,
-		"has_mess": has_mess,
+		"mess_count": mess_count,
+		"has_mess": mess_count > 0,
 		"sick": sick,
 		"alive": alive,
 		"treat_streak": treat_streak,
@@ -1149,7 +1168,11 @@ func from_dict(d: Dictionary) -> void:
 	care_mistakes = int(d.get("care_mistakes", 0))
 	stubborn = bool(d.get("stubborn", false))
 	stubborn_reason = str(d.get("stubborn_reason", ""))
-	has_mess = bool(d.get("has_mess", false))
+	if d.has("mess_count"):
+		mess_count = int(d.get("mess_count", 0))
+	else:
+		mess_count = 1 if bool(d.get("has_mess", false)) else 0
+	mess_count = clampi(mess_count, 0, MAX_MESS)
 	sick = bool(d.get("sick", false))
 	alive = bool(d.get("alive", true))
 	ascending = bool(d.get("ascending", false))
