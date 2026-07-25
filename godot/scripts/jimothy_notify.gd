@@ -1,5 +1,5 @@
 extends Node
-## Care notifications — hungry / play / acting up.
+## Care notifications — hungry / play / acting up / waste.
 ## Web: Notification API via JavaScriptBridge. Desktop Linux: notify-send.
 ## Cooldown prevents spam.
 
@@ -9,6 +9,7 @@ var _last := {
 	"hungry": -999999,
 	"play": -999999,
 	"stubborn": -999999,
+	"waste": -999999,
 }
 
 
@@ -37,7 +38,6 @@ func check_now() -> void:
 	var now := Time.get_unix_time_from_system()
 	if PetState.stubborn:
 		_try_send("stubborn", "Jimothy is acting up", _stubborn_body(), now)
-		return
 	if PetState.hunger < 25.0:
 		_try_send("hungry", "Jimothy is hungry", "He’s hunting for a real meal. Time to feed him.", now)
 	if PetState.stage != "baby" and PetState.energy >= 18.0 and PetState.happy < 25.0:
@@ -45,6 +45,13 @@ func check_now() -> void:
 			"play",
 			"Jimothy wants to play",
 			"Restless cryptid energy — try a Dumpster Dive night run.",
+			now
+		)
+	if PetState.has_mess:
+		_try_send(
+			"waste",
+			"Jimothy left a mess",
+			"Nest waste is piling up — open the app and Clean.",
 			now
 		)
 

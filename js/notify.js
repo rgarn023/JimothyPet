@@ -1,11 +1,11 @@
 /**
- * Care notifications — hungry, wants to play, acting up.
+ * Care notifications — hungry, wants to play, acting up, nest waste.
  * Uses Notification API (+ service worker when the tab is hidden).
  */
 const JimothyNotify = (() => {
   const COOLDOWN_MS = 12 * 60 * 1000; // per-kind cooldown
   let enabled = false;
-  let lastSent = { hungry: 0, play: 0, stubborn: 0 };
+  let lastSent = { hungry: 0, play: 0, stubborn: 0, waste: 0 };
   let onChange = null;
 
   function supported() {
@@ -125,7 +125,6 @@ const JimothyNotify = (() => {
           ? `He’s ${state.stubbornReason}. Open the app and scold him.`
           : "He’s being stubborn — open the app and scold him."
       );
-      return; // stubborn takes priority
     }
 
     if (state.hunger < 25) {
@@ -139,6 +138,14 @@ const JimothyNotify = (() => {
         "play",
         "Jimothy wants to play",
         "Restless cryptid energy — try a Dumpster Dive night run."
+      );
+    }
+
+    if (state.hasMess) {
+      show(
+        "waste",
+        "Jimothy left a mess",
+        "Nest waste is piling up — open the app and Clean."
       );
     }
   }

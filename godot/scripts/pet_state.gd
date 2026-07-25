@@ -99,7 +99,7 @@ var forms_unlocked: Dictionary = {
 var dev_mode: bool = false
 ## When true, night ambience + raccoon SFX are muted (persists).
 var sound_muted: bool = false
-## When true, care notifications (hungry / play / acting up) are allowed.
+## When true, care notifications (hungry / play / acting up / waste) are allowed.
 var alerts_enabled: bool = false
 ## Last successful food key — used by eat animation prop.
 var last_fed_food: String = "berries"

@@ -424,7 +424,7 @@ func _on_alerts_pressed() -> void:
 	if PetState.alerts_enabled:
 		if JimothyNotify and JimothyNotify.has_method("request_permission_web"):
 			JimothyNotify.request_permission_web()
-		PetState.speech.emit("Care alerts on — hungry, playtime, and acting up.")
+		PetState.speech.emit("Care alerts on — hungry, playtime, acting up, and waste.")
 		if JimothyNotify:
 			JimothyNotify.check_now()
 	else:

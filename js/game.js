@@ -479,7 +479,7 @@
     btn.textContent = on ? "Alerts: On" : "Alerts: Off";
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     btn.title = on
-      ? "Care alerts on — hungry, play, acting up"
+      ? "Care alerts on — hungry, play, acting up, waste"
       : "Turn on notifications when Jimothy needs care";
   }
 
@@ -495,7 +495,7 @@
       refreshAlertsButton();
       save({ touchTick: false });
       if (ok) {
-        say("Alerts on — I’ll ping you if he’s hungry, restless, or acting up.");
+        say("Alerts on — I’ll ping you if he’s hungry, restless, acting up, or left a mess.");
         JimothyNotify.check(state);
       } else if (JimothyNotify.permission() === "denied") {
         say("Notifications are blocked. Enable them in browser settings for this site.");
