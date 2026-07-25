@@ -38,7 +38,7 @@
 
     <main class="shell">
       <header class="brand-bar">
-        <p class="brand">Jimothy</p>
+        <p class="brand" id="brandTitle" title="Jimothy">Jimothy</p>
         <p class="tagline">your midnight cryptid</p>
       </header>
 
@@ -122,7 +122,7 @@
         <button type="button" class="utility-btn" id="btnAlerts" aria-pressed="false" title="Care notifications">Alerts: Off</button>
         <button type="button" class="utility-btn" id="btnForms">Forms</button>
         <button type="button" class="utility-btn" id="btnReset" title="Start a new bush (keeps unlocked forms)">Reset</button>
-        <button type="button" class="utility-btn" id="btnDev">Dev</button>
+        <button type="button" class="utility-btn" id="btnDev" hidden>Dev</button>
       </div>
     </main>
 
@@ -224,6 +224,17 @@
         <h2 id="messageTitle">Hey</h2>
         <p class="modal-copy" id="messageBody"></p>
         <button type="button" class="primary-btn" id="messageOk">OK</button>
+      </div>
+    </div>
+
+    <div class="modal" id="resetModal" hidden>
+      <div class="modal-card compact" role="dialog" aria-labelledby="resetTitle" aria-describedby="resetBody">
+        <h2 id="resetTitle">Reset Jimothy?</h2>
+        <p class="modal-copy" id="resetBody">Starts a new rustling bush. Unlocked forms stay.</p>
+        <div class="modal-actions">
+          <button type="button" class="utility-btn" id="resetCancel">Cancel</button>
+          <button type="button" class="primary-btn danger" id="resetConfirm">Reset</button>
+        </div>
       </div>
     </div>
 

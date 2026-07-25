@@ -120,6 +120,8 @@
   let lastAnimPulse = performance.now();
   let tapCooldown = 0;
   let smileUntil = 0;
+  let devUnlocked = localStorage.getItem("jimothy-dev-unlocked") === "1";
+  let brandTapTimes = [];
 
   const $ = (id) => document.getElementById(id);
 
@@ -1027,8 +1029,7 @@
     $("btnDiscipline").classList.toggle("needs-attention", state.stubborn && state.alive);
     $("btnClean").classList.toggle("needs-attention", state.hasMess && state.alive);
 
-    const btnDev = $("btnDev");
-    if (btnDev) btnDev.textContent = state.devMode ? "Dev mode ✓" : "Dev mode";
+    refreshDevButton();
 
     if (state.ascending) {
       $("hint").textContent = "Watch… Jimothy grows wings and rises into the sky.";
@@ -1415,13 +1416,54 @@
     }
   }
 
+  function openResetModal() {
+    const modal = $("resetModal");
+    if (!modal) return;
+    modal.hidden = false;
+  }
+
+  function closeResetModal() {
+    const modal = $("resetModal");
+    if (modal) modal.hidden = true;
+  }
+
   function confirmReset() {
-    const ok = window.confirm(
-      "Reset Jimothy? This starts a new rustling bush. Unlocked forms stay."
-    );
-    if (!ok) return;
+    openResetModal();
+  }
+
+  function doResetPet() {
+    closeResetModal();
     resetPet();
     say("A new bush is rustling…", 6000);
+  }
+
+  function unlockDevAccess({ open = false } = {}) {
+    devUnlocked = true;
+    localStorage.setItem("jimothy-dev-unlocked", "1");
+    refreshDevButton();
+    if (open) {
+      refreshDevStatus();
+      if ($("devModal")) $("devModal").hidden = false;
+    }
+  }
+
+  function onBrandSecretTap() {
+    const now = performance.now();
+    brandTapTimes = brandTapTimes.filter((t) => now - t < 2500);
+    brandTapTimes.push(now);
+    if (brandTapTimes.length < 5) return;
+    brandTapTimes = [];
+    unlockDevAccess({ open: true });
+    say("Dev tools unlocked.", 3200);
+  }
+
+  function refreshDevButton() {
+    const btnDev = $("btnDev");
+    if (!btnDev) return;
+    // Stay available if already unlocked, or if a save left Dev Mode on.
+    if (state.devMode) unlockDevAccess();
+    btnDev.hidden = !devUnlocked;
+    btnDev.textContent = state.devMode ? "Dev mode ✓" : "Dev mode";
   }
 
   let lastArtKey = "";
@@ -1525,6 +1567,18 @@
     if ($("pickDice")) $("pickDice").addEventListener("click", openDiceGame);
     // Dice close is handled inside DiceHighLow (avoids double-binding).
     if ($("btnReset")) $("btnReset").addEventListener("click", confirmReset);
+    if ($("resetCancel")) $("resetCancel").addEventListener("click", closeResetModal);
+    if ($("resetConfirm")) $("resetConfirm").addEventListener("click", doResetPet);
+    if ($("resetModal")) {
+      $("resetModal").addEventListener("click", (e) => {
+        if (e.target === $("resetModal")) closeResetModal();
+      });
+    }
+    const brand = $("brandTitle");
+    if (brand) {
+      brand.addEventListener("click", onBrandSecretTap);
+      brand.style.cursor = "default";
+    }
     $("btnDiscipline").addEventListener("click", discipline);
     $("btnClean").addEventListener("click", clean);
     const wrap = $("raccoonWrap");
@@ -1592,6 +1646,7 @@
     }
     if (btnDev) {
       btnDev.addEventListener("click", () => {
+        if (!devUnlocked) return;
         refreshDevStatus();
         $("devModal").hidden = false;
       });

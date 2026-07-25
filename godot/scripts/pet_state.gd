@@ -97,6 +97,8 @@ var forms_unlocked: Dictionary = {
 	"adult": {},
 }
 var dev_mode: bool = false
+## Secret gesture unlocks the Dev button (persists).
+var dev_unlocked: bool = false
 ## When true, night ambience + raccoon SFX are muted (persists).
 var sound_muted: bool = false
 ## When true, care notifications (hungry / play / acting up / waste) are allowed.
@@ -189,11 +191,13 @@ func _reset_defaults() -> void:
 func reset_pet() -> void:
 	var keep_forms := forms_unlocked.duplicate(true)
 	var keep_dev := dev_mode
+	var keep_dev_unlocked := dev_unlocked
 	var keep_mute := sound_muted
 	var keep_alerts := alerts_enabled
 	_reset_defaults()
 	forms_unlocked = keep_forms
 	dev_mode = keep_dev
+	dev_unlocked = keep_dev_unlocked or keep_dev
 	sound_muted = keep_mute
 	alerts_enabled = keep_alerts
 	save_game()
@@ -238,7 +242,15 @@ func is_form_unlocked(bucket: String, form_id: String) -> bool:
 	return bool((forms_unlocked[bucket] as Dictionary).get(form_id, false))
 
 
+func unlock_dev_access() -> void:
+	dev_unlocked = true
+	save_game()
+	state_changed.emit()
+
+
 func set_dev_mode(on: bool) -> void:
+	if on:
+		dev_unlocked = true
 	dev_mode = on
 	state_changed.emit()
 	save_game()
@@ -937,6 +949,7 @@ func to_dict() -> Dictionary:
 		"energy": energy,
 		"forms_unlocked": forms_unlocked,
 		"dev_mode": dev_mode,
+		"dev_unlocked": dev_unlocked,
 		"sound_muted": sound_muted,
 		"alerts_enabled": alerts_enabled,
 	}
@@ -986,6 +999,7 @@ func from_dict(d: Dictionary) -> void:
 	if typeof(fu) == TYPE_DICTIONARY:
 		forms_unlocked = fu
 	dev_mode = bool(d.get("dev_mode", false))
+	dev_unlocked = bool(d.get("dev_unlocked", false)) or dev_mode
 	sound_muted = bool(d.get("sound_muted", false))
 	alerts_enabled = bool(d.get("alerts_enabled", false))
 	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.

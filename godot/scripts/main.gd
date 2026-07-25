@@ -27,7 +27,7 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var btn_forms: Button = %BtnForms
 @onready var btn_reset: Button = %BtnReset
 @onready var btn_dev: Button = %BtnDev
-var _reset_dialog: ConfirmationDialog
+@onready var brand_label: Label = $Margin/VBox/Brand
 @onready var feed_panel: Control = %FeedPanel
 @onready var message_panel: Control = %MessagePanel
 @onready var message_title: Label = %MessageTitle
@@ -43,6 +43,8 @@ var _dev_panel: ColorRect
 var _dev_status: Label
 var _play_pick_panel: ColorRect
 var _dice: ColorRect
+var _reset_panel: ColorRect
+var _brand_tap_times: Array[float] = []
 
 
 func _ready() -> void:
@@ -59,6 +61,8 @@ func _ready() -> void:
 	_build_dev_panel()
 	_build_play_pick_panel()
 	_build_dice_panel()
+	_build_reset_panel()
+	_wire_brand_secret()
 	_refresh_sound_button()
 	_refresh_alerts_button()
 	_refresh()
@@ -296,7 +300,103 @@ func _refresh_dev_panel() -> void:
 			PetState.stage_label(),
 			_format_age(PetState.age_sec),
 		]
+	_refresh_dev_button()
+
+
+func _refresh_dev_button() -> void:
+	# Don't re-emit state_changed here (would loop via _refresh).
+	if PetState.dev_mode and not PetState.dev_unlocked:
+		PetState.dev_unlocked = true
+	btn_dev.visible = PetState.dev_unlocked
 	btn_dev.text = "Dev mode ✓" if PetState.dev_mode else "Dev mode"
+
+
+func _wire_brand_secret() -> void:
+	if brand_label == null:
+		return
+	brand_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	brand_label.gui_input.connect(_on_brand_gui_input)
+
+
+func _on_brand_gui_input(event: InputEvent) -> void:
+	var tapped := false
+	if event is InputEventScreenTouch and event.pressed:
+		tapped = true
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		tapped = true
+	if not tapped:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	_brand_tap_times = _brand_tap_times.filter(func(t: float): return now - t < 2.5)
+	_brand_tap_times.append(now)
+	if _brand_tap_times.size() < 5:
+		return
+	_brand_tap_times.clear()
+	PetState.unlock_dev_access()
+	_refresh_dev_button()
+	PetState.speech.emit("Dev tools unlocked.")
+	_refresh_dev_panel()
+	_dev_panel.visible = true
+
+
+func _build_reset_panel() -> void:
+	var dim := ColorRect.new()
+	dim.visible = false
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.03, 0.05, 0.04, 0.72)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	_reset_panel = dim
+
+	var card := PanelContainer.new()
+	card.set_anchors_preset(Control.PRESET_CENTER)
+	card.offset_left = -150
+	card.offset_right = 150
+	card.offset_top = -90
+	card.offset_bottom = 90
+	dim.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	card.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	margin.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Reset Jimothy?"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color("f0c57a"))
+	title.add_theme_font_size_override("font_size", 20)
+	vbox.add_child(title)
+
+	var body := Label.new()
+	body.text = "Starts a new rustling bush. Unlocked forms stay."
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_color_override("font_color", Color("9aab9c"))
+	body.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(body)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	vbox.add_child(row)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel.pressed.connect(func(): _reset_panel.visible = false)
+	row.add_child(cancel)
+
+	var ok := Button.new()
+	ok.text = "Reset"
+	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ok.pressed.connect(_confirm_reset)
+	row.add_child(ok)
 
 
 func _refresh() -> void:
@@ -472,18 +572,13 @@ func _on_forms_pressed() -> void:
 
 
 func _on_reset_pressed() -> void:
-	if _reset_dialog == null:
-		_reset_dialog = ConfirmationDialog.new()
-		_reset_dialog.title = "Reset Jimothy"
-		_reset_dialog.dialog_text = "Reset Jimothy? This starts a new rustling bush. Unlocked forms stay."
-		_reset_dialog.ok_button_text = "Reset"
-		_reset_dialog.cancel_button_text = "Cancel"
-		_reset_dialog.confirmed.connect(_confirm_reset)
-		add_child(_reset_dialog)
-	_reset_dialog.popup_centered()
+	if _reset_panel:
+		_reset_panel.visible = true
 
 
 func _confirm_reset() -> void:
+	if _reset_panel:
+		_reset_panel.visible = false
 	if raccoon and raccoon.has_method("clear_ascend"):
 		raccoon.clear_ascend()
 	PetState.reset_pet()
@@ -491,6 +586,8 @@ func _confirm_reset() -> void:
 
 
 func _on_dev_pressed() -> void:
+	if not PetState.dev_unlocked:
+		return
 	_refresh_dev_panel()
 	_dev_panel.visible = true
 

@@ -708,11 +708,29 @@ func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
 	p += Vector2(sin(u * PI) * -8.0 * face, -sin(reach * PI) * 14.0)
 	var a := fade * 0.98
 	match _eat_food:
-		"pizza", "fries":
-			_ellipse(p, Vector2(16, 10), Color(0.88, 0.63, 0.29, a))
-			draw_line(p + Vector2(-12, -2), p + Vector2(12, -2), Color(0.77, 0.36, 0.29, a), 4.0)
-			_ellipse(p + Vector2(-3, 3), Vector2(3.2, 3.2), Color(0.55, 0.18, 0.18, a))
-			_ellipse(p + Vector2(4, 1), Vector2(2.6, 2.6), Color(0.55, 0.18, 0.18, a))
+		"pizza":
+			# Pizza wedge — pointed tip, crust rim, pepperoni
+			var crust := PackedVector2Array([
+				p + Vector2(0, -14), p + Vector2(16, 12), p + Vector2(-16, 12)
+			])
+			draw_colored_polygon(crust, Color(0.54, 0.29, 0.16, a))
+			var cheese := PackedVector2Array([
+				p + Vector2(0, -12), p + Vector2(13, 10), p + Vector2(-13, 10)
+			])
+			draw_colored_polygon(cheese, Color(0.88, 0.63, 0.29, a))
+			draw_line(p + Vector2(-11, -2), p + Vector2(11, -2), Color(0.77, 0.36, 0.29, a), 3.5)
+			draw_circle(p + Vector2(-4, 3), 2.6, Color(0.54, 0.18, 0.18, a))
+			draw_circle(p + Vector2(5, 5), 2.2, Color(0.54, 0.18, 0.18, a))
+		"fries":
+			# Red carton + upright fry sticks (reads clearly vs pizza)
+			draw_colored_polygon(PackedVector2Array([
+				p + Vector2(-12, 2), p + Vector2(12, 2), p + Vector2(9, 16), p + Vector2(-9, 16)
+			]), Color(0.77, 0.36, 0.29, a))
+			draw_rect(Rect2(p + Vector2(-11, 0), Vector2(22, 4)), Color(0.83, 0.42, 0.34, a))
+			draw_line(p + Vector2(-7, -12), p + Vector2(-7, 4), Color(0.94, 0.77, 0.48, a), 3.2)
+			draw_line(p + Vector2(-2, -14), p + Vector2(-2, 4), Color(0.88, 0.63, 0.29, a), 3.4)
+			draw_line(p + Vector2(3, -11), p + Vector2(3, 4), Color(0.94, 0.77, 0.48, a), 3.0)
+			draw_line(p + Vector2(7, -13), p + Vector2(7, 4), Color(0.83, 0.57, 0.23, a), 2.8)
 		"fish":
 			_ellipse(p, Vector2(18, 8), Color(0.66, 0.77, 0.83, a))
 			draw_colored_polygon(PackedVector2Array([

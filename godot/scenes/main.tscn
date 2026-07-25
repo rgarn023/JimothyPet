@@ -334,6 +334,7 @@ text = "Reset"
 
 [node name="BtnDev" type="Button" parent="Margin/VBox/UtilityRow"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Dev"
@@ -403,11 +404,11 @@ text = "Stream Fish Bits — proper meal"
 
 [node name="BtnPizza" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Pizza Crust — greasy treat"
+text = "Pizza Crust — triangle slice · greasy"
 
 [node name="BtnFries" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Dumpster Fries — salty chaos"
+text = "Dumpster Fries — red carton · salty sticks"
 
 [node name="BtnFeedClose" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2

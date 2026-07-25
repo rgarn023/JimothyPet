@@ -655,8 +655,8 @@ const RaccoonArt = (() => {
     berries: `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="18" r="6" fill="#5a4a8a"/><circle cx="20" cy="16" r="6" fill="#6b5aa0"/><circle cx="16" cy="22" r="5.5" fill="#4a3a72"/><path d="M16 8c0 4-2 6-4 7" stroke="#3d6b4f" stroke-width="2" fill="none"/><ellipse cx="18" cy="8" rx="4" ry="2" fill="#6fbf84"/></svg>`,
     crickets: `<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="10" ry="5" fill="#6fbf84"/><ellipse cx="22" cy="16" rx="4" ry="3" fill="#548a62"/><path d="M8 16c-3-4-4-8-2-10M10 20c-4 2-6 6-4 8M24 14c3-3 5-2 6 0" stroke="#3d6b4f" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="24" cy="15" r="1.2" fill="#1b2a22"/></svg>`,
     fish: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16c6-8 14-8 20 0-6 8-14 8-20 0z" fill="#7ec8d4"/><path d="M26 16l4-5v10l-4-5z" fill="#5a9eb0"/><circle cx="11" cy="15" r="1.5" fill="#1b2a22"/><path d="M8 12c2 1 3 3 2 5" stroke="#eef5ea" stroke-width="1.2" fill="none"/></svg>`,
-    pizza: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 10l10 18 10-18z" fill="#e0a04a"/><path d="M8 11h16" stroke="#c45c4a" stroke-width="3"/><circle cx="14" cy="18" r="2" fill="#8a2f2f"/><circle cx="18" cy="22" r="1.6" fill="#8a2f2f"/></svg>`,
-    fries: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 14h14l-2 14H11L9 14z" fill="#c45c4a"/><rect x="11" y="6" width="2.5" height="10" rx="1" fill="#e0a04a"/><rect x="15" y="4" width="2.5" height="12" rx="1" fill="#f0c57a"/><rect x="19" y="7" width="2.5" height="9" rx="1" fill="#e0a04a"/></svg>`,
+    pizza: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 8l9 20 9-20z" fill="#8a4a28"/><path d="M8 9l8 18 8-18z" fill="#e0a04a"/><path d="M9 12h14" stroke="#c45c4a" stroke-width="3" stroke-linecap="round"/><circle cx="13" cy="18" r="2.2" fill="#8a2f2f"/><circle cx="18" cy="22" r="1.8" fill="#8a2f2f"/><circle cx="16" cy="15" r="1.4" fill="#8a2f2f"/><path d="M14 10l3 4 1-3" fill="rgba(255,255,255,0.35)"/></svg>`,
+    fries: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 16h16l-2.5 13H10.5L8 16z" fill="#c45c4a"/><path d="M9 16h14l-1 4H10z" fill="#d46a56"/><rect x="11" y="22" width="10" height="2.5" rx="1" fill="#f0c57a"/><rect x="12" y="25.5" width="8" height="1.5" rx="0.7" fill="#f0c57a" opacity="0.7"/><rect x="10" y="5" width="3" height="13" rx="1.2" fill="#e0a04a"/><rect x="14.5" y="3" width="3.2" height="15" rx="1.2" fill="#f0c57a"/><rect x="19" y="6" width="2.8" height="12" rx="1.2" fill="#d4923a"/><rect x="11" y="5" width="1" height="11" fill="rgba(255,255,255,0.35)"/></svg>`,
   };
 
   function render(profile = {}) {
@@ -791,13 +791,15 @@ const RaccoonAnim = (() => {
         : "";
     foodEl.innerHTML = icon
       ? `<div class="eat-food-art">${icon}</div>`
-      : key === "pizza" || key === "fries"
+      : key === "pizza"
         ? `<span class="crumb crust"></span>`
-        : key === "fish"
-          ? `<span class="crumb fish"></span>`
-          : key === "crickets"
-            ? `<span class="crumb bug"></span>`
-            : `<span class="crumb berry"></span><span class="crumb berry b2"></span>`;
+        : key === "fries"
+          ? `<span class="crumb fries"></span><span class="crumb fry f1"></span><span class="crumb fry f2"></span><span class="crumb fry f3"></span>`
+          : key === "fish"
+            ? `<span class="crumb fish"></span>`
+            : key === "crickets"
+              ? `<span class="crumb bug"></span>`
+              : `<span class="crumb berry"></span><span class="crumb berry b2"></span>`;
     wrap.appendChild(foodEl);
     return foodEl;
   }
