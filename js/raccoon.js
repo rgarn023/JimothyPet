@@ -110,13 +110,13 @@ const RaccoonArt = (() => {
     `;
   }
 
-  function leafCluster(cx, cy, rx, ry, fill, rot = 0) {
-    return `<g transform="translate(${cx} ${cy}) rotate(${rot})">
-      <ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="${fill}"/>
-      <ellipse cx="${-rx * 0.35}" cy="${-ry * 0.15}" rx="${rx * 0.45}" ry="${ry * 0.55}" fill="${fill}" opacity="0.85"/>
-      <ellipse cx="${rx * 0.3}" cy="${ry * 0.1}" rx="${rx * 0.4}" ry="${ry * 0.48}" fill="${fill}" opacity="0.75"/>
-      <path d="M${-rx * 0.2} 0 Q0 ${-ry * 0.7} ${rx * 0.25} ${-ry * 0.1}" fill="none" stroke="rgba(20,40,24,0.28)" stroke-width="1.2"/>
-    </g>`;
+  /** Pointed leaf (teardrop) — reads as foliage, not a blob. */
+  function leaf(cx, cy, len, wid, fill, rot = 0) {
+    return `<path transform="translate(${cx} ${cy}) rotate(${rot})"
+      d="M0 ${-len * 0.55}
+         Q${wid} ${-len * 0.1} 0 ${len * 0.55}
+         Q${-wid} ${-len * 0.1} 0 ${-len * 0.55} Z"
+      fill="${fill}"/>`;
   }
 
   function bush(ageSec = 0) {
@@ -127,24 +127,36 @@ const RaccoonArt = (() => {
            <circle class="bush-glint" cx="68" cy="60" r="2" fill="#faf6ec" opacity="0.42"/>`
         : "";
     return svg(`
-      <ellipse cx="60" cy="102" rx="46" ry="9" fill="#000" opacity="0.24"/>
-      <!-- woody stems -->
-      <path d="M58 96 C56 78 50 66 44 54" fill="none" stroke="#4a3424" stroke-width="3.2" stroke-linecap="round"/>
-      <path d="M62 96 C64 80 70 68 78 56" fill="none" stroke="#3d2c1e" stroke-width="2.8" stroke-linecap="round"/>
-      <path d="M60 90 C58 76 56 68 52 60" fill="none" stroke="#5a4030" stroke-width="2.2" stroke-linecap="round"/>
+      <ellipse cx="60" cy="104" rx="44" ry="8" fill="#000" opacity="0.22"/>
+      <!-- trunk & branches -->
+      <path d="M60 100 C59 86 57 74 54 62" fill="none" stroke="#4a3424" stroke-width="4" stroke-linecap="round"/>
+      <path d="M58 78 C48 70 38 64 30 58" fill="none" stroke="#3d2c1e" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M62 76 C72 68 82 62 90 56" fill="none" stroke="#3d2c1e" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M56 68 C50 58 46 50 42 42" fill="none" stroke="#5a4030" stroke-width="2" stroke-linecap="round"/>
+      <path d="M64 66 C70 56 76 48 82 40" fill="none" stroke="#5a4030" stroke-width="2" stroke-linecap="round"/>
+      <path d="M60 64 C58 52 56 44 54 36" fill="none" stroke="#4a3424" stroke-width="2.2" stroke-linecap="round"/>
       <g class="bush-foliage">
-        ${leafCluster(36, 72, 16, 12, "#2a5236", -18)}
-        ${leafCluster(84, 74, 17, 13, "#355f44", 16)}
-        ${leafCluster(50, 58, 15, 11, "#3d6b4f", -8)}
-        ${leafCluster(72, 56, 14, 11, "#4a8a5e", 12)}
-        ${leafCluster(60, 48, 18, 13, "#548a62", 0)}
-        ${leafCluster(44, 82, 13, 10, "#2f5a3c", -28)}
-        ${leafCluster(78, 84, 14, 10, "#3a6648", 24)}
-        ${leafCluster(60, 70, 20, 14, "#355f44", 4)}
-        <!-- small tip leaves -->
-        <ellipse cx="48" cy="42" rx="7" ry="4.5" fill="#6fbf84" transform="rotate(-32 48 42)" opacity="0.9"/>
-        <ellipse cx="70" cy="40" rx="6.5" ry="4" fill="#5aa870" transform="rotate(28 70 40)" opacity="0.85"/>
-        <ellipse cx="60" cy="36" rx="6" ry="3.8" fill="#7ec98a" opacity="0.75"/>
+        ${leaf(28, 56, 18, 8, "#2a5236", -55)}
+        ${leaf(34, 48, 16, 7, "#2f5a3c", -35)}
+        ${leaf(40, 40, 15, 6.5, "#3d6b4f", -20)}
+        ${leaf(48, 34, 14, 6, "#4a8a5e", -8)}
+        ${leaf(58, 30, 16, 7, "#548a62", 4)}
+        ${leaf(68, 32, 15, 6.5, "#4a8a5e", 18)}
+        ${leaf(76, 38, 16, 7, "#3d6b4f", 32)}
+        ${leaf(84, 48, 17, 7.5, "#355f44", 48)}
+        ${leaf(90, 56, 15, 6.5, "#2f5a3c", 62)}
+        ${leaf(36, 66, 14, 6, "#2a5236", -70)}
+        ${leaf(44, 58, 13, 5.5, "#355f44", -40)}
+        ${leaf(52, 50, 14, 6, "#3d6b4f", -12)}
+        ${leaf(62, 46, 15, 6.5, "#548a62", 8)}
+        ${leaf(72, 52, 14, 6, "#3a6648", 28)}
+        ${leaf(80, 62, 15, 6.5, "#2f5a3c", 50)}
+        ${leaf(48, 74, 13, 5.5, "#2a5236", -55)}
+        ${leaf(60, 68, 16, 7, "#355f44", 0)}
+        ${leaf(72, 74, 13, 5.5, "#2f5a3c", 55)}
+        ${leaf(54, 42, 11, 4.5, "#6fbf84", -15)}
+        ${leaf(66, 40, 10, 4, "#5aa870", 20)}
+        ${leaf(60, 36, 10, 4, "#7ec98a", 2)}
       </g>
       ${glint}
     `);

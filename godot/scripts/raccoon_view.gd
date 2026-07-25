@@ -709,38 +709,61 @@ func _draw_clearing() -> void:
 		]), Color(0.35, 0.22, 0.1, 0.45))
 
 
-func _leaf_cluster(c: Vector2, rx: float, ry: float, color: Color) -> void:
-	_ellipse(c, Vector2(rx, ry), color)
-	_ellipse(c + Vector2(-rx * 0.35, -ry * 0.15), Vector2(rx * 0.45, ry * 0.55), color.lightened(0.04))
-	_ellipse(c + Vector2(rx * 0.3, ry * 0.1), Vector2(rx * 0.4, ry * 0.48), color.darkened(0.06))
+func _draw_leaf(c: Vector2, len: float, wid: float, color: Color, rot_deg: float) -> void:
+	var rad := deg_to_rad(rot_deg)
+	var tip := Vector2(0, -len * 0.55).rotated(rad)
+	var base := Vector2(0, len * 0.55).rotated(rad)
+	var left := Vector2(-wid, -len * 0.05).rotated(rad)
+	var right := Vector2(wid, -len * 0.05).rotated(rad)
+	draw_colored_polygon(PackedVector2Array([
+		c + tip, c + right, c + base, c + left
+	]), color)
 
 
 func _draw_bush(c: Vector2) -> void:
-	var rustle := sin(_t * 10.0) * 2.2
-	var rustle2 := cos(_t * 7.5) * 1.6
+	var rustle := sin(_t * 10.0) * 1.8
+	var rustle2 := cos(_t * 7.5) * 1.4
 	# Ground shadow
-	_ellipse(c + Vector2(0, 48), Vector2(46, 9), Color(0, 0, 0, 0.24))
-	# Woody stems
-	draw_line(c + Vector2(-2, 42), c + Vector2(-16 + rustle * 0.2, 2), Color("4a3424"), 3.2)
-	draw_line(c + Vector2(2, 42), c + Vector2(18 + rustle2 * 0.2, 4), Color("3d2c1e"), 2.8)
-	draw_line(c + Vector2(0, 36), c + Vector2(-8, 8), Color("5a4030"), 2.2)
-	# Leaf clusters (real foliage, not one blob)
-	_leaf_cluster(c + Vector2(-24 + rustle, 18), 16, 12, Color("2a5236"))
-	_leaf_cluster(c + Vector2(24 + rustle2, 20), 17, 13, Color("355f44"))
-	_leaf_cluster(c + Vector2(-10, 4 + rustle * 0.3), 15, 11, Color("3d6b4f"))
-	_leaf_cluster(c + Vector2(12, 2 + rustle2), 14, 11, Color("4a8a5e"))
-	_leaf_cluster(c + Vector2(0, -6), 18, 13, Color("548a62"))
-	_leaf_cluster(c + Vector2(-16, 28), 13, 10, Color("2f5a3c"))
-	_leaf_cluster(c + Vector2(18, 30), 14, 10, Color("3a6648"))
-	_leaf_cluster(c + Vector2(0, 14), 20, 14, Color("355f44"))
-	# Tip leaves
-	_ellipse(c + Vector2(-12, -16), Vector2(7, 4.5), Color("6fbf84"))
-	_ellipse(c + Vector2(10, -18), Vector2(6.5, 4), Color("5aa870"))
-	_ellipse(c + Vector2(0, -22), Vector2(6, 3.8), Color("7ec98a").darkened(0.05))
+	_ellipse(c + Vector2(0, 50), Vector2(44, 8), Color(0, 0, 0, 0.22))
+	# Trunk & branches
+	draw_line(c + Vector2(0, 46), c + Vector2(-2, 8), Color("4a3424"), 4.0)
+	draw_line(c + Vector2(-2, 24), c + Vector2(-28 + rustle, 4), Color("3d2c1e"), 2.6)
+	draw_line(c + Vector2(2, 22), c + Vector2(30 + rustle2, 2), Color("3d2c1e"), 2.6)
+	draw_line(c + Vector2(-4, 14), c + Vector2(-16, -12), Color("5a4030"), 2.0)
+	draw_line(c + Vector2(4, 12), c + Vector2(18, -14), Color("5a4030"), 2.0)
+	draw_line(c + Vector2(0, 10), c + Vector2(-2, -18), Color("4a3424"), 2.2)
+	# Pointed leaves fanned around branches
+	var leaves := [
+		[Vector2(-30, 2), 18.0, 8.0, Color("2a5236"), -55.0],
+		[Vector2(-24, -6), 16.0, 7.0, Color("2f5a3c"), -35.0],
+		[Vector2(-16, -14), 15.0, 6.5, Color("3d6b4f"), -20.0],
+		[Vector2(-6, -20), 14.0, 6.0, Color("4a8a5e"), -8.0],
+		[Vector2(2, -24), 16.0, 7.0, Color("548a62"), 4.0],
+		[Vector2(12, -20), 15.0, 6.5, Color("4a8a5e"), 18.0],
+		[Vector2(20, -14), 16.0, 7.0, Color("3d6b4f"), 32.0],
+		[Vector2(28, -4), 17.0, 7.5, Color("355f44"), 48.0],
+		[Vector2(34, 4), 15.0, 6.5, Color("2f5a3c"), 62.0],
+		[Vector2(-22, 12), 14.0, 6.0, Color("2a5236"), -70.0],
+		[Vector2(-12, 4), 13.0, 5.5, Color("355f44"), -40.0],
+		[Vector2(-2, -2), 14.0, 6.0, Color("3d6b4f"), -12.0],
+		[Vector2(8, -6), 15.0, 6.5, Color("548a62"), 8.0],
+		[Vector2(18, 0), 14.0, 6.0, Color("3a6648"), 28.0],
+		[Vector2(26, 10), 15.0, 6.5, Color("2f5a3c"), 50.0],
+		[Vector2(-10, 20), 13.0, 5.5, Color("2a5236"), -55.0],
+		[Vector2(0, 14), 16.0, 7.0, Color("355f44"), 0.0],
+		[Vector2(12, 20), 13.0, 5.5, Color("2f5a3c"), 55.0],
+		[Vector2(-4, -12), 11.0, 4.5, Color("6fbf84"), -15.0],
+		[Vector2(8, -14), 10.0, 4.0, Color("5aa870"), 20.0],
+		[Vector2(2, -18), 10.0, 4.0, Color("7ec98a"), 2.0],
+	]
+	for L in leaves:
+		var p: Vector2 = L[0]
+		p.x += rustle * 0.15 if p.x < 0.0 else rustle2 * 0.15
+		_draw_leaf(c + p, float(L[1]), float(L[2]), L[3], float(L[4]))
 	# Occasional eye glint in the leaves near reveal
 	if age_hint() > 0.7:
-		draw_circle(c + Vector2(-6 + rustle, 4), 2.1, Color(0.98, 0.96, 0.9, 0.55))
-		draw_circle(c + Vector2(8 + rustle2, 6), 2.0, Color(0.98, 0.96, 0.9, 0.42))
+		draw_circle(c + Vector2(-6 + rustle, 0), 2.1, Color(0.98, 0.96, 0.9, 0.55))
+		draw_circle(c + Vector2(8 + rustle2, 2), 2.0, Color(0.98, 0.96, 0.9, 0.42))
 
 
 func age_hint() -> float:
