@@ -847,9 +847,65 @@ button {
 .forms-list {
   display: grid;
   gap: 0.35rem;
-  max-height: 45vh;
+  max-height: 55vh;
   overflow: auto;
   margin-bottom: 0.4rem;
+}
+
+.form-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+@media (min-width: 420px) {
+  .form-gallery {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.form-card {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+  text-align: center;
+  padding: 0.4rem 0.3rem 0.5rem;
+  border-radius: 12px;
+  background: rgba(20, 32, 24, 0.55);
+  border: 1px solid rgba(111, 191, 132, 0.18);
+}
+
+.form-card.locked {
+  opacity: 0.62;
+}
+
+.form-card.current {
+  border-color: rgba(240, 197, 122, 0.55);
+  box-shadow: 0 0 0 1px rgba(240, 197, 122, 0.28);
+}
+
+.form-card-art {
+  width: 72px;
+  height: 72px;
+}
+
+.form-card-art svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.form-card-name {
+  font-size: 0.82rem;
+  color: var(--mist);
+}
+
+.form-card-meta {
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: var(--muted);
+  padding: 0 0.15rem;
 }
 
 .forms-section {

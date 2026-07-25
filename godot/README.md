@@ -31,7 +31,7 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
 - **Sound:** looping night ambience (crickets / wind) + raccoon chitters, rustles, crunch, and ascend whoosh — toggle with **Sound: On/Off**
-- **Care alerts:** optional notifications when hungry, bored, acting up, or nest waste — toggle with **Alerts: On/Off** (web Notification API / desktop OS notify)
+- **Care alerts:** optional notifications when hungry, bored, acting up, nest waste, or a **new form** — toggle with **Alerts: On/Off** (web Notification API / desktop OS notify)
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
 - **Tap Jimothy** for smile / hop / nuzzle / spin reactions
 

@@ -1,7 +1,7 @@
 extends Node
-## Care notifications — hungry / play / acting up / waste.
+## Care notifications — hungry / play / acting up / waste / new form.
 ## Web: Notification API via JavaScriptBridge. Desktop Linux: notify-send.
-## Cooldown prevents spam.
+## Cooldown prevents spam (form milestones bypass care cooldown).
 
 const COOLDOWN_SEC := 12 * 60
 
@@ -10,12 +10,14 @@ var _last := {
 	"play": -999999,
 	"stubborn": -999999,
 	"waste": -999999,
+	"form": -999999,
 }
 
 
 func _ready() -> void:
 	if PetState:
 		PetState.state_changed.connect(_on_state)
+		PetState.stage_changed.connect(_on_stage)
 
 
 func _notification(what: int) -> void:
@@ -27,6 +29,27 @@ func _notification(what: int) -> void:
 func _on_state() -> void:
 	# Light polling when state changes (stubborn flip, decay tick, etc.)
 	check_now()
+
+
+func _on_stage(stage: String) -> void:
+	if PetState == null or not PetState.alerts_enabled:
+		return
+	if stage in ["bush"]:
+		return
+	var body := ""
+	match stage:
+		"baby":
+			body = "Baby kit Jimothy burst from the bush!"
+		"young":
+			body = "Young kit form: %s. Check Form paths for his forks." % PetState.young_form.capitalize()
+		"teen":
+			var teen_label := PetState.teen_form.capitalize() if PetState.teen_form != "" else "Teen"
+			body = "Teen kit form: %s. Adult flair is taking shape." % teen_label
+		"adult":
+			body = "%s Jimothy — fully grown short-spine cryptid." % PetState.adult_form_title()
+		_:
+			return
+	_try_send("form", "Jimothy found a new form", body, Time.get_unix_time_from_system(), true)
 
 
 func check_now() -> void:
@@ -62,9 +85,9 @@ func _stubborn_body() -> String:
 	return "He’s being stubborn — open the app and scold him."
 
 
-func _try_send(kind: String, title: String, body: String, now: float) -> void:
+func _try_send(kind: String, title: String, body: String, now: float, force: bool = false) -> void:
 	var last: float = float(_last.get(kind, -999999))
-	if now - last < COOLDOWN_SEC:
+	if not force and now - last < COOLDOWN_SEC:
 		return
 	if not _post(title, body):
 		return

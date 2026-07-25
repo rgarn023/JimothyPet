@@ -58,7 +58,9 @@ Night ambience (crickets / soft wind) loops in the background, with raccoon chit
 
 ## Care alerts
 
-Toggle **Alerts: On** to get notifications when Jimothy is hungry, wants to play, is acting up, or left nest waste (12‑minute cooldown per kind). Web uses the browser Notification API (works while the tab/PWA is open); Godot desktop uses OS notifications (`notify-send` / macOS). Preference is saved.
+Toggle **Alerts: On** to get notifications when Jimothy is hungry, wants to play, is acting up, left nest waste, or evolves into a **new form**. Care needs use a 12‑minute cooldown per kind; form milestones always notify. Web uses the browser Notification API (works while the tab/PWA is open); Godot desktop uses OS notifications (`notify-send` / macOS). Preference is saved.
+
+Open **Forms** to browse every young / teen / adult silhouette (gallery + evolution paths).
 
 ## Forms & Dumpster Dive
 

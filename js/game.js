@@ -479,7 +479,7 @@
     btn.textContent = on ? "Alerts: On" : "Alerts: Off";
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     btn.title = on
-      ? "Care alerts on — hungry, play, acting up, waste"
+      ? "Care alerts on — hunger, play, acting up, waste, new forms"
       : "Turn on notifications when Jimothy needs care";
   }
 
@@ -495,7 +495,7 @@
       refreshAlertsButton();
       save({ touchTick: false });
       if (ok) {
-        say("Alerts on — I’ll ping you if he’s hungry, restless, acting up, or left a mess.");
+        say("Alerts on — care needs, nest waste, and new forms.");
         JimothyNotify.check(state);
       } else if (JimothyNotify.permission() === "denied") {
         say("Notifications are blocked. Enable them in browser settings for this site.");
@@ -755,6 +755,9 @@
         "Baby Kit!",
         "Jimothy burst from the bush. Keep him fed — young kit in ~1 hour."
       );
+      if (state.alertsEnabled && window.JimothyNotify) {
+        JimothyNotify.notifyForm("baby", "Baby Kit");
+      }
     } else if (state.stage === "baby" && state.ageSec >= babyEnd()) {
       state.stage = "young";
       state.youngForm = pickYoungForm(state.genes);
@@ -767,6 +770,9 @@
         "Young Kit!",
         `Form: ${capitalize(state.youngForm)}. His teen/adult path is already leaning this way.`
       );
+      if (state.alertsEnabled && window.JimothyNotify) {
+        JimothyNotify.notifyForm("young", prettyForm(state.youngForm));
+      }
     } else if (state.stage === "young" && state.ageSec >= youngEnd()) {
       state.stage = "teen";
       state.teenForm = pickTeenForm(state.youngForm, state.genes);
@@ -780,6 +786,9 @@
         "Teen Kit!",
         `Form: ${capitalize(state.teenForm)}. Adult Jimothy arrives in 1–3 real days.`
       );
+      if (state.alertsEnabled && window.JimothyNotify) {
+        JimothyNotify.notifyForm("teen", prettyForm(state.teenForm));
+      }
     } else if (state.stage === "teen" && state.ageSec >= teenEnd()) {
       state.stage = "adult";
       const teen = state.teenForm || pickTeenForm(state.youngForm, state.genes);
@@ -810,6 +819,9 @@
         "Adult Cryptid!",
         `${adultFormTitle()} Jimothy — care well and he may linger longer; neglect shortens his sky-bound days.`
       );
+      if (state.alertsEnabled && window.JimothyNotify) {
+        JimothyNotify.notifyForm("adult", adultFormTitle());
+      }
     }
 
     if (prev !== state.stage) save();
@@ -1070,6 +1082,66 @@
       .join("");
   }
 
+  const FORM_BLURBS = {
+    young: {
+      puff: "Round, fluffy starter — leans dumpling or scruff.",
+      looper: "Long-legged bounce — leans bounder or nightlane.",
+      shadow: "Dark mask, sneaky gait — leans nightlane or scruff.",
+      nub: "Compact scrappy kit — leans bounder or dumpling.",
+    },
+    teen: {
+      dumpling: "Soft loaf energy → Saint (care) or Ballard Blip (neglect).",
+      bounder: "Springy night runner → Alley Ghost (care) or Legend (neglect).",
+      nightlane: "Quiet alley prowler → Alley Ghost (care) or Legend (neglect).",
+      scruff: "Rough edges → Saint (care) or Ballard Blip (neglect).",
+    },
+    adult: {
+      saint: "Moss-touched short-spine — calm cryptid glow.",
+      legend: "Bold night icon — louder silhouette flair.",
+      alley_ghost: "Pale alley haunt — cooler, quieter fur.",
+      ballard_blip: "Neighborhood blip — scrappy local legend.",
+    },
+  };
+
+  function formGalleryHtml() {
+    const genes = state.genes || {};
+    const sections = [
+      ["Young kits", "young", YOUNG_FORMS, (id) => ({ stage: "young", youngForm: id, genes })],
+      ["Teen kits", "teen", TEEN_FORMS, (id) => ({ stage: "teen", teenForm: id, genes })],
+      ["Adult Jimothy", "adult", ADULT_FORMS, (id) => ({ stage: "adult", adultForm: id, genes })],
+    ];
+    return sections
+      .map(([title, bucket, forms, profileFor]) => {
+        const cards = forms
+          .map((id) => {
+            const unlocked = isFormUnlocked(bucket, id);
+            const current =
+              (bucket === "young" &&
+                state.stage !== "bush" &&
+                state.stage !== "baby" &&
+                state.youngForm === id) ||
+              (bucket === "teen" && state.teenForm === id) ||
+              (bucket === "adult" && state.adultForm === id);
+            const art = window.RaccoonArt
+              ? RaccoonArt.render(profileFor(id))
+              : "";
+            const blurb = (FORM_BLURBS[bucket] && FORM_BLURBS[bucket][id]) || "";
+            return `<article class="form-card ${unlocked ? "unlocked" : "locked"} ${
+              current ? "current" : ""
+            }">
+              <div class="form-card-art">${art}</div>
+              <strong class="form-card-name">${prettyForm(id)}</strong>
+              <small class="form-card-meta">${unlocked ? "Unlocked" : "Locked"} · ${
+              current ? "This kit" : blurb
+            }</small>
+            </article>`;
+          })
+          .join("");
+        return `<div class="forms-section">${title}</div><div class="form-gallery">${cards}</div>`;
+      })
+      .join("");
+  }
+
   function refreshFormsList() {
     const root = $("formsList");
     if (!root) return;
@@ -1084,6 +1156,9 @@
       })
       .join(" · ");
     root.innerHTML = `
+      <div class="forms-section">All forms</div>
+      <p class="path-legend">Every silhouette you can raise. Locked forms still preview dimly — raise kits to unlock them.</p>
+      ${formGalleryHtml()}
       <div class="forms-section">Evolution paths</div>
       <p class="path-legend">Young kit forks into teen shapes, then adult flair depends on care vs neglect. Adults always keep the short-spine Jimothy look.</p>
       <div class="path-tree">${formPathsHtml()}</div>

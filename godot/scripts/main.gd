@@ -175,11 +175,21 @@ func _refresh_forms_panel() -> void:
 		c.queue_free()
 
 	var intro := Label.new()
-	intro.text = "Young → teen forks → adult flair (care vs neglect). Adults always stay short-spine Jimothy."
+	intro.text = "All forms below, then evolution paths. Adults always stay short-spine Jimothy."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.add_theme_color_override("font_color", Color("9aab9c"))
 	intro.add_theme_font_size_override("font_size", 12)
 	_forms_list.add_child(intro)
+
+	_add_form_catalog("Young kits", "young", YOUNG_FORMS)
+	_add_form_catalog("Teen kits", "teen", TEEN_FORMS)
+	_add_form_catalog("Adult Jimothy", "adult", ADULT_FORMS)
+
+	var path_head := Label.new()
+	path_head.text = "Evolution paths"
+	path_head.add_theme_color_override("font_color", Color("f0c57a"))
+	path_head.add_theme_font_size_override("font_size", 16)
+	_forms_list.add_child(path_head)
 
 	# young → [teen options] → adult good / neglect
 	var paths := [
@@ -226,6 +236,23 @@ func _refresh_forms_panel() -> void:
 	counts.add_theme_color_override("font_color", Color("9aab9c"))
 	counts.add_theme_font_size_override("font_size", 12)
 	_forms_list.add_child(counts)
+
+
+func _add_form_catalog(title: String, bucket: String, forms: Array) -> void:
+	var head := Label.new()
+	head.text = title
+	head.add_theme_color_override("font_color", Color("f0c57a"))
+	head.add_theme_font_size_override("font_size", 15)
+	_forms_list.add_child(head)
+	var row := Label.new()
+	var bits: PackedStringArray = []
+	for f in forms:
+		bits.append(_form_mark(bucket, str(f)))
+	row.text = " · ".join(bits)
+	row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_theme_color_override("font_color", Color("eef5ea"))
+	row.add_theme_font_size_override("font_size", 12)
+	_forms_list.add_child(row)
 
 
 func _unlocked_count(bucket: String, forms: Array) -> int:
@@ -424,7 +451,7 @@ func _on_alerts_pressed() -> void:
 	if PetState.alerts_enabled:
 		if JimothyNotify and JimothyNotify.has_method("request_permission_web"):
 			JimothyNotify.request_permission_web()
-		PetState.speech.emit("Care alerts on — hungry, playtime, acting up, and waste.")
+		PetState.speech.emit("Care alerts on — care needs, waste, and new forms.")
 		if JimothyNotify:
 			JimothyNotify.check_now()
 	else:

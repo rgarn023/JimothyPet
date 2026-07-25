@@ -1,11 +1,11 @@
 /**
- * Care notifications — hungry, wants to play, acting up, nest waste.
+ * Care notifications — hungry, play, acting up, waste, new form.
  * Uses Notification API (+ service worker when the tab is hidden).
  */
 const JimothyNotify = (() => {
-  const COOLDOWN_MS = 12 * 60 * 1000; // per-kind cooldown
+  const COOLDOWN_MS = 12 * 60 * 1000; // per-kind cooldown (care needs)
   let enabled = false;
-  let lastSent = { hungry: 0, play: 0, stubborn: 0, waste: 0 };
+  let lastSent = { hungry: 0, play: 0, stubborn: 0, waste: 0, form: 0 };
   let onChange = null;
 
   function supported() {
@@ -79,16 +79,18 @@ const JimothyNotify = (() => {
     return now - (lastSent[kind] || 0) >= COOLDOWN_MS;
   }
 
-  async function show(kind, title, body) {
-    if (!canSend(kind)) return false;
+  async function show(kind, title, body, opts = {}) {
+    const force = !!opts.force;
+    if (!force && !canSend(kind)) return false;
+    if (!isEnabled()) return false;
     lastSent[kind] = Date.now();
     saveCooldowns();
 
-    const opts = {
+    const notifOpts = {
       body,
       icon: "icons/icon-192.png",
       badge: "icons/icon-192.png",
-      tag: `jimothy-${kind}`,
+      tag: opts.tag || `jimothy-${kind}`,
       renotify: true,
       data: { kind, url: "./" },
     };
@@ -97,11 +99,11 @@ const JimothyNotify = (() => {
       if (document.hidden && "serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.ready;
         if (reg && reg.showNotification) {
-          await reg.showNotification(title, opts);
+          await reg.showNotification(title, notifOpts);
           return true;
         }
       }
-      const n = new Notification(title, opts);
+      const n = new Notification(title, notifOpts);
       n.onclick = () => {
         window.focus();
         n.close();
@@ -111,6 +113,30 @@ const JimothyNotify = (() => {
       console.warn("notify failed", err);
       return false;
     }
+  }
+
+  /** Rare milestone — new form / stage. Bypasses care cooldown. */
+  function notifyForm(stage, formLabel) {
+    const pretty = formLabel || capitalize(stage);
+    const title = "Jimothy found a new form";
+    let body = `He’s a ${pretty} now. Open the app to see him.`;
+    if (stage === "baby") {
+      body = "Baby kit Jimothy burst from the bush!";
+    } else if (stage === "young") {
+      body = `Young kit form: ${pretty}. Check Form paths for his forks.`;
+    } else if (stage === "teen") {
+      body = `Teen kit form: ${pretty}. Adult flair is taking shape.`;
+    } else if (stage === "adult") {
+      body = `${pretty} Jimothy — fully grown short-spine cryptid.`;
+    }
+    return show("form", title, body, {
+      force: true,
+      tag: `jimothy-form-${stage}-${String(formLabel || stage).replace(/\s+/g, "-")}`,
+    });
+  }
+
+  function capitalize(s) {
+    return String(s || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   /** Inspect pet state and fire care alerts when needed. */
@@ -158,6 +184,7 @@ const JimothyNotify = (() => {
     setOnChange,
     check,
     show,
+    notifyForm,
   };
 })();
 
