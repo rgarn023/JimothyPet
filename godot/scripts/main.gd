@@ -52,11 +52,9 @@ func _ready() -> void:
 	_build_forms_panel()
 	_build_dev_panel()
 	_refresh()
+	# Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
 	if not PetState.alive:
-		if raccoon.has_method("play_anim"):
-			raccoon.play_anim("ascend")
-		else:
-			_offer_new_kit()
+		_start_next_kit_after_ascension()
 
 
 func _process(_delta: float) -> void:
@@ -300,26 +298,33 @@ func _on_pet_died(_reason: String) -> void:
 
 
 func _on_ascend_finished() -> void:
-	PetState.ascending = false
-	PetState.save_game()
-	_offer_new_kit()
+	_start_next_kit_after_ascension()
 
 
-func _offer_new_kit() -> void:
-	_awaiting_new_kit = true
-	var why := ""
+func _death_why() -> String:
 	match PetState.death_reason:
 		"neglect":
-			why = "Poor care shortened his time."
+			return "Poor care shortened his time."
 		"lifespan":
-			why = "He lived out his cryptid span."
+			return "He lived out his cryptid span."
 		_:
-			why = "His story has ended."
+			return "His story has ended."
+
+
+## Clear ascend visuals, spawn the rustling bush immediately, then show farewell.
+func _start_next_kit_after_ascension() -> void:
+	var why := _death_why()
+	PetState.ascending = false
+	PetState.reset_pet()
+	if raccoon.has_method("clear_ascend"):
+		raccoon.clear_ascend()
+	_awaiting_new_kit = false
+	_refresh()
 	_show_message(
-		"Jimothy’s life is over",
-		"%s He grew wings and rose into the sky. Raise another kit?" % why
+		"Jimothy ascended",
+		"%s He grew wings and rose into the sky.\n\nA new bush is rustling…" % why
 	)
-	btn_message_ok.text = "Raise another kit"
+	btn_message_ok.text = "OK"
 
 
 func _show_message(title: String, body: String) -> void:
@@ -377,7 +382,9 @@ func _on_clean_pressed() -> void:
 
 func _on_message_ok() -> void:
 	message_panel.visible = false
+	btn_message_ok.text = "OK"
+	# Legacy path: only reset if somehow still dead when dismissing.
 	if _awaiting_new_kit or not PetState.alive:
 		_awaiting_new_kit = false
-		btn_message_ok.text = "OK"
 		PetState.reset_pet()
+		_refresh()

@@ -32,8 +32,22 @@ func _ready() -> void:
 		PetState.anim_impulse.connect(play_anim)
 		PetState.state_changed.connect(_sync_from_state)
 		_sync_from_state()
-		if PetState.ascending or not PetState.alive:
+		# Only resume an in-progress ascension — never replay for a dead save.
+		if PetState.ascending and not PetState.alive:
 			play_anim("ascend")
+
+
+func clear_ascend() -> void:
+	_anim = "idle"
+	_anim_t = 0.0
+	_pose_x = 0.0
+	_pose_y = 0.0
+	_wing_span = 0.0
+	_fade = 1.0
+	_ascend_done_emitted = false
+	_speed = 0.0
+	modulate = Color(1, 1, 1, 1)
+	_sync_from_state()
 
 
 func _sync_from_state() -> void:
@@ -43,7 +57,7 @@ func _sync_from_state() -> void:
 	teen_form = str(p.teen_form)
 	adult_form = str(p.adult_form)
 	genes = p.genes if typeof(p.genes) == TYPE_DICTIONARY else {}
-	if PetState.ascending or _anim == "ascend":
+	if PetState.ascending and _anim == "ascend":
 		mood = "ascend"
 	elif PetState.stubborn:
 		mood = "stubborn"

@@ -251,24 +251,30 @@
     pulseAnim("ascend");
     render();
     save();
-    // Offer new kit after ascension animation finishes
+    // After the rise, clear the pet and show the rustling bush under the farewell.
     setTimeout(() => {
-      state.ascending = false;
-      save();
-      const why =
-        reason === "neglect"
-          ? "Poor care shortened his time."
-          : reason === "lifespan"
-            ? "He lived out his cryptid span."
-            : "His story has ended.";
-      showMessage(
-        "Jimothy’s life is over",
-        `${why} He grew wings and rose into the sky. Raise another kit?`
-      );
-      $("messageOk").textContent = "Raise another kit";
-      $("messageOk").dataset.reset = "1";
-      render();
+      startNextKitAfterAscension(reason);
     }, 4200);
+  }
+
+  function deathWhy(reason) {
+    const r = reason || state.deathReason;
+    if (r === "neglect") return "Poor care shortened his time.";
+    if (r === "lifespan") return "He lived out his cryptid span.";
+    return "His story has ended.";
+  }
+
+  function startNextKitAfterAscension(reason) {
+    const why = deathWhy(reason);
+    state.ascending = false;
+    resetPet();
+    showMessage(
+      "Jimothy ascended",
+      `${why} He grew wings and rose into the sky.\n\nA new bush is rustling…`
+    );
+    $("messageOk").textContent = "OK";
+    $("messageOk").dataset.reset = "";
+    render();
   }
 
   function stageLabel() {
@@ -1099,9 +1105,10 @@
     $("messageOk").addEventListener("click", () => {
       const shouldReset = $("messageOk").dataset.reset === "1";
       hideMessage();
-      if (shouldReset) {
-        $("messageOk").dataset.reset = "";
-        $("messageOk").textContent = "OK";
+      $("messageOk").textContent = "OK";
+      $("messageOk").dataset.reset = "";
+      // Legacy: only reset if a dialog still asked to raise another kit.
+      if (shouldReset && !state.alive) {
         resetPet();
       }
     });
@@ -1171,19 +1178,9 @@
     save({ touchTick: false });
     if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
     render();
-    if (!state.alive && !state.ascending) {
-      state.ascending = true;
-      pulseAnim("ascend");
-      setTimeout(() => {
-        state.ascending = false;
-        showMessage(
-          "Jimothy’s life is over",
-          "He grew wings and rose into the sky.\n\nRaise another kit?"
-        );
-        $("messageOk").textContent = "Raise another kit";
-        $("messageOk").dataset.reset = "1";
-        render();
-      }, 4200);
+    // Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
+    if (!state.alive) {
+      startNextKitAfterAscension(state.deathReason);
     }
     tickHandle = setInterval(onTick, TICK_MS);
     lastAnimPulse = performance.now();

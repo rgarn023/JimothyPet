@@ -877,9 +877,9 @@ func from_dict(d: Dictionary) -> void:
 	if typeof(fu) == TYPE_DICTIONARY:
 		forms_unlocked = fu
 	dev_mode = bool(d.get("dev_mode", false))
-	# If save left him dead mid-ascension, finish the UI flow on load.
-	if not alive and not ascending:
-		ascending = true
+	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.
+	if not alive:
+		ascending = false
 	# Seed unlocks from current kit if migrating old saves
 	unlock_current_form()
 

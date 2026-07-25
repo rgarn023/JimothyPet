@@ -252,6 +252,7 @@ const RaccoonArt = (() => {
 
   return { render, icons };
 })();
+window.RaccoonArt = RaccoonArt;
 
 /**
  * Pose / locomotion controller — walk, run, jump, bush rustle.
@@ -286,7 +287,16 @@ const RaccoonAnim = (() => {
     facing = 1;
     anim = "idle";
     animT = 0;
+    animDur = 1.2;
     walkPhase = 0;
+    speed = 0;
+    if (wrap) {
+      wrap.style.opacity = "1";
+      wrap.classList.remove("ascending");
+      wrap.classList.add("is-bush");
+      const wings = wrap.querySelector(".ascend-wings");
+      if (wings) wings.remove();
+    }
     applyTransform();
   }
 
@@ -295,9 +305,15 @@ const RaccoonAnim = (() => {
     ageSec = info.ageSec || 0;
     alive = info.alive !== false || !!info.ascending;
     if (wrap) {
-      wrap.classList.toggle("is-bush", stage === "bush" && alive && anim !== "ascend");
+      const showBush = stage === "bush" && alive && anim !== "ascend" && !info.ascending;
+      wrap.classList.toggle("is-bush", showBush);
       wrap.classList.toggle("ascending", anim === "ascend" || !!info.ascending);
       wrap.dataset.anim = anim;
+      if (showBush) {
+        wrap.style.opacity = "1";
+        const wings = wrap.querySelector(".ascend-wings");
+        if (wings) wings.remove();
+      }
     }
   }
 
@@ -475,3 +491,4 @@ const RaccoonAnim = (() => {
 
   return { init, reset, sync, play, tick };
 })();
+window.RaccoonAnim = RaccoonAnim;
