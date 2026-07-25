@@ -598,12 +598,12 @@ func _draw_avatar() -> void:
 func _draw_front(c: Vector2) -> void:
 	var fur := _fur()
 	var belly := fur.lightened(0.2)
-	var body_rx := 28.0
-	var body_ry := 24.0
+	var body_rx := 30.0
+	var body_ry := 28.0
 	var body_y := 6.0
-	var head_r := 20.0
+	var head_r := 21.0
 	var head_y := -10.0
-	var leg_h := 28.0
+	var leg_h := 24.0
 	var leg_spread := 14.0
 	var stroke_w := 4.5
 	var ear_y := -28.0
@@ -612,57 +612,74 @@ func _draw_front(c: Vector2) -> void:
 	var snout := Color("c9a292")
 	var mask := Color("1c1c22")
 	var gleam := Color("faf6ec")
+	var extra_legs := false
+	var wing_kind := ""
+	var crown_kind := ""
 
 	match stage:
 		"baby":
-			body_rx = 20.0
-			body_ry = 16.0
+			body_rx = 24.0
+			body_ry = 22.0
 			body_y = 14.0
-			head_r = 16.0
+			head_r = 17.0
 			head_y = 0.0
-			leg_h = 16.0
+			leg_h = 14.0
 			leg_spread = 10.0
 			stroke_w = 3.6
 			ear_y = -14.0
 			ear_rx = 5.0
 			ear_ry = 8.0
 		"young":
-			body_rx = 24.0
-			body_ry = 20.0
+			body_rx = 28.0
+			body_ry = 26.0
 			body_y = 10.0
-			head_r = 18.0
+			head_r = 19.0
 			head_y = -6.0
-			leg_h = 22.0
+			leg_h = 18.0
 			leg_spread = 12.0
 			ear_y = -22.0
-			if young_form == "nub":
-				leg_h = 16.0
-			if young_form == "shadow":
+			if young_form == "puff":
+				body_rx = 32.0
+				body_ry = 30.0
+				leg_h = 12.0
+			elif young_form == "nub":
+				leg_h = 14.0
+				crown_kind = "bottlecap"
+			elif young_form == "shadow":
 				mask = Color("0e1018")
 				gleam = Color("e8f0ff")
+				wing_kind = "bat"
+			elif young_form == "looper":
+				extra_legs = true
+				leg_h = 28.0
 		"teen":
-			body_rx = 27.0
-			body_ry = 22.0
+			body_rx = 30.0
+			body_ry = 28.0
 			body_y = 8.0
-			head_r = 19.0
+			head_r = 20.0
 			head_y = -8.0
-			leg_h = 30.0
+			leg_h = 24.0
 			if teen_form == "bounder":
-				leg_h = 34.0
+				leg_h = 32.0
+				extra_legs = true
 			if teen_form == "dumpling":
-				body_rx = 30.0
-				body_ry = 24.0
+				body_rx = 36.0
+				body_ry = 34.0
+				leg_h = 12.0
 			if teen_form == "nightlane":
 				mask = Color("0e1018")
 				snout = Color("1a1a24")
 				gleam = Color("e8f0ff")
+				wing_kind = "moth"
+			if teen_form == "scruff":
+				crown_kind = "tincan"
 		_:
-			body_rx = 32.0
-			body_ry = 26.0
+			body_rx = 36.0
+			body_ry = 34.0
 			body_y = 4.0
-			head_r = 22.0
+			head_r = 23.0
 			head_y = -12.0
-			leg_h = 38.0
+			leg_h = 32.0
 			leg_spread = 16.0
 			stroke_w = 5.5
 			ear_y = -32.0
@@ -672,8 +689,14 @@ func _draw_front(c: Vector2) -> void:
 				snout = Color("b8c4d4")
 				mask = Color("3a4250")
 				gleam = Color("e8f0ff")
+				wing_kind = "ghost"
 			elif adult_form == "legend":
 				gleam = Color("fff3d0")
+				crown_kind = "gold"
+			elif adult_form == "saint":
+				wing_kind = "leaf"
+			elif adult_form == "ballard_blip":
+				crown_kind = "pizza"
 
 	_ellipse(c + Vector2(0, 48), Vector2(30, 6), Color(0, 0, 0, 0.2))
 	# Tail peek
@@ -683,12 +706,23 @@ func _draw_front(c: Vector2) -> void:
 		draw_line(c + Vector2(-32, 6), c + Vector2(-44, 10), Color("5a5a64"), 7.0)
 		_ellipse(c + Vector2(-40, 2), Vector2(3.5, 2.8), Color("c8c8d0").darkened(0.05))
 
+	if wing_kind != "":
+		_form_wings(wing_kind, c, 1.0, body_y - 2.0)
+
 	# Front legs
 	var lx := c.x - leg_spread
 	var rx := c.x + leg_spread
 	var hip_y := c.y + body_y + 12.0
 	draw_line(Vector2(lx, hip_y), Vector2(lx - 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
 	draw_line(Vector2(rx, hip_y), Vector2(rx + 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
+	if extra_legs:
+		var mlx := c.x - leg_spread * 0.35
+		var mrx := c.x + leg_spread * 0.35
+		var mid_h := leg_h * 0.9
+		draw_line(Vector2(mlx, hip_y + 1.0), Vector2(mlx - 1.0, hip_y + mid_h), Color("4f4f58"), stroke_w * 0.8)
+		draw_line(Vector2(mrx, hip_y + 1.0), Vector2(mrx + 1.0, hip_y + mid_h), Color("4f4f58"), stroke_w * 0.8)
+		_ellipse(Vector2(mlx - 1.0, hip_y + mid_h), Vector2(4.5, 2.6), Color("3a3a44"))
+		_ellipse(Vector2(mrx + 1.0, hip_y + mid_h), Vector2(4.5, 2.6), Color("3a3a44"))
 	_ellipse(Vector2(lx - 2, hip_y + leg_h), Vector2(6, 3.2), Color("3a3a44"))
 	_ellipse(Vector2(rx + 2, hip_y + leg_h), Vector2(6, 3.2), Color("3a3a44"))
 
@@ -696,19 +730,23 @@ func _draw_front(c: Vector2) -> void:
 	_ellipse(c + Vector2(0, body_y + 4), Vector2(body_rx * 0.55, body_ry * 0.45), Color(belly.r, belly.g, belly.b, 0.45))
 
 	if stage == "adult" and adult_form == "saint":
-		_ellipse(c + Vector2(0, body_y + 6), Vector2(12, 8), Color(belly.r, belly.g, belly.b, 0.35))
+		_ellipse(c + Vector2(0, body_y + 6), Vector2(14, 10), Color(belly.r, belly.g, belly.b, 0.35))
 	elif stage == "adult" and adult_form == "legend":
 		draw_colored_polygon(PackedVector2Array([
 			c + Vector2(-8, -4), c + Vector2(10, 2), c + Vector2(-6, 8)
 		]), Color("e0a04a"))
 	elif stage == "adult" and adult_form == "ballard_blip":
 		draw_line(c + Vector2(-12, 18), c + Vector2(12, 18), Color("c45c4a"), 3.5)
+	elif stage == "young" and young_form == "puff":
+		_ellipse(c + Vector2(0, body_y + 6), Vector2(14, 10), Color(belly.r, belly.g, belly.b, 0.5))
 
 	_ellipse(c + Vector2(0, head_y), Vector2(head_r, head_r * 0.95), fur.lightened(0.04))
 	_ellipse(c + Vector2(-10, ear_y), Vector2(ear_rx, ear_ry), Color("4a4a54"))
 	_ellipse(c + Vector2(-10, ear_y), Vector2(ear_rx * 0.45, ear_ry * 0.55), Color("e2cdb2"))
 	_ellipse(c + Vector2(10, ear_y), Vector2(ear_rx, ear_ry), Color("4a4a54"))
 	_ellipse(c + Vector2(10, ear_y), Vector2(ear_rx * 0.45, ear_ry * 0.55), Color("e2cdb2"))
+	if crown_kind != "":
+		_trash_crown(crown_kind, c + Vector2(0, head_y - head_r + 2), 1.0)
 	_ellipse(c + Vector2(0, head_y + 2), Vector2(head_r * 0.72, head_r * 0.42), Color(mask.r, mask.g, mask.b, 0.9))
 
 	var eye_r := 2.6 if stage == "baby" else (3.6 if stage == "adult" else 3.1)
@@ -1005,75 +1043,168 @@ func _side_ear(p: Vector2, rx: float = 5.5, ry: float = 9.0) -> void:
 	_ellipse(p, Vector2(rx * 0.5, ry * 0.55), Color("e2cdb2"))
 
 
+func _extra_mid_leg(c: Vector2, face: float, hip_y: float, mid_x: float, leg_h: float, width: float, phase: float) -> void:
+	_side_leg(c + Vector2(mid_x * face, hip_y), c + Vector2((mid_x - 3.0) * face, hip_y + leg_h * 0.92), width * 0.85, phase + 1.1, 2.8)
+	_ellipse(c + Vector2((mid_x - 3.0) * face, hip_y + leg_h * 0.92), Vector2(4.2, 2.4), Color("3a3a44"))
+
+
+func _form_wings(kind: String, c: Vector2, face: float, cy: float) -> void:
+	match kind:
+		"bat":
+			var l := PackedVector2Array([
+				c + Vector2(-6 * face, cy),
+				c + Vector2(-28 * face, cy - 16),
+				c + Vector2(-34 * face, cy + 2),
+				c + Vector2(-10 * face, cy + 4),
+			])
+			draw_colored_polygon(l, Color(0.1, 0.1, 0.13, 0.88))
+			var r := PackedVector2Array([
+				c + Vector2(4 * face, cy - 2),
+				c + Vector2(22 * face, cy - 14),
+				c + Vector2(28 * face, cy),
+				c + Vector2(6 * face, cy + 2),
+			])
+			draw_colored_polygon(r, Color(0.1, 0.1, 0.13, 0.7))
+		"moth":
+			_ellipse(c + Vector2(-16 * face, cy - 2), Vector2(15, 9), Color(0.16, 0.19, 0.28, 0.8))
+			_ellipse(c + Vector2(12 * face, cy - 4), Vector2(11, 7), Color(0.16, 0.19, 0.28, 0.65))
+			_ellipse(c + Vector2(-14 * face, cy - 2), Vector2(7, 3.5), Color(0.78, 0.85, 0.94, 0.22))
+		"leaf":
+			_ellipse(c + Vector2(-18 * face, cy), Vector2(13, 7.5), Color("6fbf84"))
+			_ellipse(c + Vector2(14 * face, cy - 2), Vector2(11, 6.5), Color(0.33, 0.54, 0.38, 0.85))
+		"ghost":
+			var gl := PackedVector2Array([
+				c + Vector2(-4 * face, cy),
+				c + Vector2(-28 * face, cy - 18),
+				c + Vector2(-34 * face, cy + 3),
+				c + Vector2(-8 * face, cy + 3),
+			])
+			draw_colored_polygon(gl, Color(0.78, 0.86, 0.94, 0.45))
+			var gr := PackedVector2Array([
+				c + Vector2(2 * face, cy - 2),
+				c + Vector2(24 * face, cy - 16),
+				c + Vector2(32 * face, cy + 2),
+				c + Vector2(4 * face, cy + 2),
+			])
+			draw_colored_polygon(gr, Color(0.78, 0.86, 0.94, 0.35))
+
+
+func _trash_crown(kind: String, tip: Vector2, face: float = 1.0) -> void:
+	match kind:
+		"bottlecap":
+			_ellipse(tip + Vector2(0, -2), Vector2(8.5, 3.0), Color("8a9aaa"))
+			_ellipse(tip + Vector2(0, -4), Vector2(7.0, 2.2), Color("b8c4d0"))
+			draw_line(tip + Vector2(-6.5, -3), tip + Vector2(-7.5, -7), Color("6a7888"), 1.5)
+			draw_line(tip + Vector2(-1.5, -4), tip + Vector2(-1.0, -8), Color("6a7888"), 1.5)
+			draw_line(tip + Vector2(3.0, -4), tip + Vector2(3.5, -8), Color("6a7888"), 1.5)
+			draw_line(tip + Vector2(6.5, -3), tip + Vector2(7.5, -7), Color("6a7888"), 1.5)
+		"tincan":
+			draw_colored_polygon(PackedVector2Array([
+				tip + Vector2(-9, 0), tip + Vector2(-7, -9), tip + Vector2(7, -9), tip + Vector2(9, 0)
+			]), Color("9a7a4a"))
+			draw_rect(Rect2(tip + Vector2(-6.5, -8), Vector2(13, 2.5)), Color(0.77, 0.63, 0.42, 0.85))
+			draw_colored_polygon(PackedVector2Array([
+				tip + Vector2(-5, -9), tip + Vector2(-3, -14), tip + Vector2(-1, -9)
+			]), Color("b8925a"))
+			draw_colored_polygon(PackedVector2Array([
+				tip + Vector2(1, -9), tip + Vector2(3, -13), tip + Vector2(5, -9)
+			]), Color("b8925a"))
+		"gold":
+			draw_colored_polygon(PackedVector2Array([
+				tip + Vector2(-11, 0), tip + Vector2(-9, -7), tip + Vector2(-3, -3),
+				tip + Vector2(0, -13), tip + Vector2(3, -3), tip + Vector2(9, -7), tip + Vector2(11, 0)
+			]), Color("e0a04a"))
+			draw_circle(tip + Vector2(0, -5), 2.0, Color("fff3d0"))
+			_ellipse(tip, Vector2(11, 2.2), Color(0.77, 0.52, 0.16, 0.55))
+		"pizza":
+			draw_colored_polygon(PackedVector2Array([
+				tip + Vector2(-10, 1), tip + Vector2(-7, -8), tip + Vector2(0, -4),
+				tip + Vector2(7, -9), tip + Vector2(10, 1)
+			]), Color("8a4a28"))
+			draw_colored_polygon(PackedVector2Array([
+				tip + Vector2(-8, 0), tip + Vector2(-6, -6), tip + Vector2(0, -3),
+				tip + Vector2(6, -7), tip + Vector2(8, 0)
+			]), Color("e0a04a"))
+			draw_circle(tip + Vector2(-2.5 * face, -2.5), 1.3, Color("8a2f2f"))
+			draw_circle(tip + Vector2(2.5 * face, -3.5), 1.1, Color("8a2f2f"))
+
+
 func _draw_baby(c: Vector2, face: float) -> void:
 	_ellipse(c + Vector2(0, 40), Vector2(22, 5), Color(0, 0, 0, 0.2))
 	var fur := _fur()
 	var wobble := sin(_walk_phase) * 1.5
 	# Soft stub tail
-	_ellipse(c + Vector2(-18 * face, 14 + wobble), Vector2(7, 5), fur)
-	_side_leg(c + Vector2(-8 * face, 20), c + Vector2(-10 * face, 34), 3.6, _walk_phase, 2.0)
-	_side_leg(c + Vector2(10 * face, 20), c + Vector2(12 * face, 34), 3.6, _walk_phase + 2.2, 2.0)
-	_ellipse(c + Vector2(0, 14 + wobble), Vector2(20, 13), fur)
-	_ellipse(c + Vector2(4 * face, 18), Vector2(10, 7), fur.lightened(0.18))
-	_ellipse(c + Vector2(16 * face, 4), Vector2(12, 11), fur.lightened(0.04))
-	_side_ear(c + Vector2(12 * face, -8))
-	_ellipse(c + Vector2(24 * face, 6), Vector2(5, 3.2), Color("c9a292"))
-	_ellipse(c + Vector2(16 * face, 6), Vector2(8, 5.5), Color("2a2a32"))
-	_side_eye(c + Vector2(18 * face, 5), 2.3)
-	_draw_sick_marks(c + Vector2(18 * face, 5), true)
-	_draw_stubborn_marks(c + Vector2(18 * face, 5), true)
+	_ellipse(c + Vector2(-18 * face, 16 + wobble), Vector2(7, 5), fur)
+	_side_leg(c + Vector2(-8 * face, 22), c + Vector2(-10 * face, 34), 3.6, _walk_phase, 2.0)
+	_side_leg(c + Vector2(10 * face, 22), c + Vector2(12 * face, 34), 3.6, _walk_phase + 2.2, 2.0)
+	_ellipse(c + Vector2(0, 16 + wobble), Vector2(22, 17), fur)
+	_ellipse(c + Vector2(4 * face, 20), Vector2(11, 9), fur.lightened(0.18))
+	_ellipse(c + Vector2(16 * face, 6), Vector2(13, 12), fur.lightened(0.04))
+	_side_ear(c + Vector2(12 * face, -6))
+	_ellipse(c + Vector2(24 * face, 8), Vector2(5, 3.2), Color("c9a292"))
+	_ellipse(c + Vector2(16 * face, 8), Vector2(8, 5.5), Color("2a2a32"))
+	_side_eye(c + Vector2(18 * face, 7), 2.3)
+	_draw_sick_marks(c + Vector2(18 * face, 7), true)
+	_draw_stubborn_marks(c + Vector2(18 * face, 7), true)
 
 
 func _draw_young(c: Vector2, face: float) -> void:
 	_ellipse(c + Vector2(0, 44), Vector2(28, 6), Color(0, 0, 0, 0.2))
 	var fur := _fur()
-	var body_rx := 24.0
-	var body_ry := 14.0
+	var body_rx := 26.0
+	var body_ry := 18.0
 	var body_y := 8.0
 	var head_x := 22.0
-	var head_r := 13.0
-	var leg_h := 22.0
+	var head_r := 14.0
+	var leg_h := 18.0
 	var front_x := 14.0
 	var back_x := -12.0
+	var extra_legs := false
+	var crown_kind := ""
 
 	match young_form:
 		"puff":
-			body_rx = 26.0
-			body_ry = 18.0
-			leg_h = 13.0
+			body_rx = 30.0
+			body_ry = 24.0
+			leg_h = 11.0
 			_ellipse(c + Vector2(-24 * face, 12), Vector2(9, 7), fur.lightened(0.08))
 			_ellipse(c + Vector2(-28 * face, 10), Vector2(5, 4), fur.lightened(0.16))
 		"looper":
-			body_rx = 22.0
-			body_ry = 10.0
+			body_rx = 24.0
+			body_ry = 15.0
 			body_y = 2.0
-			leg_h = 34.0
-			head_r = 11.0
+			leg_h = 32.0
+			head_r = 12.0
+			extra_legs = true
 			draw_line(c + Vector2(-8 * face, body_y - 8), c + Vector2(12 * face, body_y - 8), Color("e0a04a"), 2.0)
 			_ringed_tail(c + Vector2(-20 * face, body_y + 2), 20.0, face, true)
 		"shadow":
-			body_rx = 26.0
-			body_ry = 11.0
-			body_y = 12.0
-			leg_h = 20.0
+			body_rx = 28.0
+			body_ry = 16.0
+			body_y = 10.0
+			leg_h = 18.0
 			head_x = 24.0
+			_form_wings("bat", c, face, body_y - 4.0)
 			_ringed_tail(c + Vector2(-22 * face, body_y + 4), 26.0, face, true)
 		"nub":
-			body_rx = 18.0
-			body_ry = 13.0
-			head_r = 15.0
-			leg_h = 15.0
+			body_rx = 22.0
+			body_ry = 18.0
+			head_r = 16.0
+			leg_h = 14.0
+			crown_kind = "bottlecap"
 			_ellipse(c + Vector2(-18 * face, 14), Vector2(5, 4), fur.darkened(0.05))
 		_:
 			_ringed_tail(c + Vector2(-20 * face, body_y + 2), 20.0, face, true)
 
 	var phase := _walk_phase
 	_side_leg(c + Vector2(back_x * face, body_y + 8), c + Vector2((back_x - 3) * face, body_y + 8 + leg_h), 4.4, phase, 3.2)
+	if extra_legs:
+		_extra_mid_leg(c, face, body_y + 8.0, (front_x + back_x) * 0.5, leg_h, 4.0, phase)
 	_side_leg(c + Vector2(front_x * face, body_y + 8), c + Vector2((front_x + 4) * face, body_y + 8 + leg_h), 4.4, phase + 2.4, 3.2)
 	_ellipse(c + Vector2(0, body_y), Vector2(body_rx, body_ry), fur)
 	if young_form == "puff":
-		_ellipse(c + Vector2(4 * face, body_y + 4), Vector2(12, 8), fur.lightened(0.2))
-		_ellipse(c + Vector2(14 * face, body_y - 12), Vector2(5, 4), fur.lightened(0.14))
+		_ellipse(c + Vector2(4 * face, body_y + 4), Vector2(14, 10), fur.lightened(0.2))
+		_ellipse(c + Vector2(14 * face, body_y - 12), Vector2(6, 5), fur.lightened(0.14))
 	elif young_form == "shadow":
 		draw_line(c + Vector2(-16 * face, body_y - 4), c + Vector2(12 * face, body_y - 6), Color("1a1a22"), 5.0)
 	elif young_form == "nub":
@@ -1085,9 +1216,11 @@ func _draw_young(c: Vector2, face: float) -> void:
 		draw_colored_polygon(ear_a, Color("4a4a54"))
 		_ellipse(c + Vector2(16 * face, body_y + 12), Vector2(5, 2.5), Color("3a3a44"))
 
-	_ellipse(c + Vector2(head_x * face, body_y - 2), Vector2(head_r, head_r * 0.9), fur.lightened(0.05))
+	_ellipse(c + Vector2(head_x * face, body_y - 2), Vector2(head_r, head_r * 0.95), fur.lightened(0.05))
 	if young_form != "nub":
 		_side_ear(c + Vector2((head_x - 4) * face, body_y - head_r - 2))
+	if crown_kind != "":
+		_trash_crown(crown_kind, c + Vector2(head_x * face, body_y - head_r - 2), face)
 	var snout_c := Color("1c1c22") if young_form == "shadow" else Color("c9a292")
 	_ellipse(c + Vector2((head_x + 8) * face, body_y), Vector2(5.5, 3.5), snout_c)
 	var mask_c := Color("121218") if young_form == "shadow" else Color("2a2a32")
@@ -1103,39 +1236,44 @@ func _draw_teen(c: Vector2, face: float) -> void:
 	_ellipse(c + Vector2(0, 48), Vector2(32, 6), Color(0, 0, 0, 0.22))
 	var form := teen_form if teen_form != "" else "bounder"
 	var fur := _fur()
-	var body_rx := 28.0
-	var body_ry := 15.0
+	var body_rx := 30.0
+	var body_ry := 20.0
 	var body_y := 4.0
 	var head_x := 24.0
-	var head_r := 14.0
-	var leg_h := 26.0
+	var head_r := 15.0
+	var leg_h := 22.0
 	var front_x := 16.0
 	var back_x := -16.0
+	var extra_legs := false
+	var crown_kind := ""
 
 	match form:
 		"dumpling":
-			body_rx = 32.0
-			body_ry = 22.0
-			leg_h = 12.0
+			body_rx = 36.0
+			body_ry = 28.0
+			leg_h = 10.0
 			_ellipse(c + Vector2(-24 * face, 10), Vector2(8, 6), fur.lightened(0.05))
 		"bounder":
-			body_rx = 24.0
-			body_ry = 12.0
+			body_rx = 26.0
+			body_ry = 16.0
 			body_y = -2.0
-			leg_h = 38.0
+			leg_h = 36.0
+			extra_legs = true
 			draw_line(c + Vector2(8 * face, body_y - 8), c + Vector2(16 * face, body_y - 16), Color("e0a04a"), 2.0)
 			_ringed_tail(c + Vector2(-22 * face, body_y + 2), 24.0, face, true)
 		"nightlane":
 			body_rx = 32.0
-			body_ry = 10.0
-			body_y = 8.0
+			body_ry = 16.0
+			body_y = 6.0
 			head_x = 28.0
-			leg_h = 24.0
+			leg_h = 22.0
+			_form_wings("moth", c, face, body_y - 6.0)
 			_ringed_tail(c + Vector2(-26 * face, body_y + 2), 32.0, face, true)
-			_ellipse(c + Vector2(6 * face, body_y - 2), Vector2(18, 5), Color(0.06, 0.06, 0.1, 0.45))
+			_ellipse(c + Vector2(6 * face, body_y - 2), Vector2(18, 7), Color(0.06, 0.06, 0.1, 0.45))
 		"scruff":
-			body_rx = 26.0
-			body_ry = 14.0
+			body_rx = 28.0
+			body_ry = 18.0
+			crown_kind = "tincan"
 			_ringed_tail(c + Vector2(-22 * face, body_y + 2), 22.0, face, true)
 			for i in 5:
 				var sx := -10.0 + float(i) * 5.0
@@ -1150,18 +1288,23 @@ func _draw_teen(c: Vector2, face: float) -> void:
 
 	var phase := _walk_phase
 	_side_leg(c + Vector2(back_x * face, body_y + 10), c + Vector2((back_x - 4) * face, body_y + 10 + leg_h), 5.0, phase, 3.8)
+	if extra_legs:
+		_extra_mid_leg(c, face, body_y + 10.0, (front_x + back_x) * 0.5, leg_h, 4.6, phase)
 	_side_leg(c + Vector2(front_x * face, body_y + 10), c + Vector2((front_x + 5) * face, body_y + 10 + leg_h), 5.0, phase + 2.3, 3.8)
 	_ellipse(c + Vector2(0, body_y), Vector2(body_rx, body_ry), fur)
 	if form == "dumpling":
-		_ellipse(c + Vector2(2 * face, body_y + 6), Vector2(16, 10), fur.lightened(0.18))
+		_ellipse(c + Vector2(2 * face, body_y + 6), Vector2(18, 12), fur.lightened(0.18))
 	elif form == "scruff":
 		draw_line(c + Vector2(18 * face, body_y + 4), c + Vector2(26 * face, body_y + 6), Color("8a5a4a"), 2.0)
+		_ellipse(c + Vector2(-6 * face, body_y + 8), Vector2(3.5, 2.5), Color(0.42, 0.47, 0.53, 0.55))
 
-	_ellipse(c + Vector2(head_x * face, body_y - 1), Vector2(head_r, head_r * 0.9), fur.lightened(0.04))
+	_ellipse(c + Vector2(head_x * face, body_y - 1), Vector2(head_r, head_r * 0.95), fur.lightened(0.04))
 	if form == "scruff":
 		draw_line(c + Vector2((head_x - 2) * face, body_y - head_r), c + Vector2((head_x + 2) * face, body_y - head_r - 10), Color("4a4a54"), 3.0)
 	else:
 		_side_ear(c + Vector2((head_x - 3) * face, body_y - head_r - 2))
+	if crown_kind != "":
+		_trash_crown(crown_kind, c + Vector2((head_x - 1) * face, body_y - head_r - 1), face)
 	var snout := Color("1a1a24") if form == "nightlane" else Color("c9a292")
 	_ellipse(c + Vector2((head_x + 8) * face, body_y + 1), Vector2(6.5, 4), snout)
 	_ellipse(c + Vector2(head_x * face, body_y + 1), Vector2(head_r * 0.7, head_r * 0.48), Color("0e1018") if form == "nightlane" else Color("2a2a32"))
@@ -1176,27 +1319,33 @@ func _draw_teen(c: Vector2, face: float) -> void:
 
 
 func _draw_adult(c: Vector2, face: float) -> void:
-	# Short-spine Jimothy in profile — long stilts, fused potato, form-forward flair.
+	# Short-spine Jimothy in profile — round potato body, form-forward flair.
 	_ellipse(c + Vector2(0, 52), Vector2(36, 7), Color(0, 0, 0, 0.22))
 	var fur := _fur()
-	var body_rx := 32.0
-	var body_ry := 26.0
+	var body_rx := 34.0
+	var body_ry := 30.0
 	var body_y := -2.0
-	var leg_h := 42.0
+	var leg_h := 36.0
 	var front_x := 14.0
 	var back_x := -18.0
 	var snout := Color("c9a292")
 	var gleam := Color("faf6ec")
 	var mask_c := Color("1c1c22")
+	var crown_kind := ""
 
 	match adult_form:
 		"saint":
-			body_ry = 28.0
+			body_rx = 36.0
+			body_ry = 32.0
+			_form_wings("leaf", c, face, body_y - 2.0)
 			_ellipse(c + Vector2(18 * face, -22), Vector2(8, 5), Color("6fbf84"))
 			_ellipse(c + Vector2(12 * face, -24), Vector2(4, 3), Color("548a62"))
 			draw_circle(c + Vector2(6 * face, -18), 1.5, Color(0.72, 0.88, 0.75, 0.7))
 		"legend":
-			leg_h = 46.0
+			body_rx = 32.0
+			body_ry = 28.0
+			leg_h = 42.0
+			crown_kind = "gold"
 			var blaze := PackedVector2Array([
 				c + Vector2(8 * face, -12),
 				c + Vector2(30 * face, -4),
@@ -1205,19 +1354,23 @@ func _draw_adult(c: Vector2, face: float) -> void:
 			draw_colored_polygon(blaze, Color("e0a04a"))
 			gleam = Color("fff3d0")
 		"alley_ghost":
-			body_rx = 34.0
-			body_ry = 22.0
-			leg_h = 44.0
+			body_rx = 36.0
+			body_ry = 26.0
+			leg_h = 40.0
 			snout = Color("b8c4d4")
 			gleam = Color("e8f0ff")
 			mask_c = Color("3a4250")
+			_form_wings("ghost", c, face, body_y)
 			_ellipse(c + Vector2(-28 * face, 4), Vector2(10, 6), Color(0.78, 0.86, 0.94, 0.28))
 			_ellipse(c + Vector2(30 * face, 6), Vector2(8, 5), Color(0.78, 0.86, 0.94, 0.22))
 			draw_line(c + Vector2(-22 * face, 2), c + Vector2(-36 * face, -6), Color(0.66, 0.7, 0.77, 0.7), 7.0)
 		"ballard_blip":
-			leg_h = 40.0
+			body_rx = 34.0
+			body_ry = 30.0
+			leg_h = 34.0
+			crown_kind = "pizza"
 			draw_line(c + Vector2(6 * face, 8), c + Vector2(28 * face, 8), Color("c45c4a"), 4.0)
-			_ellipse(c + Vector2(0, 10), Vector2(11, 7), Color(0.88, 0.63, 0.29, 0.35))
+			_ellipse(c + Vector2(0, 10), Vector2(13, 9), Color(0.88, 0.63, 0.29, 0.35))
 			var notch := PackedVector2Array([
 				c + Vector2(10 * face, -24),
 				c + Vector2(16 * face, -10),
@@ -1234,7 +1387,7 @@ func _draw_adult(c: Vector2, face: float) -> void:
 	_side_leg(c + Vector2(front_x * face, body_y + 14), c + Vector2((front_x + 6) * face, body_y + 14 + leg_h), 6.0, phase + 2.5, amp)
 	_ellipse(c + Vector2(0, body_y), Vector2(body_rx, body_ry), fur)
 	if adult_form == "saint":
-		_ellipse(c + Vector2(2 * face, body_y + 6), Vector2(12, 9), fur.lightened(0.16))
+		_ellipse(c + Vector2(2 * face, body_y + 6), Vector2(14, 11), fur.lightened(0.16))
 	elif adult_form == "alley_ghost":
 		_ellipse(c + Vector2(10 * face, body_y), Vector2(14, 10), Color(0.9, 0.94, 1.0, 0.16))
 	elif adult_form == "ballard_blip":
@@ -1242,6 +1395,8 @@ func _draw_adult(c: Vector2, face: float) -> void:
 
 	if adult_form != "ballard_blip":
 		_side_ear(c + Vector2(12 * face, body_y - body_ry + 2), 6.0, 11.0)
+	if crown_kind != "":
+		_trash_crown(crown_kind, c + Vector2(12 * face, body_y - body_ry + 4), face)
 	_ellipse(c + Vector2(24 * face, body_y + 2), Vector2(8, 5.5), snout)
 	_ellipse(c + Vector2(14 * face, body_y), Vector2(16, 11), mask_c)
 	var adult_eye := c + Vector2(18 * face, body_y - 2)

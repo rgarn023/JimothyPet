@@ -1284,22 +1284,22 @@
 
   const FORM_BLURBS = {
     young: {
-      puff: "Cotton-ball fluff + stubby legs — leans dumpling or scruff.",
-      looper: "Stilt legs + pep stripe — leans bounder or nightlane.",
-      shadow: "Charcoal crouch + ringed tail — leans nightlane or scruff.",
-      nub: "Big head, nub ears, chin tuft — leans bounder or dumpling.",
+      puff: "Round cotton-ball fluff + stubby legs — leans dumpling or scruff.",
+      looper: "Six stilt legs + pep stripe — leans bounder or nightlane.",
+      shadow: "Charcoal crouch + bat wing flaps — leans nightlane or scruff.",
+      nub: "Big round head + bottle-cap crown — leans bounder or dumpling.",
     },
     teen: {
-      dumpling: "Loaf body, sleepy eye → Saint (care) or Ballard Blip (neglect).",
-      bounder: "Athletic stilts + spring mark → Alley Ghost / Legend.",
-      nightlane: "Sleek navy prowler + pale gleam → Alley Ghost / Legend.",
-      scruff: "Jagged back fur + notch ear → Saint / Ballard Blip.",
+      dumpling: "Ultra-round loaf, sleepy eye → Saint (care) or Ballard Blip (neglect).",
+      bounder: "Six spring stilts + pep mark → Alley Ghost / Legend.",
+      nightlane: "Moth wings + pale gleam → Alley Ghost / Legend.",
+      scruff: "Jagged fur + tin-can trash crown → Saint / Ballard Blip.",
     },
     adult: {
-      saint: "Moss ear leaf + soft green undertone.",
-      legend: "Amber face blaze + proud stilts.",
-      alley_ghost: "Pale mist coat + hollow gleam.",
-      ballard_blip: "Scrap scarf + notched ear, warm alley fur.",
+      saint: "Leaf wings + moss ear leaf, soft green undertone.",
+      legend: "Golden trash crown + amber face blaze.",
+      alley_ghost: "Mist wings + pale hollow gleam.",
+      ballard_blip: "Pizza-box crown + scrap scarf, warm alley fur.",
     },
   };
 
