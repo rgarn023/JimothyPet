@@ -2054,6 +2054,7 @@
       profile.smiling ? "1" : "0",
       profile.sick ? "sick" : "",
       profile.stubborn ? "stubborn" : "",
+      profile.sleeping ? "sleep" : "",
       profile.view || "side",
       bushBucket,
       state.ascending ? "up" : "",
