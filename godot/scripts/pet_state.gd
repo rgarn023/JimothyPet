@@ -585,14 +585,21 @@ func apply_decay(seconds: float) -> void:
 func _maybe_tantrum(seconds: float) -> void:
 	if stage in ["bush", "baby"] or stubborn or not alive:
 		return
-	var chance := (0.00015 + (100.0 - discipline) * 0.000002) * seconds
+	# Acts up on his own — Scold lights up without needing feed/play first.
+	var chance := (0.0007 + (100.0 - discipline) * 0.000014) * seconds
 	if hunger < 30.0:
 		chance *= 1.4
-	if randf() < chance:
-		stubborn = true
-		stubborn_reason = "refuses a proper meal" if randf() < 0.5 else "refuses to exercise"
-		care_mistakes += 1
-		lifespan_penalty += 5400.0  # ~1.5 hours shaved per unresolved chaos streak
+	if happy < 25.0:
+		chance *= 1.25
+	if randf() >= minf(0.92, chance):
+		return
+	var reasons := ["acting up", "needs a firm word", "pushing boundaries"]
+	stubborn = true
+	stubborn_reason = reasons[randi() % reasons.size()]
+	care_mistakes += 1
+	lifespan_penalty += 5400.0  # ~1.5 hours shaved per unresolved chaos streak
+	speech.emit("He’s %s. Scold him." % stubborn_reason)
+	anim_impulse.emit("stubborn")
 
 
 func _evolve_if_needed() -> void:

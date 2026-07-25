@@ -438,7 +438,8 @@ button {
 
 /* Mood overlays use filter/opacity so they don't fight JS pose transforms */
 .raccoon-wrap.stubborn .raccoon {
-  animation: stubborn-shake 0.45s ease infinite alternate;
+  filter: saturate(1.08) brightness(0.98) sepia(0.12) hue-rotate(-12deg);
+  animation: stubborn-shake 0.55s ease infinite alternate;
 }
 
 .raccoon-wrap.sick .raccoon {

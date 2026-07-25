@@ -574,6 +574,8 @@ func _refresh() -> void:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
 	elif PetState.sick:
 		hint_label.text = "He’s under the weather — use Heal when you can."
+	elif PetState.stubborn:
+		hint_label.text = "He’s acting up — Scold is ready."
 	elif PetState.stage == "baby":
 		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for a full night run yet."
 	else:

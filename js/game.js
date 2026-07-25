@@ -332,8 +332,12 @@
       genes: state.genes,
       fitness: state.fitness,
       ageSec: state.ageSec,
-      smiling: performance.now() < smileUntil && !(state.sick && state.alive),
+      smiling:
+        performance.now() < smileUntil &&
+        !(state.sick && state.alive) &&
+        !(state.stubborn && state.alive),
       sick: !!(state.sick && state.alive && !state.ascending),
+      stubborn: !!(state.stubborn && state.alive && !state.ascending && !state.sick),
     };
   }
 
@@ -764,17 +768,22 @@
 
   function maybeTantrum(seconds) {
     if (state.stage === "bush" || state.stage === "baby" || state.stubborn || !state.alive) {
-      return;
+      return false;
     }
-    let chance = (0.00015 + (100 - state.discipline) * 0.000002) * seconds;
+    // Acts up on his own — Scold lights up without needing feed/play first.
+    let chance = (0.0007 + (100 - state.discipline) * 0.000014) * seconds;
     if (state.hunger < 30) chance *= 1.4;
-    if (Math.random() < chance) {
-      state.stubborn = true;
-      state.stubbornReason =
-        Math.random() < 0.5 ? "refuses a proper meal" : "refuses to exercise";
-      state.careMistakes += 1;
-      state.lifespanPenalty = (state.lifespanPenalty || 0) + 5400;
-    }
+    if (state.happy < 25) chance *= 1.25;
+    if (Math.random() >= Math.min(0.92, chance)) return false;
+    const reasons = ["acting up", "needs a firm word", "pushing boundaries"];
+    state.stubborn = true;
+    state.stubbornReason = reasons[Math.floor(Math.random() * reasons.length)];
+    state.careMistakes += 1;
+    state.lifespanPenalty = (state.lifespanPenalty || 0) + 5400;
+    say(`He’s ${state.stubbornReason}. Scold him.`);
+    pulseAnim("stubborn");
+    sfx("stubborn");
+    return true;
   }
 
   function evolveIfNeeded() {
@@ -1079,6 +1088,8 @@
         "His cryptid life is complete. You can raise another kit.";
     } else if (state.sick) {
       $("hint").textContent = "He’s under the weather — use Heal when you can.";
+    } else if (state.stubborn) {
+      $("hint").textContent = "He’s acting up — Scold is ready.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
         "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
@@ -1629,6 +1640,7 @@
       profile.adultForm || "",
       profile.smiling ? "1" : "0",
       profile.sick ? "sick" : "",
+      profile.stubborn ? "stubborn" : "",
       profile.view || "side",
       bushBucket,
       state.ascending ? "up" : "",

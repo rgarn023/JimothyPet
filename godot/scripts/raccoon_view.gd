@@ -440,6 +440,13 @@ func _process(delta: float) -> void:
 				_head_dip = 5.5 + sin(_t * 1.1) * 1.6
 				_smile = 0.0
 				_body_squash = 1.0
+			elif _is_stubborn():
+				_pose_y = sin(_t * 3.2) * 1.4
+				var sulk_x := -18.0 if _facing < 0.0 else 18.0
+				_pose_x = move_toward(_pose_x, sulk_x, 28.0 * delta)
+				_head_dip = -1.5 + sin(_t * 4.0) * 0.8
+				_smile = 0.0
+				_body_squash = 1.0
 			else:
 				_pose_y = sin(_t * 2.4) * 2.2 + sin(_t * 5.1) * 0.6
 				_pose_x = move_toward(_pose_x, 0.0, 36.0 * delta)
@@ -466,6 +473,12 @@ func _g(key: String, fallback: float = 0.5) -> float:
 
 func _is_sick() -> bool:
 	return mood == "sick" or (PetState != null and PetState.sick and PetState.alive and not PetState.ascending)
+
+
+func _is_stubborn() -> bool:
+	if _is_sick():
+		return false
+	return mood == "stubborn" or (PetState != null and PetState.stubborn and PetState.alive and not PetState.ascending)
 
 
 func _fur() -> Color:
@@ -503,6 +516,8 @@ func _fur() -> Color:
 				c = Color(0.48, 0.38, 0.3)
 	if _is_sick():
 		c = c.lerp(Color(0.47, 0.66, 0.43), 0.32).lightened(0.06)
+	elif _is_stubborn():
+		c = c.lerp(Color(0.62, 0.38, 0.34), 0.22)
 	return c
 
 
@@ -708,6 +723,11 @@ func _draw_front(c: Vector2) -> void:
 		_ellipse(c + Vector2(gap + eye_r * 0.1, eye_y + eye_r * 0.05), Vector2(eye_r * 0.36, eye_r * 0.26), Color("101014"))
 		draw_line(c + Vector2(gap - eye_r * 1.2, eye_y - eye_r * 0.35), c + Vector2(gap, eye_y + eye_r * 0.15), Color("2a2a32"), 1.5)
 		draw_line(c + Vector2(gap, eye_y + eye_r * 0.15), c + Vector2(gap + eye_r * 1.2, eye_y - eye_r * 0.2), Color("2a2a32"), 1.5)
+	elif _is_stubborn():
+		_ellipse(c + Vector2(-gap, eye_y), Vector2(eye_r * 1.05, eye_r * 0.7), gleam)
+		_ellipse(c + Vector2(-gap + eye_r * 0.15, eye_y), Vector2(eye_r * 0.4, eye_r * 0.38), Color("101014"))
+		_ellipse(c + Vector2(gap, eye_y), Vector2(eye_r * 1.05, eye_r * 0.7), gleam)
+		_ellipse(c + Vector2(gap + eye_r * 0.15, eye_y), Vector2(eye_r * 0.4, eye_r * 0.38), Color("101014"))
 	elif _smile > 0.35:
 		draw_line(c + Vector2(-gap - eye_r, eye_y), c + Vector2(-gap, eye_y - eye_r), gleam, 2.0)
 		draw_line(c + Vector2(-gap, eye_y - eye_r), c + Vector2(-gap + eye_r, eye_y), gleam, 2.0)
@@ -722,6 +742,7 @@ func _draw_front(c: Vector2) -> void:
 	_ellipse(c + Vector2(0, head_y + head_r * 0.42), Vector2(head_r * 0.28, head_r * 0.18), snout)
 	draw_circle(c + Vector2(0, head_y + head_r * 0.32), 1.6, Color("2a2a32"))
 	_draw_sick_marks(c + Vector2(0, head_y), false)
+	_draw_stubborn_marks(c + Vector2(0, head_y), false)
 
 
 func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
@@ -936,6 +957,10 @@ func _side_eye(p: Vector2, r: float, gleam: Color = Color("faf6ec")) -> void:
 		_ellipse(p + Vector2(r * 0.12, r * 0.05), Vector2(r * 0.38, r * 0.28), Color("101014"))
 		draw_line(p + Vector2(-r * 1.25, -r * 0.4), p + Vector2(0, r * 0.15), Color("2a2a32"), 1.5)
 		draw_line(p + Vector2(0, r * 0.15), p + Vector2(r * 1.25, -r * 0.25), Color("2a2a32"), 1.5)
+	elif _is_stubborn():
+		_ellipse(p, Vector2(r * 1.05, r * 0.72), gleam)
+		_ellipse(p + Vector2(r * 0.2, 0), Vector2(r * 0.42, r * 0.4), Color("101014"))
+		draw_line(p + Vector2(-r * 1.15, -r * 0.95), p + Vector2(r * 0.35, -r * 0.35), Color("2a2a32"), 1.8)
 	elif _smile > 0.35:
 		draw_line(p + Vector2(-r * 1.1, 0), p + Vector2(0, -r), gleam, 2.0)
 		draw_line(p + Vector2(0, -r), p + Vector2(r * 1.1, 0), gleam, 2.0)
@@ -963,6 +988,18 @@ func _draw_sick_marks(head: Vector2, side: bool = false) -> void:
 		_ellipse(head + Vector2(11, 6), Vector2(3.2, 2.2), Color(0.42, 0.6, 0.47, 0.35))
 
 
+func _draw_stubborn_marks(head: Vector2, side: bool = false) -> void:
+	if not _is_stubborn():
+		return
+	if side:
+		draw_line(head + Vector2(-7, -8), head + Vector2(2, -4), Color("2a2a32"), 1.9)
+		draw_line(head + Vector2(-2, 8), head + Vector2(6, 8), Color("5a4038"), 1.8)
+	else:
+		draw_line(head + Vector2(-16, -8), head + Vector2(-6, -4), Color("2a2a32"), 2.0)
+		draw_line(head + Vector2(16, -8), head + Vector2(6, -4), Color("2a2a32"), 2.0)
+		draw_line(head + Vector2(-5, 12), head + Vector2(5, 12), Color("5a4038"), 2.0)
+
+
 func _side_ear(p: Vector2, rx: float = 5.5, ry: float = 9.0) -> void:
 	_ellipse(p, Vector2(rx, ry), Color("4a4a54"))
 	_ellipse(p, Vector2(rx * 0.5, ry * 0.55), Color("e2cdb2"))
@@ -984,6 +1021,7 @@ func _draw_baby(c: Vector2, face: float) -> void:
 	_ellipse(c + Vector2(16 * face, 6), Vector2(8, 5.5), Color("2a2a32"))
 	_side_eye(c + Vector2(18 * face, 5), 2.3)
 	_draw_sick_marks(c + Vector2(18 * face, 5), true)
+	_draw_stubborn_marks(c + Vector2(18 * face, 5), true)
 
 
 func _draw_young(c: Vector2, face: float) -> void:
@@ -1058,6 +1096,7 @@ func _draw_young(c: Vector2, face: float) -> void:
 	var young_eye := c + Vector2((head_x + 2) * face, body_y - 2)
 	_side_eye(young_eye, 2.8 if young_form != "shadow" else 3.1, gleam)
 	_draw_sick_marks(young_eye, true)
+	_draw_stubborn_marks(young_eye, true)
 
 
 func _draw_teen(c: Vector2, face: float) -> void:
@@ -1128,11 +1167,12 @@ func _draw_teen(c: Vector2, face: float) -> void:
 	_ellipse(c + Vector2(head_x * face, body_y + 1), Vector2(head_r * 0.7, head_r * 0.48), Color("0e1018") if form == "nightlane" else Color("2a2a32"))
 	var teen_eye := c + Vector2((head_x + 2) * face, body_y - 1)
 	var gleam := Color("d8e4f8") if form == "nightlane" else Color("faf6ec")
-	if form == "dumpling" and _smile < 0.35 and not _is_sick():
+	if form == "dumpling" and _smile < 0.35 and not _is_sick() and not _is_stubborn():
 		draw_line(c + Vector2((head_x - 1) * face, body_y), c + Vector2((head_x + 5) * face, body_y - 2), Color("faf6ec"), 2.0)
 	else:
 		_side_eye(teen_eye, 3.0 if form != "nightlane" else 3.3, gleam)
 	_draw_sick_marks(teen_eye, true)
+	_draw_stubborn_marks(teen_eye, true)
 
 
 func _draw_adult(c: Vector2, face: float) -> void:
@@ -1207,5 +1247,6 @@ func _draw_adult(c: Vector2, face: float) -> void:
 	var adult_eye := c + Vector2(18 * face, body_y - 2)
 	_side_eye(adult_eye, 4.0, gleam)
 	_draw_sick_marks(adult_eye, true)
+	_draw_stubborn_marks(adult_eye, true)
 	draw_line(c + Vector2(26 * face, body_y), c + Vector2(36 * face, body_y), Color("d0d0d8"), 1.2)
 	draw_line(c + Vector2(26 * face, body_y + 4), c + Vector2(34 * face, body_y + 4), Color("d0d0d8"), 1.2)
