@@ -1078,7 +1078,7 @@
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
     } else if (state.sick) {
-      $("hint").textContent = "He’s under the weather — use Treat when you can.";
+      $("hint").textContent = "He’s under the weather — use Heal when you can.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
         "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
