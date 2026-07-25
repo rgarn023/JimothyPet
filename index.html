@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>Jimothy — Virtual Raccoon Pet</title>
+    <title>Jimothy — Midnight Cryptid Pet</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <link rel="manifest" href="manifest.webmanifest" />
@@ -34,7 +34,7 @@
     <main class="shell">
       <header class="brand-bar">
         <p class="brand">Jimothy</p>
-        <p class="tagline">your midnight raccoon</p>
+        <p class="tagline">your midnight cryptid</p>
       </header>
 
       <section class="device" aria-label="Jimothy pet device">
@@ -45,7 +45,7 @@
           <div class="status-row">
             <div class="clock" id="clock">00:00</div>
             <div class="age" id="ageLabel">Age 0</div>
-            <div class="stage-chip" id="stageChip">Egg</div>
+            <div class="stage-chip" id="stageChip">Bush</div>
           </div>
 
           <div class="screen" id="screen">
@@ -71,10 +71,10 @@
             <div class="stage" id="stageArea">
               <div class="speech" id="speech" hidden></div>
               <div class="raccoon-wrap" id="raccoonWrap">
-                <div class="raccoon" id="raccoon" data-stage="egg" data-mood="idle"></div>
+                <div class="raccoon" id="raccoon" data-stage="bush" data-mood="idle"></div>
               </div>
               <div class="mess" id="mess" hidden aria-label="Mess to clean"></div>
-              <p class="stage-name" id="stageName">Mystery Egg</p>
+              <p class="stage-name" id="stageName">Rustling Bush</p>
             </div>
 
             <div class="alert-banner" id="alertBanner" hidden></div>
@@ -101,33 +101,41 @@
         </div>
       </section>
 
-      <p class="hint" id="hint">Keep Jimothy fed, exercised, and in line — he grows in stages.</p>
+      <p class="hint" id="hint">Watch the bush. In about a minute, a baby kit may pop out.</p>
     </main>
 
     <div class="modal" id="feedModal" hidden>
       <div class="modal-card" role="dialog" aria-labelledby="feedTitle">
         <h2 id="feedTitle">Feed Jimothy</h2>
-        <p class="modal-copy">Pick a raccoon snack. Healthy meals fill him up; treats make him giddy.</p>
+        <p class="modal-copy">
+          Real forage fills him properly. Alley junk lifts mood but taxes health. He won’t eat if
+          already stuffed.
+        </p>
         <div class="food-grid">
           <button type="button" class="food-btn healthy" data-food="berries">
             <span class="food-art" aria-hidden="true"></span>
-            <strong>Berry Bundle</strong>
-            <small>Healthy meal · fills hunger · boosts health</small>
+            <strong>Wild Berries</strong>
+            <small>Healthy · light clean fuel · mild satiety</small>
           </button>
-          <button type="button" class="food-btn healthy" data-food="acorns">
+          <button type="button" class="food-btn healthy" data-food="crickets">
             <span class="food-art" aria-hidden="true"></span>
-            <strong>Crunchy Acorns</strong>
-            <small>Healthy meal · steady energy</small>
+            <strong>Night Crickets</strong>
+            <small>Healthy · protein for growing legs</small>
+          </button>
+          <button type="button" class="food-btn healthy" data-food="fish">
+            <span class="food-art" aria-hidden="true"></span>
+            <strong>Stream Fish Bits</strong>
+            <small>Healthy · rich meal · fills him up</small>
           </button>
           <button type="button" class="food-btn treat" data-food="pizza">
             <span class="food-art" aria-hidden="true"></span>
             <strong>Pizza Crust</strong>
-            <small>Treat · big happy · light hunger</small>
+            <small>Treat · mood up · tummy pays later</small>
           </button>
           <button type="button" class="food-btn treat" data-food="fries">
             <span class="food-art" aria-hidden="true"></span>
             <strong>Dumpster Fries</strong>
-            <small>Treat · rascal joy · may spoil appetite</small>
+            <small>Treat · salty chaos · can make him sick</small>
           </button>
         </div>
         <button type="button" class="modal-close" id="feedClose">Close</button>
@@ -139,7 +147,7 @@
         <header class="game-header">
           <div>
             <h2 id="gameTitle">Dumpster Dive</h2>
-            <p>Catch shiny trash treasures. Dodge the rotten stuff.</p>
+            <p>Night forage run — catch edible scraps, dodge spoiled waste. Burns energy.</p>
           </div>
           <div class="game-score">
             <span>Score <strong id="gameScore">0</strong></span>

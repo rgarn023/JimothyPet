@@ -1,6 +1,6 @@
 # Jimothy
 
-Tamagotchi-style virtual pet starring **Jimothy the raccoon** (viral short-spine look at adult stage).
+Your **midnight cryptid** — a real-time Tamagotchi-style pet starring Jimothy (viral short-spine look at adult stage).
 
 ## Play in Godot 4.7.1 (recommended for Android)
 
@@ -25,14 +25,28 @@ npm start
 # open http://localhost:8080
 ```
 
+## Life cycle (real time)
+
+| Stage | When |
+| --- | --- |
+| **Rustling bush** | Start |
+| **Baby kit** | ~1 minute |
+| **Young kit** | +1 hour (form variance begins) |
+| **Teen kit** | +24 hours (form steers adult) |
+| **Adult Jimothy** | +24–72 hours more (short-spine viral look, variant flair) |
+| **Lifespan** | Adult lasts ~10–20 days |
+
+Young/teen forms (`puff` / `looper` / `shadow` / `nub` → `dumpling` / `bounder` / `nightlane` / `scruff`) influence adult flair (**Saint**, **Legend**, **Alley Ghost**, **Ballard Blip**) while keeping the short-spine silhouette.
+
+Full wall-clock catch-up when you return (no 1-hour cap). Saves use `jimothy-pet-v2`.
+
 ## Care
 
 | Action | What it does |
 | --- | --- |
-| **Feed** | Healthy meals or raccoon treats |
-| **Play** | **Dumpster Dive** mini-game |
+| **Feed** | Wild Berries, Night Crickets, Stream Fish Bits — or Pizza Crust / Dumpster Fries |
+| **Play** | **Dumpster Dive** night forage — burns energy, builds fitness |
 | **Scold** | Discipline when he acts up |
-| **Clean** | Clear messes |
+| **Clean** | Clear nest messes |
 
-Growth: Egg → Hatchling → Kit → Teen → Adult (**Saint Jimothy** / **Legend Jimothy**).  
-Time is tracked in real time (including while you’re away).
+Satiety stops overfeeding; junk treats can make him sick. Baby kits and the bush can’t run a full Dumpster Dive. Jimothy walks, runs, jumps, and lopes around the stage.

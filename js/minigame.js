@@ -1,7 +1,6 @@
 /**
- * Dumpster Dive — raccoon-themed catch mini-game.
- * Catch pizza crusts, shiny cans, and berry scraps.
- * Avoid rotten leftovers.
+ * Dumpster Dive — night forage catch mini-game.
+ * Catch edible alley scraps; dodge spoiled waste. Burns energy / builds fitness.
  */
 const DumpsterDive = (() => {
   let canvas;
@@ -204,7 +203,7 @@ const DumpsterDive = (() => {
     ctx.fillStyle = "#1b2a22";
     ctx.font = "700 14px Outfit, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("CITY DUMPSTER", width / 2, 68);
+    ctx.fillText("NIGHT FORAGE", width / 2, 68);
 
     // Brick hints
     ctx.strokeStyle = "rgba(154,171,156,0.12)";

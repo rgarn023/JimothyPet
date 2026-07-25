@@ -1,7 +1,7 @@
 {
-  "name": "Jimothy — Virtual Raccoon Pet",
+  "name": "Jimothy — Midnight Cryptid Pet",
   "short_name": "Jimothy",
-  "description": "Raise Jimothy the raccoon in a Tamagotchi-style pet that tracks real time.",
+  "description": "Raise Jimothy, your midnight cryptid — real-time growth from rustling bush to adult short-spine legend.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

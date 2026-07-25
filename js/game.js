@@ -1,71 +1,94 @@
 /**
- * Jimothy — Tamagotchi-style raccoon pet.
+ * Jimothy — real-time cryptid care (web port of godot/scripts/pet_state.gd).
  */
 (() => {
-  const STORAGE_KEY = "jimothy-pet-v1";
+  const STORAGE_KEY = "jimothy-pet-v2";
   const TICK_MS = 1000;
-  // Accelerated life cycle so stages feel like classic Tamagotchi sessions.
-  const STAGE_AGE = {
-    egg: 45, // seconds until hatch
-    hatchling: 90,
-    kit: 150,
-    teen: 210,
-  };
+
+  const BUSH_SEC = 60;
+  const BABY_SEC = 3600; // 1 hour
+  const YOUNG_SEC = 86400; // 24 hours
+  const TEEN_SEC_MIN = 86400; // 24 hours
+  const TEEN_SEC_MAX = 259200; // 72 hours
+  const ADULT_SEC_MIN = 864000; // 10 days
+  const ADULT_SEC_MAX = 1728000; // 20 days
 
   const FOOD = {
     berries: {
-      name: "Berry Bundle",
+      name: "Wild Berries",
       type: "healthy",
-      hunger: 28,
-      happy: 4,
-      health: 8,
-      refuseChance: 0.35,
+      hunger: 18,
+      happy: 3,
+      health: 6,
+      fitness: 0,
+      satiety: 22,
+      refuse: 0.22,
+      blurb: "Tart forest berries — light, clean fuel.",
     },
-    acorns: {
-      name: "Crunchy Acorns",
+    crickets: {
+      name: "Night Crickets",
+      type: "healthy",
+      hunger: 16,
+      happy: 2,
+      health: 5,
+      fitness: 1,
+      satiety: 20,
+      refuse: 0.28,
+      blurb: "Crunchy protein. Kits need this to grow strong legs.",
+    },
+    fish: {
+      name: "Stream Fish Bits",
       type: "healthy",
       hunger: 24,
-      happy: 6,
-      health: 6,
-      refuseChance: 0.3,
+      happy: 4,
+      health: 8,
+      fitness: 1,
+      satiety: 30,
+      refuse: 0.18,
+      blurb: "Rich scraps from the creek — fills him up properly.",
     },
     pizza: {
       name: "Pizza Crust",
       type: "treat",
-      hunger: 12,
-      happy: 22,
-      health: -2,
-      refuseChance: 0.05,
+      hunger: 10,
+      happy: 16,
+      health: -3,
+      fitness: -1,
+      satiety: 14,
+      refuse: 0.04,
+      blurb: "Greasy alley treasure. Mood up, tummy pays later.",
     },
     fries: {
       name: "Dumpster Fries",
       type: "treat",
-      hunger: 10,
-      happy: 26,
+      hunger: 9,
+      happy: 18,
       health: -4,
-      refuseChance: 0.08,
+      fitness: -1,
+      satiety: 12,
+      refuse: 0.06,
+      blurb: "Salty chaos. Fine sometimes — not a meal plan.",
     },
   };
 
-  const STAGE_META = {
-    egg: { label: "Egg", name: "Mystery Egg" },
-    hatchling: { label: "Hatchling", name: "Peep Jimothy" },
-    kit: { label: "Kit", name: "Kit Jimothy" },
-    teen: { label: "Teen", name: "Teen Jimothy" },
-    adult: { label: "Adult", name: "Jimothy" },
-  };
-
   const state = {
-    bornAt: Date.now(),
-    lastTick: Date.now(),
+    bornAt: 0,
+    lastTick: 0,
     ageSec: 0,
-    stage: "egg",
-    adultVariant: "noble",
-    hunger: 80,
-    happy: 80,
+    stage: "bush",
+    youngForm: "puff",
+    teenForm: "",
+    adultForm: "",
+    teenDuration: TEEN_SEC_MIN,
+    adultDuration: ADULT_SEC_MIN,
+    genes: {},
+    hunger: 70,
+    happy: 70,
     health: 100,
-    discipline: 55,
-    weight: 1,
+    discipline: 50,
+    fitness: 40,
+    satiety: 0,
+    weight: 0.8,
     careScore: 0,
     careMistakes: 0,
     stubborn: false,
@@ -73,14 +96,16 @@
     hasMess: false,
     sick: false,
     alive: true,
-    sleep: false,
     treatStreak: 0,
     healthyMeals: 0,
     playSessions: 0,
+    energy: 80,
   };
 
   let speechTimer = 0;
   let tickHandle = 0;
+  let animCooldown = 0;
+  let lastAnimPulse = performance.now();
 
   const $ = (id) => document.getElementById(id);
 
@@ -88,57 +113,169 @@
     return Math.max(min, Math.min(max, n));
   }
 
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      Object.assign(state, saved);
-      // Catch up to real wall-clock time (no cap).
-      syncRealtime({ announceDeath: false });
-    } catch {
-      /* fresh pet */
+  function randRange(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  function capitalize(s) {
+    if (!s) return "";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function nowMs() {
+    return Date.now();
+  }
+
+  function rollGenes() {
+    return {
+      roundness: Math.random(),
+      legginess: Math.random(),
+      fluff: Math.random(),
+      mask: Math.random(),
+      pep: Math.random(),
+      gray: Math.random(),
+      ear_flare: Math.random(),
+    };
+  }
+
+  function pickYoungForm(g) {
+    if (g.roundness > 0.62 && g.fluff > 0.45) return "puff";
+    if (g.legginess > 0.6 && g.pep > 0.4) return "looper";
+    if (g.mask > 0.65) return "shadow";
+    return "nub";
+  }
+
+  function pickTeenForm(young, g) {
+    switch (young) {
+      case "puff":
+        return g.fluff > 0.5 ? "dumpling" : "scruff";
+      case "looper":
+        return g.pep > 0.45 ? "bounder" : "nightlane";
+      case "shadow":
+        return g.mask > 0.5 ? "nightlane" : "scruff";
+      default:
+        return g.legginess > 0.5 ? "bounder" : "dumpling";
     }
   }
 
-  /**
-   * Apply all elapsed real-world seconds since lastTick.
-   * Works for browser tabs, installed PWAs, and Android wrappers.
-   */
-  function syncRealtime({ announceDeath = true } = {}) {
-    const now = Date.now();
-    const last = state.lastTick || now;
-    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
-    const wasAlive = state.alive;
-    if (elapsed > 0 && state.alive) applyDecay(elapsed);
-    state.lastTick = now;
-    if (announceDeath && wasAlive && !state.alive) {
-      showMessage(
-        "Jimothy wandered off…",
-        "Time kept moving while you were away. Start a new egg?"
-      );
-      $("messageOk").dataset.reset = "1";
+  function pickAdultForm(teen) {
+    const good =
+      state.careScore >= 10 &&
+      state.careMistakes <= 8 &&
+      state.healthyMeals >= 4 &&
+      state.fitness >= 45;
+    switch (teen) {
+      case "dumpling":
+        return good ? "saint" : "ballard_blip";
+      case "bounder":
+        return good ? "alley_ghost" : "legend";
+      case "nightlane":
+        return good ? "alley_ghost" : "legend";
+      case "scruff":
+        return good ? "saint" : "ballard_blip";
+      default:
+        return good ? "saint" : "legend";
     }
-    return elapsed;
   }
 
-  function save({ touchTick = true } = {}) {
-    if (touchTick) state.lastTick = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  function adultFormTitle(form = state.adultForm) {
+    switch (form) {
+      case "saint":
+        return "Saint";
+      case "legend":
+        return "Legend";
+      case "alley_ghost":
+        return "Alley Ghost";
+      case "ballard_blip":
+        return "Ballard Blip";
+      default:
+        return "Cryptid";
+    }
   }
 
-  function resetPet() {
+  function bushEnd() {
+    return BUSH_SEC;
+  }
+  function babyEnd() {
+    return BUSH_SEC + BABY_SEC;
+  }
+  function youngEnd() {
+    return babyEnd() + YOUNG_SEC;
+  }
+  function teenEnd() {
+    return youngEnd() + state.teenDuration;
+  }
+  function lifeEnd() {
+    return teenEnd() + state.adultDuration;
+  }
+
+  function stageLabel() {
+    switch (state.stage) {
+      case "bush":
+        return "Bush";
+      case "baby":
+        return "Baby Kit";
+      case "young":
+        return "Young Kit";
+      case "teen":
+        return "Teen Kit";
+      case "adult":
+        return "Adult";
+      default:
+        return capitalize(state.stage);
+    }
+  }
+
+  function stageName() {
+    if (!state.alive) return "Gone to the night…";
+    switch (state.stage) {
+      case "bush":
+        return "Rustling Bush";
+      case "baby":
+        return "Baby Kit Jimothy";
+      case "young":
+        return `${capitalize(state.youngForm)} Young Kit`;
+      case "teen":
+        return `${capitalize(state.teenForm || "Mystery")} Teen Kit`;
+      case "adult":
+        return `${adultFormTitle()} Jimothy`;
+      default:
+        return "Jimothy";
+    }
+  }
+
+  function formProfile() {
+    return {
+      stage: state.stage,
+      youngForm: state.youngForm,
+      teenForm: state.teenForm,
+      adultForm: state.adultForm,
+      genes: state.genes,
+      fitness: state.fitness,
+      ageSec: state.ageSec,
+    };
+  }
+
+  function resetDefaults() {
+    const t = nowMs();
     Object.assign(state, {
-      bornAt: Date.now(),
-      lastTick: Date.now(),
+      bornAt: t,
+      lastTick: t,
       ageSec: 0,
-      stage: "egg",
-      adultVariant: "noble",
-      hunger: 80,
-      happy: 80,
+      stage: "bush",
+      genes: rollGenes(),
+      youngForm: "puff",
+      teenForm: "",
+      adultForm: "",
+      teenDuration: randRange(TEEN_SEC_MIN, TEEN_SEC_MAX),
+      adultDuration: randRange(ADULT_SEC_MIN, ADULT_SEC_MAX),
+      hunger: 70,
+      happy: 70,
       health: 100,
-      discipline: 55,
-      weight: 1,
+      discipline: 50,
+      fitness: 40,
+      satiety: 0,
+      weight: 0.8,
       careScore: 0,
       careMistakes: 0,
       stubborn: false,
@@ -146,64 +283,128 @@
       hasMess: false,
       sick: false,
       alive: true,
-      sleep: false,
       treatStreak: 0,
       healthyMeals: 0,
       playSessions: 0,
+      energy: 80,
     });
+    state.youngForm = pickYoungForm(state.genes);
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      // Migrate ancient egg saves if somehow present
+      if (state.stage === "egg") state.stage = "bush";
+      if (state.stage === "hatchling" || state.stage === "kit") state.stage = "baby";
+      if (!state.genes || typeof state.genes !== "object") state.genes = rollGenes();
+      if (!state.youngForm) state.youngForm = pickYoungForm(state.genes);
+      if (state.adultForm === "noble" || state.adultVariant === "noble") state.adultForm = "saint";
+      if (state.adultForm === "rascal" || state.adultVariant === "rascal") state.adultForm = "legend";
+      if (!state.teenDuration) state.teenDuration = randRange(TEEN_SEC_MIN, TEEN_SEC_MAX);
+      if (!state.adultDuration) state.adultDuration = randRange(ADULT_SEC_MIN, ADULT_SEC_MAX);
+      if (state.energy == null) state.energy = 80;
+      if (state.fitness == null) state.fitness = 40;
+      if (state.satiety == null) state.satiety = 0;
+      syncRealtime({ announceDeath: false });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function save({ touchTick = true } = {}) {
+    if (touchTick) state.lastTick = nowMs();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function syncRealtime({ announceDeath = true } = {}) {
+    const now = nowMs();
+    const last = state.lastTick || now;
+    const elapsed = Math.max(0, Math.floor((now - last) / 1000));
+    const wasAlive = state.alive;
+    if (elapsed > 0 && state.alive) applyDecay(elapsed);
+    state.lastTick = now;
+    if (announceDeath && wasAlive && !state.alive) {
+      showMessage(
+        "Gone to the night…",
+        "His cycle ended (lifespan or care). Start a new rustling bush?"
+      );
+      $("messageOk").dataset.reset = "1";
+    }
+    return elapsed;
+  }
+
+  function resetPet() {
+    resetDefaults();
     save();
+    if (window.RaccoonAnim) RaccoonAnim.reset();
     render();
-    say("A warm egg. Something wiggles inside…");
+    say("A roadside bush shivers… something’s in there.");
   }
 
   function applyDecay(seconds) {
-    // Mild per-second drain; scales with life like classic units.
-    const hungerDrain = 0.045 * seconds;
-    const happyDrain = 0.035 * seconds;
-    state.hunger = clamp(state.hunger - hungerDrain);
-    state.happy = clamp(state.happy - happyDrain);
+    const hungerRate = state.stage !== "bush" ? 0.0028 : 0;
+    const happyRate = state.stage !== "bush" ? 0.0022 : 0;
+    const energyRate = state.stage !== "bush" ? 0.0015 : 0;
+
+    state.hunger = clamp(state.hunger - hungerRate * seconds);
+    state.happy = clamp(state.happy - happyRate * seconds);
+    state.energy = clamp(state.energy - energyRate * seconds);
+    state.satiety = Math.max(0, state.satiety - 0.02 * seconds);
     state.ageSec += seconds;
 
     if (state.hasMess) {
-      state.health = clamp(state.health - 0.02 * seconds);
-      state.happy = clamp(state.happy - 0.015 * seconds);
+      state.health = clamp(state.health - 0.0012 * seconds);
+      state.happy = clamp(state.happy - 0.001 * seconds);
     }
-    if (state.hunger < 20) {
-      state.health = clamp(state.health - 0.04 * seconds);
-      state.happy = clamp(state.happy - 0.02 * seconds);
+    if (state.hunger < 20 && state.stage !== "bush") {
+      state.health = clamp(state.health - 0.0025 * seconds);
+      state.happy = clamp(state.happy - 0.0015 * seconds);
     }
-    if (state.happy < 15) {
-      state.health = clamp(state.health - 0.02 * seconds);
+    if (state.happy < 15 && state.stage !== "bush") {
+      state.health = clamp(state.health - 0.001 * seconds);
     }
     if (state.treatStreak > 3) {
-      state.health = clamp(state.health - 0.01 * seconds);
+      state.health = clamp(state.health - 0.0008 * seconds);
+      state.sick = true;
+    }
+    if (state.energy < 15) {
+      state.happy = clamp(state.happy - 0.0005 * seconds);
     }
 
-    // Random mess
-    if (!state.hasMess && state.stage !== "egg" && Math.random() < seconds * 0.004) {
+    if (state.stage !== "bush" && !state.hasMess && Math.random() < seconds * 0.00025) {
       state.hasMess = true;
     }
 
-    // Random stubborn tantrum when discipline/hunger/happy are off
     maybeTantrum(seconds);
+    evolveIfNeeded();
 
-    if (state.health <= 0 || (state.hunger <= 0 && state.happy <= 0)) {
+    if (state.stage === "adult" && state.ageSec >= lifeEnd()) {
+      state.alive = false;
+      say("Jimothy melts back into the night… cryptid business.");
+    } else if (
+      state.health <= 0 ||
+      (state.hunger <= 0 && state.happy <= 0 && state.stage !== "bush")
+    ) {
       state.alive = false;
       state.health = 0;
     }
-
-    evolveIfNeeded();
   }
 
   function maybeTantrum(seconds) {
-    if (state.stage === "egg" || state.stubborn || !state.alive) return;
-    const chance =
-      (0.002 + (100 - state.discipline) * 0.00004 + (state.hunger < 35 ? 0.002 : 0)) *
-      seconds;
+    if (state.stage === "bush" || state.stage === "baby" || state.stubborn || !state.alive) {
+      return;
+    }
+    let chance = (0.00015 + (100 - state.discipline) * 0.000002) * seconds;
+    if (state.hunger < 30) chance *= 1.4;
     if (Math.random() < chance) {
       state.stubborn = true;
       state.stubbornReason =
-        Math.random() < 0.5 ? "refuses healthy food" : "refuses to exercise";
+        Math.random() < 0.5 ? "refuses a proper meal" : "refuses to exercise";
       state.careMistakes += 1;
     }
   }
@@ -211,55 +412,108 @@
   function evolveIfNeeded() {
     if (!state.alive) return;
     const prev = state.stage;
-    if (state.stage === "egg" && state.ageSec >= STAGE_AGE.egg) {
-      state.stage = "hatchling";
-      state.weight = 2;
-      say("Crack! Peep Jimothy hatched!");
-      showMessage("Hatched!", "Peep Jimothy wiggled out of the egg. Feed him and keep him cozy.");
-    } else if (state.stage === "hatchling" && state.ageSec >= STAGE_AGE.egg + STAGE_AGE.hatchling) {
-      state.stage = "kit";
-      state.weight = 5;
-      say("Jimothy grew into a kit!");
-      showMessage("Growth!", "Kit Jimothy is curious and sticky-pawed. Try Dumpster Dive.");
-    } else if (
-      state.stage === "kit" &&
-      state.ageSec >= STAGE_AGE.egg + STAGE_AGE.hatchling + STAGE_AGE.kit
-    ) {
-      state.stage = "teen";
-      state.weight = 9;
-      say("Teen Jimothy! Attitude unlocked.");
-      showMessage("Teen Stage", "He's sassier now. Healthy meals and discipline matter more.");
-    } else if (
-      state.stage === "teen" &&
-      state.ageSec >=
-        STAGE_AGE.egg + STAGE_AGE.hatchling + STAGE_AGE.kit + STAGE_AGE.teen
-    ) {
-      state.stage = "adult";
-      state.weight = 14;
-      const goodCare =
-        state.careScore >= 8 &&
-        state.careMistakes <= 6 &&
-        state.healthyMeals >= 3 &&
-        state.discipline >= 45;
-      state.adultVariant = goodCare ? "noble" : "rascal";
-      const title = goodCare ? "Saint Jimothy" : "Legend Jimothy";
-      STAGE_META.adult.name = title;
-      say(
-        goodCare
-          ? "Behold — Saint Jimothy, short-spine legend!"
-          : "Behold — Legend Jimothy, Ballard’s dumpster cryptid!"
-      );
+
+    if (state.stage === "bush" && state.ageSec >= bushEnd()) {
+      state.stage = "baby";
+      state.weight = 1.2;
+      state.happy = clamp(state.happy + 10);
+      say("The bush explodes in leaves — baby kit Jimothy!");
+      pulseAnim("pop");
       showMessage(
-        "Fully Grown!",
-        goodCare
-          ? "He grew into the famous look: round body, long lope, zero neck. Saint Jimothy has entered the chat."
-          : "He grew into the famous look: round body, long lope, zero neck. Legend Jimothy is ready for the headlines."
+        "Baby Kit!",
+        "Jimothy burst from the bush. Keep him fed — young kit in ~1 hour."
+      );
+    } else if (state.stage === "baby" && state.ageSec >= babyEnd()) {
+      state.stage = "young";
+      state.youngForm = pickYoungForm(state.genes);
+      state.weight = 3.5;
+      say(`He’s a young kit now — form: ${capitalize(state.youngForm)}.`);
+      pulseAnim("stretch");
+      showMessage(
+        "Young Kit!",
+        `Form: ${capitalize(state.youngForm)}. His teen/adult path is already leaning this way.`
+      );
+    } else if (state.stage === "young" && state.ageSec >= youngEnd()) {
+      state.stage = "teen";
+      state.teenForm = pickTeenForm(state.youngForm, state.genes);
+      state.weight = 7;
+      state.teenDuration = randRange(TEEN_SEC_MIN, TEEN_SEC_MAX);
+      say(`Teen kit era. He’s turning into a ${state.teenForm}.`);
+      pulseAnim("run");
+      showMessage(
+        "Teen Kit!",
+        `Form: ${capitalize(state.teenForm)}. Adult Jimothy arrives in 1–3 real days.`
+      );
+    } else if (state.stage === "teen" && state.ageSec >= teenEnd()) {
+      state.stage = "adult";
+      const teen = state.teenForm || pickTeenForm(state.youngForm, state.genes);
+      state.adultForm = pickAdultForm(teen);
+      state.adultDuration = randRange(ADULT_SEC_MIN, ADULT_SEC_MAX);
+      state.weight = 11 + state.fitness * 0.03;
+      state.genes.legginess = clamp(state.genes.legginess * 0.5 + 0.55, 0, 1);
+      state.genes.roundness = clamp(state.genes.roundness * 0.4 + 0.65, 0, 1);
+      say(`Fully grown — ${adultFormTitle()} Jimothy, midnight cryptid.`);
+      pulseAnim("lope");
+      showMessage(
+        "Adult Cryptid!",
+        `${adultFormTitle()} Jimothy — short-spine legend look. He’ll stick around ~10–20 days.`
       );
     }
+
     if (prev !== state.stage) save();
   }
 
-  function say(text, ms = 2600) {
+  function alertText() {
+    if (!state.alive) {
+      return { text: "The cryptid has moved on… start a new bush?", danger: true };
+    }
+    if (state.stage === "bush") {
+      return { text: "The bush is rustling. Wait — something’s waking.", danger: false };
+    }
+    if (state.sick) {
+      return { text: "Upset stomach from too much junk food.", danger: true };
+    }
+    if (state.stubborn) {
+      return { text: `Acting up — ${state.stubbornReason}. Scold him.`, danger: true };
+    }
+    if (state.hasMess) {
+      return { text: "He’s marked the nest. Clean it up.", danger: false };
+    }
+    if (state.energy < 20) {
+      return { text: "Winded. Let him rest before more exercise.", danger: false };
+    }
+    if (state.satiety > 75) {
+      return { text: "Full belly — forcing food won’t help.", danger: false };
+    }
+    if (state.hunger < 25) {
+      return { text: "He’s hunting for a real meal.", danger: true };
+    }
+    if (state.happy < 25) {
+      return { text: "Restless cryptid energy. Try a night run (Play).", danger: false };
+    }
+    if (state.health < 30) {
+      return { text: "He’s run-down — skip treats, offer fish or berries.", danger: true };
+    }
+    return null;
+  }
+
+  function formatAge() {
+    const s = Math.floor(state.ageSec);
+    const days = Math.floor(s / 86400);
+    const hours = Math.floor((s % 86400) / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    if (days > 0) return `Age ${days}d ${hours}h`;
+    if (hours > 0) return `Age ${hours}h ${mins}m`;
+    if (mins > 0) return `Age ${mins}m`;
+    return `Age ${s}s`;
+  }
+
+  function clockNow() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function say(text, ms = 2800) {
     const el = $("speech");
     el.hidden = false;
     el.textContent = text;
@@ -279,43 +533,43 @@
     $("messageModal").hidden = true;
   }
 
-  function formatAge() {
-    const m = Math.floor(state.ageSec / 60);
-    const s = Math.floor(state.ageSec % 60);
-    if (m <= 0) return `Age ${s}s`;
-    return `Age ${m}m`;
+  function pulseAnim(kind) {
+    if (window.RaccoonAnim) RaccoonAnim.play(kind);
+    animCooldown = randRange(1.8, 4.5);
   }
 
-  function clockNow() {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  }
+  function ambientAnim(dt) {
+    if (!state.alive || state.stage === "bush") return;
+    animCooldown -= dt;
+    if (animCooldown > 0) return;
 
-  function alertText() {
-    if (!state.alive) return { text: "Jimothy needs a new life… tap OK after the notice.", danger: true };
-    if (state.sick) return { text: "Jimothy feels queasy from too many treats.", danger: true };
-    if (state.stubborn) {
-      return {
-        text: `Acting up — ${state.stubbornReason}. Use Scold.`,
-        danger: true,
-      };
+    if (state.stubborn || state.sick) {
+      animCooldown = randRange(2.5, 4);
+      pulseAnim(state.stubborn ? "stubborn" : "sick");
+      return;
     }
-    if (state.hasMess) return { text: "There's a mess. Clean it up!", danger: false };
-    if (state.hunger < 25) return { text: "Jimothy is starving for snacks.", danger: true };
-    if (state.happy < 25) return { text: "Jimothy is bored. Try Dumpster Dive.", danger: false };
-    if (state.health < 30) return { text: "Health is low — feed healthy meals.", danger: true };
-    return null;
+
+    const roll = Math.random();
+    let kind = "idle";
+    if (state.energy > 55 && state.happy > 50 && roll < 0.35) {
+      kind = state.fitness > 50 && roll < 0.15 ? "run" : "walk";
+    } else if (roll < 0.55) {
+      kind = "walk";
+    } else if (roll < 0.72) {
+      kind = "jump";
+    } else if (roll < 0.82) {
+      kind = state.stage === "adult" ? "lope" : "walk";
+    } else {
+      kind = "idle";
+    }
+    pulseAnim(kind);
   }
 
   function render() {
     $("clock").textContent = clockNow();
     $("ageLabel").textContent = formatAge();
-    const meta = STAGE_META[state.stage];
-    if (state.stage === "adult") {
-      meta.name = state.adultVariant === "noble" ? "Saint Jimothy" : "Legend Jimothy";
-    }
-    $("stageChip").textContent = meta.label;
-    $("stageName").textContent = state.alive ? meta.name : "Gone to the woods…";
+    $("stageChip").textContent = stageLabel();
+    $("stageName").textContent = stageName();
 
     $("hungerFill").style.width = `${state.hunger}%`;
     $("happyFill").style.width = `${state.happy}%`;
@@ -325,15 +579,36 @@
     const wrap = $("raccoonWrap");
     wrap.classList.toggle("stubborn", state.stubborn && state.alive);
     wrap.classList.toggle("sick", state.sick && state.alive);
-    wrap.classList.toggle(
-      "jimothy-lope",
-      state.alive && state.stage === "adult" && !state.stubborn && !state.sick
-    );
-    $("raccoon").dataset.stage = state.stage;
-    $("raccoon").dataset.mood = state.stubborn ? "stubborn" : state.sick ? "sick" : "idle";
-    $("raccoon").innerHTML = state.alive
-      ? RaccoonArt.render(state.stage, state.adultVariant)
-      : RaccoonArt.render("egg");
+
+    const raccoon = $("raccoon");
+    raccoon.dataset.stage = state.alive ? state.stage : "gone";
+    raccoon.dataset.mood = !state.alive
+      ? "gone"
+      : state.stubborn
+        ? "stubborn"
+        : state.sick
+          ? "sick"
+          : "idle";
+    raccoon.dataset.form =
+      state.stage === "adult"
+        ? state.adultForm
+        : state.stage === "teen"
+          ? state.teenForm
+          : state.stage === "young"
+            ? state.youngForm
+            : "";
+
+    raccoon.innerHTML = state.alive
+      ? RaccoonArt.render(formProfile())
+      : RaccoonArt.render({ stage: "bush", ageSec: 0, genes: {} });
+
+    if (window.RaccoonAnim) {
+      RaccoonAnim.sync({
+        stage: state.alive ? state.stage : "bush",
+        ageSec: state.ageSec,
+        alive: state.alive,
+      });
+    }
 
     $("mess").hidden = !(state.hasMess && state.alive);
 
@@ -347,31 +622,32 @@
       banner.hidden = true;
     }
 
-    const btnDiscipline = $("btnDiscipline");
-    const btnClean = $("btnClean");
-    const btnFeed = $("btnFeed");
-    const btnPlay = $("btnPlay");
+    const canCare = state.alive && state.stage !== "bush";
+    $("btnDiscipline").disabled = !(state.alive && state.stubborn);
+    $("btnClean").disabled = !(state.alive && state.hasMess);
+    $("btnFeed").disabled = !canCare;
+    $("btnPlay").disabled = !state.alive || state.stage === "bush" || state.stage === "baby";
 
-    btnDiscipline.disabled = !(state.alive && state.stubborn);
-    btnClean.disabled = !(state.alive && state.hasMess);
-    btnFeed.disabled = !state.alive || state.stage === "egg";
-    btnPlay.disabled = !state.alive || state.stage === "egg";
+    $("btnDiscipline").classList.toggle("needs-attention", state.stubborn && state.alive);
+    $("btnClean").classList.toggle("needs-attention", state.hasMess && state.alive);
 
-    btnDiscipline.classList.toggle("needs-attention", state.stubborn && state.alive);
-    btnClean.classList.toggle("needs-attention", state.hasMess && state.alive);
-
-    if (state.stage === "egg") {
-      $("hint").textContent = "The egg is warming… it will hatch on its own.";
+    if (state.stage === "bush") {
+      $("hint").textContent =
+        "Watch the bush. In about a minute, a baby kit may pop out.";
     } else if (!state.alive) {
-      $("hint").textContent = "Care carefully next time — healthy meals and play raise his path.";
+      $("hint").textContent =
+        "Real-time life cycle complete (or neglect). A new bush can begin.";
+    } else if (state.stage === "baby") {
+      $("hint").textContent =
+        "Too tiny for a full night run — feed him forage and let him wobble.";
     } else {
       $("hint").textContent =
-        "Feed treats or healthy meals, play Dumpster Dive, and scold him if he acts up.";
+        "Feed real forage or junk, run Dumpster Dive for exercise, scold when he digs in.";
     }
   }
 
   function openFeed() {
-    if (!state.alive || state.stage === "egg") return;
+    if (!state.alive || state.stage === "bush") return;
     $("feedModal").hidden = false;
   }
 
@@ -381,27 +657,32 @@
 
   function feed(foodKey) {
     const food = FOOD[foodKey];
-    if (!food || !state.alive) return;
+    if (!food || !state.alive || state.stage === "bush") return;
 
-    // Stubborn refusal of healthy meals
-    if (state.stubborn && food.type === "healthy") {
-      say("Nope! Paws crossed. He refuses the healthy meal.");
+    if (state.satiety >= 85) {
+      say("He turns his nose away — still digesting.");
       closeFeed();
       render();
       return;
     }
 
-    // Discipline-based refusal for healthy food
-    const refuseRoll = Math.random();
+    if (state.stubborn && food.type === "healthy") {
+      say(`Nope. He buries the ${food.name.toLowerCase()} under a leaf.`);
+      closeFeed();
+      render();
+      return;
+    }
+
     const disciplineFactor = (100 - state.discipline) / 100;
     if (
       food.type === "healthy" &&
-      refuseRoll < food.refuseChance * (0.45 + disciplineFactor)
+      Math.random() < food.refuse * (0.4 + disciplineFactor)
     ) {
       state.stubborn = true;
-      state.stubbornReason = "refuses healthy food";
+      state.stubbornReason = "refuses a proper meal";
       state.careMistakes += 1;
-      say(`Jimothy pushes away the ${food.name.toLowerCase()}!`);
+      say(`Jimothy bats the ${food.name.toLowerCase()} away!`);
+      pulseAnim("refuse");
       closeFeed();
       render();
       save();
@@ -411,25 +692,30 @@
     state.hunger = clamp(state.hunger + food.hunger);
     state.happy = clamp(state.happy + food.happy);
     state.health = clamp(state.health + food.health);
-    state.weight += food.type === "treat" ? 0.4 : 0.2;
+    state.fitness = clamp(state.fitness + food.fitness);
+    state.satiety = clamp(state.satiety + food.satiety);
+    state.weight += food.type === "treat" ? 0.35 : 0.15;
+    state.energy = clamp(state.energy + (food.type === "healthy" ? 4 : 1));
 
     if (food.type === "treat") {
       state.treatStreak += 1;
       if (state.treatStreak >= 4) {
         state.sick = true;
-        state.health = clamp(state.health - 10);
-        say("Too many treats… Jimothy looks green around the mask.");
+        state.health = clamp(state.health - 8);
+        say("Too much alley grease… he flops, queasy.");
       } else {
-        say(`Nom nom — ${food.name}!`);
+        say(`He stash-eats the ${food.name}.`);
+        pulseAnim("eat");
         bounceHappy();
       }
     } else {
       state.treatStreak = 0;
       state.healthyMeals += 1;
       state.careScore += 1;
-      state.sick = false;
-      state.discipline = clamp(state.discipline + 2);
-      say(`Crunch — ${food.name}. Good choice.`);
+      if (state.health > 40) state.sick = false;
+      state.discipline = clamp(state.discipline + 1.5);
+      say(`He forages the ${food.name} carefully.`);
+      pulseAnim("eat");
       bounceHappy();
     }
 
@@ -450,10 +736,11 @@
     if (!state.alive || !state.stubborn) return;
     state.stubborn = false;
     state.stubbornReason = "";
-    state.discipline = clamp(state.discipline + 12);
-    state.happy = clamp(state.happy - 6);
+    state.discipline = clamp(state.discipline + 10);
+    state.happy = clamp(state.happy - 5);
     state.careScore += 1;
-    say("Hey! Listen up, bandit. …okay, okay.");
+    say("A firm chitter. He listens… for now.");
+    pulseAnim("scold");
     render();
     save();
   }
@@ -461,34 +748,46 @@
   function clean() {
     if (!state.alive || !state.hasMess) return;
     state.hasMess = false;
-    state.happy = clamp(state.happy + 4);
-    state.health = clamp(state.health + 3);
+    state.happy = clamp(state.happy + 3);
+    state.health = clamp(state.health + 2);
     state.careScore += 1;
-    say("All tidy. Whiskers gleam.");
+    say("Nest cleared. He sniffs approval.");
     render();
     save();
   }
 
-  function openGame() {
-    if (!state.alive || state.stage === "egg") return;
-
-    if (state.stubborn && state.stubbornReason.includes("exercise")) {
-      say("He plants his paws. No dumpster diving until you scold him.");
+  function canStartPlay() {
+    if (!state.alive || state.stage === "bush" || state.stage === "baby") {
+      if (state.stage === "baby") {
+        say("Too tiny for a full dumpster run — let him wobble first.");
+      }
       render();
-      return;
+      return "blocked";
     }
-
-    // Chance to refuse play when discipline is low
-    if (!state.stubborn && state.discipline < 40 && Math.random() < 0.35) {
+    if (state.energy < 18) {
+      say("He’s wiped. Rest a bit, then try again.");
+      render();
+      return "tired";
+    }
+    if (state.stubborn && state.stubbornReason.includes("exercise")) {
+      say("He plants his paws. No night run until you scold him.");
+      render();
+      return "stubborn";
+    }
+    if (!state.stubborn && state.discipline < 35 && Math.random() < 0.3) {
       state.stubborn = true;
       state.stubbornReason = "refuses to exercise";
       state.careMistakes += 1;
-      say("Jimothy flops over. Absolutely not playing.");
+      say("He flops dramatically. Absolutely not chasing trash.");
       render();
       save();
-      return;
+      return "stubborn";
     }
+    return "ok";
+  }
 
+  function openGame() {
+    if (canStartPlay() !== "ok") return;
     $("gameModal").hidden = false;
     DumpsterDive.start(onGameDone);
   }
@@ -503,25 +802,32 @@
     if (!state.alive) return;
 
     if (!result.completed && result.score === 0) {
-      say("Maybe later, alley cat.");
+      say("He peeks from the alley and bails.");
       return;
     }
 
     state.playSessions += 1;
-    state.happy = clamp(state.happy + 10 + result.stars * 6);
-    state.hunger = clamp(state.hunger - 6);
-    state.health = clamp(state.health + 4 + result.stars);
-    state.discipline = clamp(state.discipline + 3);
+    const burn = 8 + result.stars * 3;
+    state.happy = clamp(state.happy + 8 + result.stars * 5);
+    state.hunger = clamp(state.hunger - burn * 0.7);
+    state.energy = clamp(state.energy - (20 + result.stars * 4));
+    state.health = clamp(state.health + 2 + result.stars);
+    state.fitness = clamp(state.fitness + 3 + result.stars * 2);
+    state.discipline = clamp(state.discipline + 2);
     state.careScore += result.stars > 0 ? 2 : 1;
-    state.weight = Math.max(1, state.weight - 0.15 * result.stars);
+    state.weight = Math.max(1, state.weight - 0.12 * result.stars);
+    state.genes.legginess = clamp(state.genes.legginess + result.stars * 0.01, 0, 1);
+
     bounceHappy();
-    say(
-      result.stars >= 3
-        ? "Legendary dive! Shiny treasures secured."
-        : result.stars >= 1
-          ? `Nice dive — score ${result.score}.`
-          : `A sleepy dive. Score ${result.score}.`
-    );
+    if (result.stars >= 3) {
+      say("A legendary night lope — treasure secured.");
+      pulseAnim("run");
+    } else if (result.stars >= 1) {
+      say(`Solid forage run. Score ${result.score}.`);
+      pulseAnim("walk");
+    } else {
+      say(`A sleepy shuffle. Score ${result.score}.`);
+    }
     render();
     save();
   }
@@ -534,8 +840,8 @@
     applyDecay(1);
     if (!state.alive) {
       showMessage(
-        "Jimothy wandered off…",
-        "Neglect, sickness, or empty meters sent him back to the woods. Start a new egg?"
+        "Gone to the night…",
+        "His cycle ended (lifespan or care). Start a new rustling bush?"
       );
       $("messageOk").dataset.reset = "1";
     }
@@ -581,34 +887,41 @@
     });
   }
 
+  function animLoop(now) {
+    const dt = Math.min(0.05, (now - lastAnimPulse) / 1000);
+    lastAnimPulse = now;
+    ambientAnim(dt);
+    if (window.RaccoonAnim) RaccoonAnim.tick(dt);
+    requestAnimationFrame(animLoop);
+  }
+
   function init() {
     wireIcons();
     bind();
-    load();
+    const hadSave = load();
+    if (!hadSave) {
+      resetDefaults();
+      say("A roadside bush shivers… something’s in there.");
+    }
     save({ touchTick: false });
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      say("A warm egg. Something wiggles inside…");
-    }
-    // Ensure adult name meta is correct after load
-    if (state.stage === "adult") {
-      STAGE_META.adult.name =
-        state.adultVariant === "noble" ? "Saint Jimothy" : "Legend Jimothy";
-    }
+    if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
     render();
     if (!state.alive) {
       showMessage(
-        "Jimothy wandered off…",
-        "Your last raccoon headed back to the woods. Start a new egg?"
+        "Gone to the night…",
+        "Jimothy finished his cryptid cycle. Start a new rustling bush?"
       );
       $("messageOk").dataset.reset = "1";
     }
     tickHandle = setInterval(onTick, TICK_MS);
+    lastAnimPulse = performance.now();
+    requestAnimationFrame(animLoop);
+
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
         save();
         return;
       }
-      // Returning from background / another app: catch up full real time.
       syncRealtime({ announceDeath: true });
       render();
       save();
@@ -629,7 +942,6 @@
 
   init();
 
-  // Lightweight debug hook for tests / tinkering in the console.
   window.JimothyDebug = {
     getState: () => ({ ...state }),
     setState: (partial) => {
@@ -644,5 +956,6 @@
       return elapsed;
     },
     reset: resetPet,
+    FOOD,
   };
 })();
