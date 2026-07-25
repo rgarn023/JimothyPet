@@ -115,14 +115,23 @@ var dev_mode: bool = false
 var dev_unlocked: bool = false
 ## Legacy master mute (kept for migration). Prefer ambience_muted / sfx_muted.
 var sound_muted: bool = false
-## When true, night ambience + owl accents are muted (persists).
-var ambience_muted: bool = false
+## Background ambience removed — always muted.
+var ambience_muted: bool = true
 ## When true, Jimothy raccoon SFX are muted (persists).
 var sfx_muted: bool = false
 ## When true, care notifications (hungry / play / acting up / waste) are allowed.
 var alerts_enabled: bool = false
 ## Last successful food key — used by eat animation prop.
 var last_fed_food: String = "berries"
+## Local wake hour 0–23.
+var wake_hour: int = 7
+## Local sleep hour 0–23.
+var sleep_hour: int = 22
+## False until the player confirms wake/sleep for this kit.
+var schedule_set: bool = false
+## Manual lights-off puts him to bed even outside sleep hours.
+var lights_off: bool = false
+var _was_sleeping: bool = false
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
@@ -211,9 +220,10 @@ func _reset_defaults() -> void:
 func reset_pet() -> void:
 	var keep_forms := forms_unlocked.duplicate(true)
 	var keep_mute := sound_muted
-	var keep_amb := ambience_muted
 	var keep_sfx := sfx_muted
 	var keep_alerts := alerts_enabled
+	var keep_wake := wake_hour
+	var keep_sleep := sleep_hour
 	# Dev unlock is session-only — do not carry cheats across a kit reset.
 	var keep_dev_unlocked := dev_unlocked
 	_reset_defaults()
@@ -221,13 +231,77 @@ func reset_pet() -> void:
 	dev_mode = false
 	dev_unlocked = keep_dev_unlocked
 	sound_muted = keep_mute
-	ambience_muted = keep_amb
+	ambience_muted = true
 	sfx_muted = keep_sfx
 	alerts_enabled = keep_alerts
+	wake_hour = keep_wake
+	sleep_hour = keep_sleep
+	schedule_set = false
+	lights_off = false
+	_was_sleeping = false
 	save_game()
 	speech.emit("A roadside bush shivers… something’s in there.")
 	stage_changed.emit(stage)
 	state_changed.emit()
+
+
+func is_in_sleep_window() -> bool:
+	if not schedule_set:
+		return false
+	var wake := ((wake_hour % 24) + 24) % 24
+	var sleep := ((sleep_hour % 24) + 24) % 24
+	if wake == sleep:
+		return false
+	var dt := Time.get_datetime_dict_from_system()
+	var h := float(dt.hour) + float(dt.minute) / 60.0
+	if sleep < wake:
+		return h >= float(sleep) or h < float(wake)
+	return h >= float(sleep) and h < float(wake)
+
+
+func is_sleeping() -> bool:
+	if not alive or ascending or stage == "bush":
+		return false
+	return lights_off or is_in_sleep_window()
+
+
+func set_schedule(wake: int, sleep: int) -> bool:
+	wake = ((wake % 24) + 24) % 24
+	sleep = ((sleep % 24) + 24) % 24
+	if wake == sleep:
+		return false
+	wake_hour = wake
+	sleep_hour = sleep
+	schedule_set = true
+	save_game()
+	state_changed.emit()
+	return true
+
+
+func toggle_lights() -> void:
+	if not alive or ascending or stage == "bush":
+		speech.emit("Nothing to light yet.")
+		return
+	lights_off = not lights_off
+	if lights_off:
+		speech.emit("Lights out. He’s settling in…")
+		anim_impulse.emit("fallAsleep")
+	elif is_in_sleep_window():
+		speech.emit("Lights on — but it’s still his sleep hours.")
+	else:
+		speech.emit("Lights on. He’s waking up.")
+		anim_impulse.emit("stretch")
+	save_game()
+	state_changed.emit()
+
+
+func sync_sleep_transition() -> void:
+	var sleeping := is_sleeping()
+	if sleeping and not _was_sleeping and alive and not ascending:
+		anim_impulse.emit("fallAsleep")
+	elif not sleeping and _was_sleeping and alive and not ascending:
+		anim_impulse.emit("stretch")
+	_was_sleeping = sleeping
 
 
 func unlock_current_form() -> void:
@@ -784,6 +858,9 @@ func form_profile() -> Dictionary:
 		"adult_form": adult_form,
 		"genes": genes.duplicate(),
 		"fitness": fitness,
+		"sleeping": is_sleeping(),
+		"sick": sick and alive and not ascending,
+		"stubborn": stubborn and alive and not ascending and not sick,
 	}
 
 
@@ -907,6 +984,13 @@ func interact_tap() -> String:
 		anim_impulse.emit("rustle")
 		state_changed.emit()
 		return "rustle"
+
+	if is_sleeping():
+		var lines := ["zzz…", "Soft snuffles.", "He’s deep in a nest nap."]
+		speech.emit(lines[randi() % lines.size()])
+		anim_impulse.emit("sleep")
+		state_changed.emit()
+		return "sleep"
 
 	var kind := "smile"
 	var roll := randf()
@@ -1064,6 +1148,11 @@ func apply_dice_result(correct: bool, roll: int) -> void:
 func _pulse_ambient_anim() -> void:
 	# Skip while a care animation (especially slow eat) should stay visible.
 	# Cooldown is also stretched when eat is emitted.
+	sync_sleep_transition()
+	if is_sleeping():
+		_anim_cooldown = randf_range(3.5, 6.0)
+		anim_impulse.emit("sleep")
+		return
 	if stubborn or sick:
 		_anim_cooldown = randf_range(2.2, 3.6)
 		anim_impulse.emit("stubborn" if stubborn else "sick")
@@ -1130,9 +1219,13 @@ func to_dict() -> Dictionary:
 		"forms_unlocked": forms_unlocked,
 		"dev_mode": false,
 		"sound_muted": sound_muted,
-		"ambience_muted": ambience_muted,
+		"ambience_muted": true,
 		"sfx_muted": sfx_muted,
 		"alerts_enabled": alerts_enabled,
+		"wake_hour": wake_hour,
+		"sleep_hour": sleep_hour,
+		"schedule_set": schedule_set,
+		"lights_off": lights_off,
 	}
 
 
@@ -1191,14 +1284,13 @@ func from_dict(d: Dictionary) -> void:
 	dev_mode = false
 	dev_unlocked = false
 	sound_muted = bool(d.get("sound_muted", false))
-	var has_split := d.has("ambience_muted") or d.has("sfx_muted")
-	ambience_muted = bool(d.get("ambience_muted", sound_muted))
+	ambience_muted = true
 	sfx_muted = bool(d.get("sfx_muted", sound_muted))
-	# Old saves only stored sound_muted — treat as both muted when true.
-	if sound_muted and not has_split:
-		ambience_muted = true
-		sfx_muted = true
 	alerts_enabled = bool(d.get("alerts_enabled", false))
+	wake_hour = int(d.get("wake_hour", 7))
+	sleep_hour = int(d.get("sleep_hour", 22))
+	schedule_set = bool(d.get("schedule_set", false))
+	lights_off = bool(d.get("lights_off", false))
 	# Dead / mid-ascension saves resume as a finished life — main starts a new bush.
 	if not alive:
 		ascending = false

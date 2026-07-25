@@ -298,6 +298,63 @@ def crunch() -> list[float]:
     return fade(parts, 0.002, 0.045)
 
 
+def chew() -> list[float]:
+    """Longer munching loop for the eat animation (~2.6s)."""
+    parts: list[float] = []
+    for bite in range(14):
+        cn = int(rng.uniform(0.012, 0.028) * SR)
+        crack = highpass(noise(cn, 1.0), 0.58)
+        crack = [c * (1 - i / cn) ** 0.5 * 0.7 for i, c in enumerate(crack)]
+        wn = int(rng.uniform(0.05, 0.1) * SR)
+        wet = bandpass(noise(wn, 0.8), 0.1, 0.4)
+        for i in range(wn):
+            t = i / SR
+            env = math.sin(math.pi * i / max(1, wn - 1))
+            wet[i] *= env * (0.4 + 0.6 * math.sin(2 * math.pi * 22 * t))
+            wet[i] += 0.12 * sine(150 + (bite % 4) * 20, t) * env
+        parts.extend(fade(crack, 0.001, 0.007))
+        parts.extend(fade(wet, 0.003, 0.02))
+        parts.extend([0.0] * int(rng.uniform(0.035, 0.07) * SR))
+    return fade(parts, 0.004, 0.08)
+
+
+def raccoon_cry(dur: float = 5.0) -> list[float]:
+    """Whiny raccoon crying / fussing for ~5 seconds when acting up."""
+    n = int(dur * SR)
+    out = [0.0] * n
+    t = 0.0
+    while t < dur - 0.15:
+        note_dur = rng.uniform(0.18, 0.42)
+        f0 = rng.uniform(420, 780)
+        wobble = rng.uniform(18, 55)
+        amp = rng.uniform(0.16, 0.28)
+        start = int(t * SR)
+        nn = int(note_dur * SR)
+        for i in range(nn):
+            if start + i >= n:
+                break
+            u = i / max(1, nn - 1)
+            env = (math.sin(math.pi * u) ** 1.1) * (0.7 + 0.3 * (1 - u))
+            tt = i / SR
+            f = f0 * (1.0 - 0.18 * u) + wobble * math.sin(2 * math.pi * 7 * tt)
+            v = (
+                0.55 * sine(f, tt)
+                + 0.28 * sine(f * 1.98, tt)
+                + 0.12 * sine(f * 3.05, tt)
+            )
+            # Nasal rasp
+            v += rng.uniform(-1, 1) * 0.06 * env
+            out[start + i] += v * env * amp
+        t += note_dur + rng.uniform(0.04, 0.14)
+    # Soft sob bed under the cries
+    bed = bandpass(noise(n, 0.2), 0.05, 0.2)
+    for i in range(n):
+        u = i / max(1, n - 1)
+        env = math.sin(math.pi * u) ** 0.7
+        out[i] = out[i] * 0.92 + bed[i] * 0.12 * env
+    return fade(out, 0.02, 0.18)
+
+
 def ascend() -> list[float]:
     n = int(3.0 * SR)
     out = []
@@ -352,6 +409,8 @@ def main() -> None:
         "grumble.wav": grumble(),
         "rustle.wav": rustle(),
         "crunch.wav": crunch(),
+        "chew.wav": chew(),
+        "cry.wav": raccoon_cry(5.0),
         "ascend.wav": ascend(),
         "hoot.wav": soft_hoot(),
     }

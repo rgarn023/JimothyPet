@@ -28,8 +28,8 @@ var btn_feed: Button
 var btn_play: Button
 var btn_scold: Button
 var btn_heal: Button
-var btn_ambience: Button
 var btn_sfx: Button
+var btn_lights: Button
 @onready var utility_row: HBoxContainer = $Margin/VBox/UtilityRow
 @onready var brand_label: Label = $Margin/VBox/Brand
 @onready var feed_panel: Control = %FeedPanel
@@ -38,10 +38,13 @@ var btn_sfx: Button
 @onready var message_body: Label = %MessageBody
 @onready var dumpster: Control = %DumpsterDive
 @onready var btn_message_ok: Button = %BtnMessageOk
+@onready var device_panel: PanelContainer = $Margin/VBox/Device
+@onready var screen_panel: PanelContainer = $Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen
 
 var btn_dev: Button
 var _speech_timer: SceneTreeTimer
 var _awaiting_new_kit: bool = false
+var _open_schedule_after_message: bool = false
 var _forms_panel: ColorRect
 var _forms_list: VBoxContainer
 var _dev_panel: ColorRect
@@ -53,10 +56,15 @@ var _reset_panel: ColorRect
 var _action_panel: ColorRect
 var _sound_panel: ColorRect
 var _settings_panel: ColorRect
+var _schedule_panel: ColorRect
+var _wake_option: OptionButton
+var _sleep_option: OptionButton
+var _lights_dim: ColorRect
 var _brand_tap_times: Array[float] = []
 
 
 func _ready() -> void:
+	_make_panels_transparent()
 	PetState.state_changed.connect(_refresh)
 	PetState.speech.connect(_on_speech)
 	PetState.pet_died.connect(_on_pet_died)
@@ -76,6 +84,7 @@ func _ready() -> void:
 	_build_action_panel()
 	_build_sound_panel()
 	_build_settings_panel()
+	_build_schedule_panel()
 	_wire_brand_secret()
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
@@ -83,6 +92,25 @@ func _ready() -> void:
 	# Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
 	if not PetState.alive:
 		_start_next_kit_after_ascension()
+	elif not PetState.schedule_set:
+		_open_schedule_panel()
+
+
+func _make_panels_transparent() -> void:
+	var empty := StyleBoxEmpty.new()
+	if device_panel:
+		device_panel.add_theme_stylebox_override("panel", empty)
+	if screen_panel:
+		screen_panel.add_theme_stylebox_override("panel", empty)
+	# Soft sleep dim over the stage
+	_lights_dim = ColorRect.new()
+	_lights_dim.name = "LightsDim"
+	_lights_dim.color = Color(0.02, 0.03, 0.06, 0.0)
+	_lights_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lights_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if screen_panel:
+		screen_panel.add_child(_lights_dim)
+		screen_panel.move_child(_lights_dim, 0)
 
 
 func _process(_delta: float) -> void:
@@ -612,6 +640,12 @@ func _build_action_panel() -> void:
 	btn_clean.pressed.connect(_on_clean_pressed)
 	vbox.add_child(btn_clean)
 
+	btn_lights = Button.new()
+	btn_lights.text = "Lights: On"
+	btn_lights.tooltip_text = "Dim the nest and put Jimothy to bed"
+	btn_lights.pressed.connect(_on_lights_pressed)
+	vbox.add_child(btn_lights)
+
 	var close := Button.new()
 	close.text = "Close"
 	close.pressed.connect(func(): _action_panel.visible = false)
@@ -625,7 +659,7 @@ func _build_settings_panel() -> void:
 
 	btn_sound = Button.new()
 	btn_sound.text = "Sound"
-	btn_sound.tooltip_text = "Background and Jimothy sounds"
+	btn_sound.tooltip_text = "Jimothy sounds"
 	btn_sound.pressed.connect(_on_sound_pressed)
 	vbox.add_child(btn_sound)
 
@@ -652,18 +686,12 @@ func _build_sound_panel() -> void:
 	var vbox: VBoxContainer = built.vbox
 
 	var copy := Label.new()
-	copy.text = "Toggle background ambience and Jimothy’s raccoon sounds."
+	copy.text = "Toggle Jimothy’s raccoon sounds."
 	copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_theme_color_override("font_color", Color("9aab9c"))
 	copy.add_theme_font_size_override("font_size", 13)
 	vbox.add_child(copy)
-
-	btn_ambience = Button.new()
-	btn_ambience.text = "BG: On"
-	btn_ambience.tooltip_text = "Night background ambience"
-	btn_ambience.pressed.connect(_on_ambience_pressed)
-	vbox.add_child(btn_ambience)
 
 	btn_sfx = Button.new()
 	btn_sfx.text = "Jimothy: On"
@@ -675,6 +703,89 @@ func _build_sound_panel() -> void:
 	close.text = "Close"
 	close.pressed.connect(func(): _sound_panel.visible = false)
 	vbox.add_child(close)
+
+
+func _hour_label(h: int) -> String:
+	var hr := ((h % 24) + 24) % 24
+	var suffix := "PM" if hr >= 12 else "AM"
+	var twelve := 12 if hr % 12 == 0 else hr % 12
+	return "%d:00 %s" % [twelve, suffix]
+
+
+func _build_schedule_panel() -> void:
+	var built := _build_menu_panel("Jimothy’s schedule")
+	_schedule_panel = built.dim
+	var vbox: VBoxContainer = built.vbox
+
+	var copy := Label.new()
+	copy.text = "Set when he wakes and when he sleeps. He’ll doze during sleep hours."
+	copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_theme_color_override("font_color", Color("9aab9c"))
+	copy.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(copy)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	vbox.add_child(row)
+
+	var wake_box := VBoxContainer.new()
+	var wake_l := Label.new()
+	wake_l.text = "Wake"
+	wake_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wake_box.add_child(wake_l)
+	_wake_option = OptionButton.new()
+	for h in 24:
+		_wake_option.add_item(_hour_label(h), h)
+	wake_box.add_child(_wake_option)
+	row.add_child(wake_box)
+
+	var sleep_box := VBoxContainer.new()
+	var sleep_l := Label.new()
+	sleep_l.text = "Sleep"
+	sleep_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sleep_box.add_child(sleep_l)
+	_sleep_option = OptionButton.new()
+	for h in 24:
+		_sleep_option.add_item(_hour_label(h), h)
+	sleep_box.add_child(_sleep_option)
+	row.add_child(sleep_box)
+
+	var save_btn := Button.new()
+	save_btn.text = "Save schedule"
+	save_btn.pressed.connect(_on_schedule_save)
+	vbox.add_child(save_btn)
+
+
+func _open_schedule_panel() -> void:
+	if _wake_option:
+		_wake_option.select(PetState.wake_hour)
+	if _sleep_option:
+		_sleep_option.select(PetState.sleep_hour)
+	if _schedule_panel:
+		_schedule_panel.visible = true
+
+
+func _on_schedule_save() -> void:
+	var wake := _wake_option.get_selected_id() if _wake_option else 7
+	var sleep := _sleep_option.get_selected_id() if _sleep_option else 22
+	if not PetState.set_schedule(wake, sleep):
+		PetState.speech.emit("Wake and sleep can’t be the same hour.")
+		return
+	if _schedule_panel:
+		_schedule_panel.visible = false
+	PetState.speech.emit(
+		"Schedule set — wakes %s, sleeps %s." % [_hour_label(wake), _hour_label(sleep)]
+	)
+	_refresh()
+
+
+func _on_lights_pressed() -> void:
+	if _action_panel:
+		_action_panel.visible = false
+	PetState.toggle_lights()
+	_refresh()
 
 
 func _refresh() -> void:
@@ -689,11 +800,19 @@ func _refresh() -> void:
 	var mood := "idle"
 	if PetState.ascending:
 		mood = "ascend"
+	elif PetState.is_sleeping():
+		mood = "sleep"
 	elif PetState.sick:
 		mood = "sick"
 	elif PetState.stubborn:
 		mood = "stubborn"
 	raccoon.set_look(PetState.stage, PetState.adult_form, mood)
+	if btn_lights:
+		btn_lights.text = "Lights: Off" if PetState.lights_off else "Lights: On"
+	if _lights_dim:
+		var dim_a := 0.72 if PetState.is_sleeping() else (0.55 if PetState.lights_off else 0.0)
+		_lights_dim.color = Color(0.02, 0.03, 0.06, dim_a)
+	PetState.sync_sleep_transition()
 	if mess_mark and mess_mark.has_method("set_pile_count"):
 		var piles := PetState.mess_count if PetState.alive and not PetState.ascending else 0
 		mess_mark.set_pile_count(piles)
@@ -732,6 +851,12 @@ func _refresh() -> void:
 		hint_label.text = "Tap the bush — it rustles. Something’s waking…"
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
+	elif PetState.is_sleeping():
+		hint_label.text = (
+			"Lights out — Jimothy is sleeping. Action → Lights to wake the nest."
+			if PetState.lights_off
+			else "Sleep hours — Jimothy is dozing. He’ll wake at his wake time."
+		)
 	elif PetState.sick:
 		hint_label.text = "He’s under the weather — open Action → Heal."
 	elif PetState.stubborn:
@@ -809,6 +934,7 @@ func _start_next_kit_after_ascension() -> void:
 	if raccoon.has_method("clear_ascend"):
 		raccoon.clear_ascend()
 	_awaiting_new_kit = false
+	_open_schedule_after_message = true
 	_refresh()
 	_show_message(
 		"Jimothy ascended",
@@ -826,28 +952,13 @@ func _show_message(title: String, body: String) -> void:
 
 
 func _refresh_sound_buttons() -> void:
-	var bg_on := true
 	var sfx_on := true
 	if JimothyAudio:
-		bg_on = JimothyAudio.ambience_on
 		sfx_on = JimothyAudio.sfx_on
 	elif PetState:
-		bg_on = not PetState.ambience_muted
 		sfx_on = not PetState.sfx_muted
-	if btn_ambience:
-		btn_ambience.text = "BG: On" if bg_on else "BG: Off"
 	if btn_sfx:
 		btn_sfx.text = "Jimothy: On" if sfx_on else "Jimothy: Off"
-
-
-func _on_ambience_pressed() -> void:
-	if JimothyAudio:
-		JimothyAudio.set_ambience_enabled(not JimothyAudio.ambience_on)
-	elif PetState:
-		PetState.ambience_muted = not PetState.ambience_muted
-		PetState.sound_muted = PetState.ambience_muted and PetState.sfx_muted
-		PetState.save_game()
-	_refresh_sound_buttons()
 
 
 func _on_sfx_pressed() -> void:
@@ -918,6 +1029,7 @@ func _confirm_reset() -> void:
 		raccoon.clear_ascend()
 	PetState.reset_pet()
 	_refresh()
+	_open_schedule_panel()
 
 
 func _on_dev_pressed() -> void:
@@ -1081,3 +1193,6 @@ func _on_message_ok() -> void:
 		_awaiting_new_kit = false
 		PetState.reset_pet()
 		_refresh()
+	if _open_schedule_after_message or not PetState.schedule_set:
+		_open_schedule_after_message = false
+		_open_schedule_panel()

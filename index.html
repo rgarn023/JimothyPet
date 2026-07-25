@@ -125,6 +125,10 @@
             <span class="menu-icon" aria-hidden="true"></span>
             <span>Clean</span>
           </button>
+          <button type="button" class="menu-btn" id="btnLights" title="Dim the nest and put Jimothy to bed">
+            <span class="menu-icon" aria-hidden="true"></span>
+            <span>Lights: On</span>
+          </button>
         </div>
         <button type="button" class="modal-close" id="actionClose">Close</button>
       </div>
@@ -134,7 +138,7 @@
       <div class="modal-card compact" role="dialog" aria-labelledby="settingsTitle">
         <h2 id="settingsTitle">Settings</h2>
         <div class="menu-list">
-          <button type="button" class="menu-btn" id="btnSound" title="Background and Jimothy sounds">Sound</button>
+          <button type="button" class="menu-btn" id="btnSound" title="Jimothy sounds">Sound</button>
           <button type="button" class="menu-btn" id="btnAlerts" aria-pressed="false" title="Care notifications">Alerts: Off</button>
           <button type="button" class="menu-btn danger-text" id="btnReset" title="Start a new bush (keeps unlocked forms)">Reset</button>
         </div>
@@ -145,12 +149,29 @@
     <div class="modal" id="soundModal" hidden>
       <div class="modal-card compact" role="dialog" aria-labelledby="soundTitle">
         <h2 id="soundTitle">Sound</h2>
-        <p class="modal-copy">Toggle background ambience and Jimothy’s raccoon sounds.</p>
+        <p class="modal-copy">Toggle Jimothy’s raccoon sounds.</p>
         <div class="menu-list">
-          <button type="button" class="menu-btn" id="btnAmbience" aria-pressed="true" title="Night background ambience">BG: On</button>
           <button type="button" class="menu-btn" id="btnSfx" aria-pressed="true" title="Jimothy raccoon sounds">Jimothy: On</button>
         </div>
         <button type="button" class="modal-close" id="soundClose">Close</button>
+      </div>
+    </div>
+
+    <div class="modal" id="scheduleModal" hidden>
+      <div class="modal-card compact" role="dialog" aria-labelledby="scheduleTitle">
+        <h2 id="scheduleTitle">Jimothy’s schedule</h2>
+        <p class="modal-copy">Set when he wakes and when he sleeps. He’ll doze during sleep hours.</p>
+        <div class="schedule-fields">
+          <label class="schedule-field">
+            <span>Wake</span>
+            <select id="wakeHourSelect" aria-label="Wake hour"></select>
+          </label>
+          <label class="schedule-field">
+            <span>Sleep</span>
+            <select id="sleepHourSelect" aria-label="Sleep hour"></select>
+          </label>
+        </div>
+        <button type="button" class="primary-btn" id="scheduleSave">Save schedule</button>
       </div>
     </div>
 

@@ -168,7 +168,11 @@ const RaccoonArt = (() => {
     return "";
   }
 
-  function sideEye(x, y, r, smiling, gleam = "#faf6ec", sick = false, stubborn = false) {
+  function sideEye(x, y, r, smiling, gleam = "#faf6ec", sick = false, stubborn = false, sleeping = false) {
+    if (sleeping) {
+      return `<path d="M${x - r * 1.15} ${y} Q${x} ${y + r * 0.55} ${x + r * 1.15} ${y}"
+        fill="none" stroke="#2a2a32" stroke-width="1.8" stroke-linecap="round"/>`;
+    }
     if (sick) {
       return `
         <ellipse cx="${x}" cy="${y}" rx="${r * 1.2}" ry="${r * 0.52}" fill="${gleam}"/>
@@ -343,7 +347,7 @@ const RaccoonArt = (() => {
   }
 
   /** Side-profile baby kit — round potato facing right. */
-  function baby(genes, smiling = false, sick = false, stubborn = false) {
+  function baby(genes, smiling = false, sick = false, stubborn = false, sleeping = false) {
     const color = moodFur(formFur("baby", "", genes), sick, stubborn);
     const belly = lighten(color, 0.18);
     return svg(`
@@ -357,12 +361,12 @@ const RaccoonArt = (() => {
       <ellipse cx="74" cy="54" rx="5" ry="7" fill="#4a4a54"/>
       <ellipse cx="74" cy="54" rx="2.5" ry="4" fill="#e2cdb2"/>
       <ellipse cx="78" cy="66" rx="9" ry="6" fill="#2a2a32"/>
-      ${sideEye(82, 65, 2.4, smiling, "#faf6ec", sick, stubborn)}
-      ${sick ? sickMarks(82, 65, true) : stubborn ? stubbornMarks(82, 65, true) : ""}
+      ${sideEye(82, 65, 2.4, smiling, "#faf6ec", sick, stubborn, sleeping)}
+      ${!sleeping && sick ? sickMarks(82, 65, true) : !sleeping && stubborn ? stubbornMarks(82, 65, true) : ""}
     `);
   }
 
-  function young(genes, form, smiling = false, sick = false, stubborn = false) {
+  function young(genes, form, smiling = false, sick = false, stubborn = false, sleeping = false) {
     const color = moodFur(formFur("young", form, genes), sick, stubborn);
     const belly = lighten(color, 0.2);
     let bodyRx = 28;
@@ -396,12 +400,12 @@ const RaccoonArt = (() => {
         <ellipse cx="62" cy="72" rx="16" ry="11" fill="${belly}" opacity="0.65"/>
       `;
     } else if (form === "looper") {
-      bodyRx = 26;
-      bodyRy = 16;
-      bodyY = 58;
-      legH = 32;
+      bodyRx = 28;
+      bodyRy = 22;
+      bodyY = 60;
+      legH = 26;
       headX = 86;
-      headR = 13;
+      headR = 14;
       frontX = 76;
       backX = 44;
       extraLegs = true;
@@ -410,10 +414,10 @@ const RaccoonArt = (() => {
         <ellipse cx="64" cy="62" rx="12" ry="7" fill="${belly}" opacity="0.45"/>
       `;
     } else if (form === "shadow") {
-      bodyRx = 30;
-      bodyRy = 18;
-      bodyY = 68;
-      legH = 18;
+      bodyRx = 32;
+      bodyRy = 24;
+      bodyY = 66;
+      legH = 16;
       headX = 88;
       wings = formWings("bat", 58, bodyY - 4, "#1a1a22");
       accent = `
@@ -463,12 +467,12 @@ const RaccoonArt = (() => {
       <ellipse cx="${headX}" cy="${bodyY - 2}" rx="${headR * 0.75}" ry="${headR * 0.55}" fill="${
       form === "shadow" ? "#121218" : "#2a2a32"
     }" opacity="${form === "shadow" ? 0.95 : 0.85}"/>
-      ${sideEye(headX + 2, bodyY - 4, form === "shadow" ? 3.2 : 2.8, smiling, eyeGleam, sick, stubborn)}
-      ${sick ? sickMarks(headX + 2, bodyY - 4, true) : stubborn ? stubbornMarks(headX + 2, bodyY - 4, true) : ""}
+      ${sideEye(headX + 2, bodyY - 4, form === "shadow" ? 3.2 : 2.8, smiling, eyeGleam, sick, stubborn, sleeping)}
+      ${!sleeping && sick ? sickMarks(headX + 2, bodyY - 4, true) : !sleeping && stubborn ? stubbornMarks(headX + 2, bodyY - 4, true) : ""}
     `);
   }
 
-  function teen(genes, form, smiling = false, sick = false, stubborn = false) {
+  function teen(genes, form, smiling = false, sick = false, stubborn = false, sleeping = false) {
     const color = moodFur(formFur("teen", form, genes), sick, stubborn);
     const belly = lighten(color, 0.18);
     let bodyRx = 32;
@@ -497,10 +501,10 @@ const RaccoonArt = (() => {
       `;
       tail = `<ellipse cx="32" cy="68" rx="9" ry="7" fill="${lighten(color, 0.05)}"/>`;
     } else if (form === "bounder") {
-      bodyRx = 28;
-      bodyRy = 18;
-      bodyY = 54;
-      legH = 36;
+      bodyRx = 32;
+      bodyRy = 24;
+      bodyY = 56;
+      legH = 28;
       backX = 42;
       frontX = 76;
       extraLegs = true;
@@ -510,11 +514,11 @@ const RaccoonArt = (() => {
       `;
     } else if (form === "nightlane") {
       bodyRx = 34;
-      bodyRy = 18;
-      bodyY = 64;
-      legH = 22;
+      bodyRy = 24;
+      bodyY = 62;
+      legH = 18;
       headX = 94;
-      headR = 14;
+      headR = 15;
       wings = formWings("moth", 62, bodyY - 6, "#2a3048");
       accent = `
         <ellipse cx="70" cy="60" rx="20" ry="8" fill="#101018" opacity="0.45"/>
@@ -542,8 +546,8 @@ const RaccoonArt = (() => {
     const earY = bodyY - headR - 2;
     const gleam = form === "nightlane" ? "#d8e4f8" : "#faf6ec";
     const eye =
-      sick || stubborn
-        ? sideEye(headX + 2, bodyY - 3, form === "nightlane" ? 3.4 : 3, false, gleam, sick, stubborn)
+      sleeping || sick || stubborn
+        ? sideEye(headX + 2, bodyY - 3, form === "nightlane" ? 3.4 : 3, false, gleam, sick, stubborn, sleeping)
         : form === "dumpling" && !smiling
           ? `<path d="M${headX - 2} ${bodyY - 2} Q${headX + 2} ${bodyY - 5} ${headX + 6} ${
               bodyY - 2
@@ -571,11 +575,11 @@ const RaccoonArt = (() => {
       form === "nightlane" ? "#0e1018" : "#2a2a32"
     }" opacity="0.9"/>
       ${eye}
-      ${sick ? sickMarks(headX + 2, bodyY - 3, true) : stubborn ? stubbornMarks(headX + 2, bodyY - 3, true) : ""}
+      ${!sleeping && sick ? sickMarks(headX + 2, bodyY - 3, true) : !sleeping && stubborn ? stubbornMarks(headX + 2, bodyY - 3, true) : ""}
     `);
   }
 
-  function adult(genes, form, smiling = false, sick = false, stubborn = false) {
+  function adult(genes, form, smiling = false, sick = false, stubborn = false, sleeping = false) {
     // Short-spine Jimothy in profile: fused head/body potato + stilts, facing right.
     const color = moodFur(formFur("adult", form, genes), sick, stubborn);
     const belly = lighten(color, 0.16);
@@ -606,9 +610,9 @@ const RaccoonArt = (() => {
       `;
       earExtra = `<ellipse cx="78" cy="26" rx="6" ry="10" fill="#4a4a54"/><ellipse cx="78" cy="26" rx="3" ry="5.5" fill="#e2cdb2"/>`;
     } else if (form === "legend") {
-      bodyRx = 34;
-      bodyRy = 30;
-      legH = 42;
+      bodyRx = 36;
+      bodyRy = 34;
+      legH = 34;
       crown = trashCrown("gold", 78, bodyY - bodyRy + 4);
       accent = `
         <path d="M72 40 L98 48 L74 56 Z" fill="#e0a04a"/>
@@ -619,8 +623,8 @@ const RaccoonArt = (() => {
       earExtra = `<ellipse cx="76" cy="24" rx="7" ry="12" fill="#4a4a54"/><ellipse cx="76" cy="24" rx="3.2" ry="6" fill="#e2cdb2"/>`;
     } else if (form === "alley_ghost") {
       bodyRx = 38;
-      bodyRy = 28;
-      legH = 40;
+      bodyRy = 34;
+      legH = 32;
       snout = "#b8c4d4";
       eyeGleam = "#e8f0ff";
       wings = formWings("ghost", 64, bodyY);
@@ -671,8 +675,8 @@ const RaccoonArt = (() => {
       <ellipse cx="78" cy="${bodyY}" rx="18" ry="12" fill="${
       form === "alley_ghost" ? "#3a4250" : "#1c1c22"
     }" opacity="0.88"/>
-      ${sideEye(84, bodyY - 2, 4.2, smiling, eyeGleam, sick, stubborn)}
-      ${sick ? sickMarks(84, bodyY - 2, true) : stubborn ? stubbornMarks(84, bodyY - 2, true) : ""}
+      ${sideEye(84, bodyY - 2, 4.2, smiling, eyeGleam, sick, stubborn, sleeping)}
+      ${!sleeping && sick ? sickMarks(84, bodyY - 2, true) : !sleeping && stubborn ? stubbornMarks(84, bodyY - 2, true) : ""}
       ${whisk}
       <path d="M40 56 h-8 M40 60 h-7" stroke="#d0d0d8" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
     `);
@@ -737,8 +741,14 @@ const RaccoonArt = (() => {
     return "";
   }
 
-  function frontEyes(cx, cy, r, smiling, gleam = "#faf6ec", sick = false, stubborn = false) {
+  function frontEyes(cx, cy, r, smiling, gleam = "#faf6ec", sick = false, stubborn = false, sleeping = false) {
     const gap = r * 2.2;
+    if (sleeping) {
+      return `
+        <path d="M${cx - gap - r} ${cy} Q${cx - gap} ${cy + r * 0.55} ${cx - gap + r} ${cy}" fill="none" stroke="#2a2a32" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M${cx + gap - r} ${cy} Q${cx + gap} ${cy + r * 0.55} ${cx + gap + r} ${cy}" fill="none" stroke="#2a2a32" stroke-width="1.8" stroke-linecap="round"/>
+      `;
+    }
     if (sick) {
       return `
         <ellipse cx="${cx - gap}" cy="${cy}" rx="${r * 1.15}" ry="${r * 0.5}" fill="${gleam}"/>
@@ -780,7 +790,7 @@ const RaccoonArt = (() => {
   }
 
   /** Front-facing Jimothy — looks at the player / screen. */
-  function frontCreature(stage, form, genes, smiling = false, sick = false, stubborn = false) {
+  function frontCreature(stage, form, genes, smiling = false, sick = false, stubborn = false, sleeping = false) {
     const color = moodFur(formFur(stage, form || "", genes), sick, stubborn);
     const belly = lighten(color, 0.2);
     let bodyRx = 30;
@@ -835,25 +845,29 @@ const RaccoonArt = (() => {
         wings = frontWings("bat", bodyY - 4);
       } else if (form === "looper") {
         extraLegs = true;
-        legH = 28;
+        bodyRx = 30;
+        bodyRy = 28;
+        legH = 22;
         accent = `<ellipse cx="42" cy="58" rx="6" ry="4" fill="${lighten(color, 0.1)}" opacity="0.5"/>`;
       } else if (form === "nub") {
         legH = 14;
         crown = trashCrown("bottlecap", 60, headY - headR + 2);
       }
     } else if (stage === "teen") {
-      bodyRx = 30;
-      bodyRy = 28;
+      bodyRx = 32;
+      bodyRy = 30;
       bodyY = 60;
       headR = 20;
       headY = 44;
-      legH = 24;
+      legH = 22;
       if (form === "dumpling") {
         bodyRx = 36;
         bodyRy = 34;
         legH = 12;
       } else if (form === "bounder") {
-        legH = 32;
+        bodyRx = 32;
+        bodyRy = 30;
+        legH = 26;
         extraLegs = true;
       } else if (form === "nightlane") {
         mask = "#0e1018";
@@ -927,12 +941,12 @@ const RaccoonArt = (() => {
       <ellipse cx="70" cy="${earY}" rx="${earRx * 0.45}" ry="${earRy * 0.55}" fill="#e2cdb2"/>
       ${crown}
       <ellipse cx="60" cy="${headY + 2}" rx="${headR * 0.72}" ry="${headR * 0.42}" fill="${mask}" opacity="0.9"/>
-      ${frontEyes(60, headY + 1, stage === "baby" ? 2.6 : stage === "adult" ? 3.6 : 3.1, smiling, gleam, sick, stubborn)}
+      ${frontEyes(60, headY + 1, stage === "baby" ? 2.6 : stage === "adult" ? 3.6 : 3.1, smiling, gleam, sick, stubborn, sleeping)}
       <ellipse cx="60" cy="${headY + headR * 0.42}" rx="${headR * 0.28}" ry="${headR * 0.18}" fill="${snout}"/>
       <circle cx="60" cy="${headY + headR * 0.32}" r="1.6" fill="#2a2a32"/>
-      ${sick ? sickMarks(60, headY) : stubborn ? stubbornMarks(60, headY) : ""}
+      ${!sleeping && sick ? sickMarks(60, headY) : !sleeping && stubborn ? stubbornMarks(60, headY) : ""}
       <path d="M42 ${headY + 4} h-8 M42 ${headY + 8} h-6 M78 ${headY + 4} h8 M78 ${headY + 8} h6"
-        stroke="#d0d0d8" stroke-width="1.1" stroke-linecap="round" opacity="0.45"/>
+        stroke="#d0d0d8" stroke-width="1.1" stroke-linecap="round" opacity="${sleeping ? 0.2 : 0.45}"/>
     `.replace("FORM", formId || ""));
   }
 
@@ -942,6 +956,7 @@ const RaccoonArt = (() => {
     scold: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 14V8a4 4 0 018 0v6" stroke="currentColor" stroke-width="2"/><path d="M2 14h12v2a4 4 0 01-4 4H6a4 4 0 01-4-4v-2z" stroke="currentColor" stroke-width="2"/><path d="M16 8c2 1.5 3 3.5 3 6M19 6c2.5 2 4 5 4 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
     clean: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v6M8 5l8 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 11h10l-1.5 9h-7L7 11z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
     heal: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>`,
+    lights: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18h6M10 21h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 3a6 6 0 016 6c0 2.2-1.2 3.8-2.4 5H8.4C7.2 12.8 6 11.2 6 9a6 6 0 016-6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
     action: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="3" y="13" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="13" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/></svg>`,
     berries: `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="18" r="6" fill="#5a4a8a"/><circle cx="20" cy="16" r="6" fill="#6b5aa0"/><circle cx="16" cy="22" r="5.5" fill="#4a3a72"/><path d="M16 8c0 4-2 6-4 7" stroke="#3d6b4f" stroke-width="2" fill="none"/><ellipse cx="18" cy="8" rx="4" ry="2" fill="#6fbf84"/></svg>`,
     crickets: `<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="10" ry="5" fill="#6fbf84"/><ellipse cx="22" cy="16" rx="4" ry="3" fill="#548a62"/><path d="M8 16c-3-4-4-8-2-10M10 20c-4 2-6 6-4 8M24 14c3-3 5-2 6 0" stroke="#3d6b4f" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="24" cy="15" r="1.2" fill="#1b2a22"/></svg>`,
@@ -955,7 +970,8 @@ const RaccoonArt = (() => {
     const genes = profile.genes || {};
     const sick = !!profile.sick;
     const stubborn = !!profile.stubborn && !sick;
-    const smiling = !!profile.smiling && !sick && !stubborn;
+    const sleeping = !!profile.sleeping && !sick;
+    const smiling = !!profile.smiling && !sick && !stubborn && !sleeping;
     const view = profile.view || "side";
     if (stage === "bush") return bush(profile.ageSec || 0);
     if (view === "front") {
@@ -967,17 +983,17 @@ const RaccoonArt = (() => {
             : stage === "adult"
               ? profile.adultForm || "saint"
               : "";
-      return frontCreature(stage, form, genes, smiling, sick, stubborn);
+      return frontCreature(stage, form, genes, smiling, sick, stubborn, sleeping);
     }
     switch (stage) {
       case "baby":
-        return baby(genes, smiling, sick, stubborn);
+        return baby(genes, smiling, sick, stubborn, sleeping);
       case "young":
-        return young(genes, profile.youngForm || "puff", smiling, sick, stubborn);
+        return young(genes, profile.youngForm || "puff", smiling, sick, stubborn, sleeping);
       case "teen":
-        return teen(genes, profile.teenForm || "bounder", smiling, sick, stubborn);
+        return teen(genes, profile.teenForm || "bounder", smiling, sick, stubborn, sleeping);
       case "adult":
-        return adult(genes, profile.adultForm || "saint", smiling, sick, stubborn);
+        return adult(genes, profile.adultForm || "saint", smiling, sick, stubborn, sleeping);
       default:
         return bush(0);
     }
@@ -1226,6 +1242,12 @@ const RaccoonAnim = (() => {
       case "sick":
         animDur = 1.1;
         break;
+      case "fallAsleep":
+        animDur = 1.5;
+        break;
+      case "sleep":
+        animDur = 4;
+        break;
       default:
         animDur = 1 + Math.random();
         speed = 0;
@@ -1452,6 +1474,23 @@ const RaccoonAnim = (() => {
         if (animT >= animDur) anim = "idle";
         break;
       }
+      case "fallAsleep": {
+        const u = Math.min(1, animT / animDur);
+        headDip = 4 + u * 6;
+        poseY = u * 4;
+        if (animT >= animDur) {
+          anim = "sleep";
+          animT = 0;
+          animDur = 4;
+        }
+        break;
+      }
+      case "sleep": {
+        poseY = 4 + Math.sin(t * 1.1) * 0.6;
+        headDip = 9 + Math.sin(t * 0.9) * 0.5;
+        poseX += (0 - poseX) * Math.min(1, dt * 1.2);
+        break;
+      }
       default: {
         // Idle: face the screen, gentle bob, settle toward center (no rapid flips).
         const isSick = wrap.classList.contains("sick");
@@ -1484,7 +1523,7 @@ const RaccoonAnim = (() => {
   }
 
   function isBusy() {
-    return ["eat", "ascend", "refuse", "pop"].includes(anim);
+    return ["eat", "ascend", "refuse", "pop", "fallAsleep"].includes(anim);
   }
 
   return { init, reset, sync, play, tick, getView, getAnim, isBusy };

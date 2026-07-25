@@ -111,10 +111,20 @@
     formsUnlocked: { young: {}, teen: {}, adult: {} },
     devMode: false,
     soundMuted: false,
-    ambienceMuted: false,
+    ambienceMuted: true,
     sfxMuted: false,
     alertsEnabled: false,
+    /** Local wake hour 0–23 (inclusive start of awake window). */
+    wakeHour: 7,
+    /** Local sleep hour 0–23 (inclusive start of sleep window). */
+    sleepHour: 22,
+    /** False until the player confirms wake/sleep for this kit. */
+    scheduleSet: false,
+    /** Manual lights-off puts him to bed even outside sleep hours. */
+    lightsOff: false,
   };
+
+  let wasSleeping = false;
 
   const DAY_MS = 86400000;
   const MAX_ILLNESS_PER_DAY = 2;
@@ -309,6 +319,7 @@
     );
     $("messageOk").textContent = "OK";
     $("messageOk").dataset.reset = "";
+    $("messageOk").dataset.openSchedule = "1";
     render();
   }
 
@@ -348,7 +359,34 @@
     }
   }
 
+  function hourLabel(h) {
+    const hr = ((h % 24) + 24) % 24;
+    const suffix = hr >= 12 ? "PM" : "AM";
+    const twelve = hr % 12 === 0 ? 12 : hr % 12;
+    return `${twelve}:00 ${suffix}`;
+  }
+
+  function isInSleepWindow(date = new Date()) {
+    if (!state.scheduleSet) return false;
+    const wake = ((state.wakeHour % 24) + 24) % 24;
+    const sleep = ((state.sleepHour % 24) + 24) % 24;
+    if (wake === sleep) return false;
+    const h = date.getHours() + date.getMinutes() / 60;
+    if (sleep < wake) {
+      // Overnight window, e.g. 22 → 7
+      return h >= sleep || h < wake;
+    }
+    // Same-day nap window, e.g. 13 → 15
+    return h >= sleep && h < wake;
+  }
+
+  function isSleeping() {
+    if (!state.alive || state.ascending || state.stage === "bush") return false;
+    return !!state.lightsOff || isInSleepWindow();
+  }
+
   function formProfile() {
+    const sleeping = isSleeping();
     return {
       stage: state.stage,
       youngForm: state.youngForm,
@@ -360,9 +398,11 @@
       smiling:
         performance.now() < smileUntil &&
         !(state.sick && state.alive) &&
-        !(state.stubborn && state.alive),
+        !(state.stubborn && state.alive) &&
+        !sleeping,
       sick: !!(state.sick && state.alive && !state.ascending),
       stubborn: !!(state.stubborn && state.alive && !state.ascending && !state.sick),
+      sleeping,
     };
   }
 
@@ -377,6 +417,13 @@
       sfx("bush");
       render();
       return "rustle";
+    }
+
+    if (isSleeping()) {
+      say(["zzz…", "Soft snuffles.", "He’s deep in a nest nap."][Math.floor(Math.random() * 3)]);
+      pulseAnim("sleep");
+      render();
+      return "sleep";
     }
 
     const roll = Math.random();
@@ -476,11 +523,16 @@
       formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
       devMode: false,
       soundMuted: !!state.soundMuted,
-      ambienceMuted: !!state.ambienceMuted,
+      ambienceMuted: true,
       sfxMuted: !!state.sfxMuted,
       alertsEnabled: !!state.alertsEnabled,
+      wakeHour: state.wakeHour == null ? 7 : state.wakeHour,
+      sleepHour: state.sleepHour == null ? 22 : state.sleepHour,
+      scheduleSet: false,
+      lightsOff: false,
     });
     state.youngForm = pickYoungForm(state.genes);
+    wasSleeping = false;
     if ($("messageOk")) $("messageOk").textContent = "OK";
   }
 
@@ -489,27 +541,20 @@
   }
 
   function refreshSoundButtons() {
-    const bgOn = window.JimothySound
-      ? JimothySound.isAmbienceEnabled()
-      : !state.ambienceMuted;
     const sfxOn = window.JimothySound ? JimothySound.isSfxEnabled() : !state.sfxMuted;
-    const btnBg = $("btnAmbience");
     const btnSfx = $("btnSfx");
-    if (btnBg) {
-      btnBg.textContent = bgOn ? "BG: On" : "BG: Off";
-      btnBg.setAttribute("aria-pressed", bgOn ? "true" : "false");
-    }
     if (btnSfx) {
       btnSfx.textContent = sfxOn ? "Jimothy: On" : "Jimothy: Off";
       btnSfx.setAttribute("aria-pressed", sfxOn ? "true" : "false");
     }
-    state.ambienceMuted = !bgOn;
+    state.ambienceMuted = true;
     state.sfxMuted = !sfxOn;
-    state.soundMuted = !bgOn && !sfxOn;
+    state.soundMuted = !sfxOn;
   }
 
-  function setAmbienceEnabled(on) {
-    if (window.JimothySound) JimothySound.setAmbienceEnabled(on);
+  function setAmbienceEnabled(_on) {
+    // Background ambience removed.
+    state.ambienceMuted = true;
     refreshSoundButtons();
     save({ touchTick: false });
   }
@@ -518,6 +563,114 @@
     if (window.JimothySound) JimothySound.setSfxEnabled(on);
     refreshSoundButtons();
     save({ touchTick: false });
+  }
+
+  function fillHourSelect(sel, selected) {
+    if (!sel) return;
+    sel.innerHTML = "";
+    for (let h = 0; h < 24; h++) {
+      const opt = document.createElement("option");
+      opt.value = String(h);
+      opt.textContent = hourLabel(h);
+      if (h === selected) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  function openScheduleModal() {
+    fillHourSelect($("wakeHourSelect"), state.wakeHour == null ? 7 : state.wakeHour | 0);
+    fillHourSelect($("sleepHourSelect"), state.sleepHour == null ? 22 : state.sleepHour | 0);
+    if ($("scheduleModal")) $("scheduleModal").hidden = false;
+  }
+
+  function closeScheduleModal() {
+    if ($("scheduleModal")) $("scheduleModal").hidden = true;
+  }
+
+  function saveScheduleFromModal() {
+    const wake = Number($("wakeHourSelect")?.value ?? 7);
+    const sleep = Number($("sleepHourSelect")?.value ?? 22);
+    if (wake === sleep) {
+      say("Wake and sleep can’t be the same hour.");
+      return;
+    }
+    state.wakeHour = wake;
+    state.sleepHour = sleep;
+    state.scheduleSet = true;
+    closeScheduleModal();
+    say(
+      `Schedule set — wakes ${hourLabel(wake)}, sleeps ${hourLabel(sleep)}.`,
+      6500
+    );
+    render();
+    save({ touchTick: false });
+  }
+
+  function toggleLights() {
+    if (!state.alive || state.ascending || state.stage === "bush") {
+      say("Nothing to light yet.");
+      return;
+    }
+    state.lightsOff = !state.lightsOff;
+    if (state.lightsOff) {
+      say("Lights out. He’s settling in…");
+      pulseAnim("fallAsleep");
+    } else if (isInSleepWindow()) {
+      say("Lights on — but it’s still his sleep hours.");
+    } else {
+      say("Lights on. He’s waking up.");
+      pulseAnim("stretch");
+      sfx("stretch");
+    }
+    closeActionMenu();
+    render();
+    save({ touchTick: false });
+  }
+
+  function refreshLightsButton() {
+    const btn = $("btnLights");
+    if (!btn) return;
+    const label = btn.querySelector("span:last-child");
+    const text = state.lightsOff ? "Lights: Off" : "Lights: On";
+    if (label) label.textContent = text;
+    else btn.textContent = text;
+    btn.setAttribute("aria-pressed", state.lightsOff ? "true" : "false");
+  }
+
+  function ensureSleepZzz(show) {
+    const wrap = $("raccoonWrap");
+    if (!wrap) return;
+    let z = wrap.querySelector(".sleep-zzz");
+    if (show) {
+      if (!z) {
+        z = document.createElement("div");
+        z.className = "sleep-zzz";
+        z.setAttribute("aria-hidden", "true");
+        z.textContent = "zzz";
+        wrap.appendChild(z);
+      }
+    } else if (z) {
+      z.remove();
+    }
+  }
+
+  function syncSleepVisuals() {
+    const sleeping = isSleeping();
+    const screen = $("screen");
+    const wrap = $("raccoonWrap");
+    if (screen) {
+      screen.classList.toggle("lights-off", !!state.lightsOff);
+      screen.classList.toggle("is-sleeping", sleeping);
+    }
+    if (wrap) wrap.classList.toggle("sleeping", sleeping);
+    ensureSleepZzz(sleeping && state.alive && !state.ascending);
+
+    if (sleeping && !wasSleeping && state.alive && !state.ascending) {
+      pulseAnim("fallAsleep");
+    } else if (!sleeping && wasSleeping && state.alive && !state.ascending) {
+      pulseAnim("stretch");
+    }
+    wasSleeping = sleeping;
   }
 
   function refreshAlertsButton() {
@@ -589,9 +742,13 @@
       // Dev is session-only — never restore a published Dev button from saves.
       state.devMode = false;
       if (state.soundMuted == null) state.soundMuted = false;
-      if (state.ambienceMuted == null) state.ambienceMuted = !!state.soundMuted;
+      state.ambienceMuted = true;
       if (state.sfxMuted == null) state.sfxMuted = !!state.soundMuted;
       if (state.alertsEnabled == null) state.alertsEnabled = false;
+      if (state.wakeHour == null) state.wakeHour = 7;
+      if (state.sleepHour == null) state.sleepHour = 22;
+      if (state.scheduleSet == null) state.scheduleSet = false;
+      if (state.lightsOff == null) state.lightsOff = false;
       state.illnessEvents = pruneDayEvents(
         Array.isArray(state.illnessEvents) ? state.illnessEvents : []
       );
@@ -660,17 +817,22 @@
   function resetPet() {
     const keepForms = JSON.parse(JSON.stringify(state.formsUnlocked || { young: {}, teen: {}, adult: {} }));
     const keepMute = !!state.soundMuted;
-    const keepAmb = !!state.ambienceMuted;
     const keepSfx = !!state.sfxMuted;
     const keepAlerts = !!state.alertsEnabled;
+    const keepWake = state.wakeHour == null ? 7 : state.wakeHour;
+    const keepSleep = state.sleepHour == null ? 22 : state.sleepHour;
     const keepSessionDev = devUnlocked;
     resetDefaults();
     state.formsUnlocked = keepForms;
     state.devMode = keepSessionDev;
     state.soundMuted = keepMute;
-    state.ambienceMuted = keepAmb;
+    state.ambienceMuted = true;
     state.sfxMuted = keepSfx;
     state.alertsEnabled = keepAlerts;
+    state.wakeHour = keepWake;
+    state.sleepHour = keepSleep;
+    state.scheduleSet = false;
+    state.lightsOff = false;
     save();
     if (window.RaccoonAnim) RaccoonAnim.reset();
     render();
@@ -1082,6 +1244,15 @@
     animCooldown -= dt;
     if (animCooldown > 0) return;
 
+    if (isSleeping()) {
+      animCooldown = randRange(3.5, 6);
+      const cur = window.RaccoonAnim && RaccoonAnim.getAnim ? RaccoonAnim.getAnim() : "";
+      if (cur !== "fallAsleep" && cur !== "sleep" && cur !== "eat") {
+        pulseAnim("sleep");
+      }
+      return;
+    }
+
     // Bush stage: gusty ambient rustles so foliage stays lively.
     if (state.stage === "bush") {
       animCooldown = randRange(1.6, 3.2);
@@ -1145,11 +1316,13 @@
       ? "ascend"
       : !state.alive
         ? "gone"
-        : state.sick
-          ? "sick"
-          : state.stubborn
-            ? "stubborn"
-            : "idle";
+        : isSleeping()
+          ? "sleep"
+          : state.sick
+            ? "sick"
+            : state.stubborn
+              ? "stubborn"
+              : "idle";
     raccoon.dataset.form =
       state.stage === "adult"
         ? state.adultForm
@@ -1211,6 +1384,8 @@
     if ($("btnAction")) {
       $("btnAction").classList.toggle("needs-attention", canScold || canHeal || canClean);
     }
+    refreshLightsButton();
+    syncSleepVisuals();
 
     refreshDevButton();
 
@@ -1221,6 +1396,10 @@
     } else if (!state.alive) {
       $("hint").textContent =
         "His cryptid life is complete. You can raise another kit.";
+    } else if (isSleeping()) {
+      $("hint").textContent = state.lightsOff
+        ? "Lights out — Jimothy is sleeping. Action → Lights to wake the nest."
+        : "Sleep hours — Jimothy is dozing. He’ll wake at his wake time.";
     } else if (state.sick) {
       $("hint").textContent = "He’s under the weather — open Action → Heal.";
     } else if (state.stubborn) {
@@ -1701,6 +1880,7 @@
     closeResetModal();
     resetPet();
     say("A new bush is rustling…", 6000);
+    openScheduleModal();
   }
 
   function unlockDevAccess({ open = false } = {}) {
@@ -1908,6 +2088,7 @@
     setMenuIcon("btnDiscipline", RaccoonArt.icons.scold);
     setMenuIcon("btnHeal", RaccoonArt.icons.heal);
     setMenuIcon("btnClean", RaccoonArt.icons.clean);
+    setMenuIcon("btnLights", RaccoonArt.icons.lights || RaccoonArt.icons.action);
 
     document.querySelectorAll(".food-btn").forEach((btn) => {
       const key = btn.dataset.food;
@@ -1960,6 +2141,8 @@
     if ($("btnDiscipline")) $("btnDiscipline").addEventListener("click", discipline);
     if ($("btnClean")) $("btnClean").addEventListener("click", clean);
     if ($("btnHeal")) $("btnHeal").addEventListener("click", treatIllness);
+    if ($("btnLights")) $("btnLights").addEventListener("click", toggleLights);
+    if ($("scheduleSave")) $("scheduleSave").addEventListener("click", saveScheduleFromModal);
     const wrap = $("raccoonWrap");
     if (wrap) {
       wrap.style.cursor = "pointer";
@@ -1974,14 +2157,6 @@
           e.preventDefault();
           interactTap();
         }
-      });
-    }
-    if ($("btnAmbience")) {
-      $("btnAmbience").addEventListener("click", () => {
-        const next = window.JimothySound
-          ? !JimothySound.isAmbienceEnabled()
-          : state.ambienceMuted;
-        setAmbienceEnabled(next);
       });
     }
     if ($("btnSfx")) {
@@ -1999,9 +2174,14 @@
     $("gameClose").addEventListener("click", closeGame);
     $("messageOk").addEventListener("click", () => {
       const shouldReset = $("messageOk").dataset.reset === "1";
+      const openSchedule = $("messageOk").dataset.openSchedule === "1";
       hideMessage();
       $("messageOk").textContent = "OK";
       $("messageOk").dataset.reset = "";
+      $("messageOk").dataset.openSchedule = "";
+      if (openSchedule || !state.scheduleSet) {
+        openScheduleModal();
+      }
       // Legacy: only reset if a dialog still asked to raise another kit.
       if (shouldReset && !state.alive) {
         resetPet();
@@ -2068,7 +2248,7 @@
         refreshSoundButtons();
         save({ touchTick: false });
       });
-      JimothySound.setAmbienceEnabled(!state.ambienceMuted, { announce: false });
+      JimothySound.setAmbienceEnabled(false, { announce: false });
       JimothySound.setSfxEnabled(!state.sfxMuted, { announce: false });
     }
     refreshSoundButtons();
@@ -2085,6 +2265,8 @@
     // Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
     if (!state.alive) {
       startNextKitAfterAscension(state.deathReason);
+    } else if (!state.scheduleSet) {
+      openScheduleModal();
     }
     tickHandle = setInterval(onTick, TICK_MS);
     lastAnimPulse = performance.now();
@@ -2118,7 +2300,7 @@
   init();
 
   window.JimothyDebug = {
-    getState: () => ({ ...state }),
+    getState: () => ({ ...state, sleeping: isSleeping() }),
     setState: (partial) => {
       Object.assign(state, partial);
       render();

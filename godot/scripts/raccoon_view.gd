@@ -155,6 +155,8 @@ func _sync_from_state() -> void:
 	genes = p.genes if typeof(p.genes) == TYPE_DICTIONARY else {}
 	if PetState.ascending and _anim == "ascend":
 		mood = "ascend"
+	elif PetState.is_sleeping():
+		mood = "sleep"
 	elif PetState.sick:
 		mood = "sick"
 	elif PetState.stubborn:
@@ -172,7 +174,7 @@ func set_look(_stage: String, _variant: String = "", _mood: String = "idle") -> 
 
 func play_anim(kind: String) -> void:
 	# Don't let ambient walks cut off a slow eat / ascent.
-	if _anim in ["eat", "ascend"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick"]:
+	if _anim in ["eat", "ascend", "fallAsleep"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"]:
 		return
 	_anim = kind
 	_anim_t = 0.0
@@ -182,6 +184,12 @@ func play_anim(kind: String) -> void:
 			_wing_span = 0.0
 			_fade = 1.0
 			_ascend_done_emitted = false
+			_speed = 0.0
+		"fallAsleep":
+			_anim_dur = 1.5
+			_speed = 0.0
+		"sleep":
+			_anim_dur = 4.0
 			_speed = 0.0
 		"run":
 			_anim_dur = randf_range(1.6, 2.8)
@@ -432,9 +440,30 @@ func _process(delta: float) -> void:
 			_head_dip = 2.0
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
+		"fallAsleep":
+			var fu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_head_dip = 4.0 + fu * 6.0
+			_pose_y = fu * 4.0
+			_body_squash = 1.0 + fu * 0.08
+			if _anim_t >= _anim_dur:
+				_anim = "sleep"
+				_anim_t = 0.0
+				_anim_dur = 4.0
+		"sleep":
+			_pose_y = 4.0 + sin(_t * 1.1) * 0.6
+			_head_dip = 9.0 + sin(_t * 0.9) * 0.5
+			_pose_x = move_toward(_pose_x, 0.0, 30.0 * delta)
+			_body_squash = 1.06
+			_smile = 0.0
 		_:
 			# Idle: face the screen, gentle bob, settle toward center.
-			if _is_sick():
+			if mood == "sleep" or (PetState != null and PetState.is_sleeping()):
+				_pose_y = 4.0 + sin(_t * 1.1) * 0.6
+				_head_dip = 9.0 + sin(_t * 0.9) * 0.5
+				_pose_x = move_toward(_pose_x, 0.0, 30.0 * delta)
+				_body_squash = 1.06
+				_smile = 0.0
+			elif _is_sick():
 				_pose_y = sin(_t * 1.35) * 1.0
 				_pose_x = move_toward(_pose_x, 0.0, 22.0 * delta)
 				_head_dip = 5.5 + sin(_t * 1.1) * 1.6
@@ -752,7 +781,12 @@ func _draw_front(c: Vector2) -> void:
 	var eye_r := 2.6 if stage == "baby" else (3.6 if stage == "adult" else 3.1)
 	var gap := eye_r * 2.2
 	var eye_y := head_y + 1.0
-	if _is_sick():
+	if _is_sleeping():
+		draw_line(c + Vector2(-gap - eye_r, eye_y), c + Vector2(-gap, eye_y + eye_r * 0.5), Color("2a2a32"), 1.8)
+		draw_line(c + Vector2(-gap, eye_y + eye_r * 0.5), c + Vector2(-gap + eye_r, eye_y), Color("2a2a32"), 1.8)
+		draw_line(c + Vector2(gap - eye_r, eye_y), c + Vector2(gap, eye_y + eye_r * 0.5), Color("2a2a32"), 1.8)
+		draw_line(c + Vector2(gap, eye_y + eye_r * 0.5), c + Vector2(gap + eye_r, eye_y), Color("2a2a32"), 1.8)
+	elif _is_sick():
 		_ellipse(c + Vector2(-gap, eye_y), Vector2(eye_r * 1.15, eye_r * 0.5), gleam)
 		_ellipse(c + Vector2(-gap + eye_r * 0.1, eye_y + eye_r * 0.05), Vector2(eye_r * 0.36, eye_r * 0.26), Color("101014"))
 		draw_line(c + Vector2(-gap - eye_r * 1.2, eye_y - eye_r * 0.35), c + Vector2(-gap, eye_y + eye_r * 0.15), Color("2a2a32"), 1.5)
@@ -989,8 +1023,15 @@ func _ringed_tail(base: Vector2, length: float, face: float, rings: bool = true)
 			_ellipse(p, Vector2(4, 3), Color("c8c8d0").darkened(0.05))
 
 
+func _is_sleeping() -> bool:
+	return mood == "sleep" or _anim in ["sleep", "fallAsleep"] or (PetState != null and PetState.is_sleeping())
+
+
 func _side_eye(p: Vector2, r: float, gleam: Color = Color("faf6ec")) -> void:
-	if _is_sick():
+	if _is_sleeping():
+		draw_line(p + Vector2(-r * 1.15, 0), p + Vector2(0, r * 0.45), Color("2a2a32"), 1.8)
+		draw_line(p + Vector2(0, r * 0.45), p + Vector2(r * 1.15, 0), Color("2a2a32"), 1.8)
+	elif _is_sick():
 		_ellipse(p, Vector2(r * 1.2, r * 0.52), gleam)
 		_ellipse(p + Vector2(r * 0.12, r * 0.05), Vector2(r * 0.38, r * 0.28), Color("101014"))
 		draw_line(p + Vector2(-r * 1.25, -r * 0.4), p + Vector2(0, r * 0.15), Color("2a2a32"), 1.5)
@@ -1170,19 +1211,19 @@ func _draw_young(c: Vector2, face: float) -> void:
 			_ellipse(c + Vector2(-24 * face, 12), Vector2(9, 7), fur.lightened(0.08))
 			_ellipse(c + Vector2(-28 * face, 10), Vector2(5, 4), fur.lightened(0.16))
 		"looper":
-			body_rx = 24.0
-			body_ry = 15.0
-			body_y = 2.0
-			leg_h = 32.0
-			head_r = 12.0
+			body_rx = 26.0
+			body_ry = 20.0
+			body_y = 4.0
+			leg_h = 26.0
+			head_r = 13.0
 			extra_legs = true
 			draw_line(c + Vector2(-8 * face, body_y - 8), c + Vector2(12 * face, body_y - 8), Color("e0a04a"), 2.0)
 			_ringed_tail(c + Vector2(-20 * face, body_y + 2), 20.0, face, true)
 		"shadow":
-			body_rx = 28.0
-			body_ry = 16.0
-			body_y = 10.0
-			leg_h = 18.0
+			body_rx = 30.0
+			body_ry = 22.0
+			body_y = 8.0
+			leg_h = 16.0
 			head_x = 24.0
 			_form_wings("bat", c, face, body_y - 4.0)
 			_ringed_tail(c + Vector2(-22 * face, body_y + 4), 26.0, face, true)
@@ -1254,19 +1295,19 @@ func _draw_teen(c: Vector2, face: float) -> void:
 			leg_h = 10.0
 			_ellipse(c + Vector2(-24 * face, 10), Vector2(8, 6), fur.lightened(0.05))
 		"bounder":
-			body_rx = 26.0
-			body_ry = 16.0
-			body_y = -2.0
-			leg_h = 36.0
+			body_rx = 30.0
+			body_ry = 22.0
+			body_y = 0.0
+			leg_h = 28.0
 			extra_legs = true
 			draw_line(c + Vector2(8 * face, body_y - 8), c + Vector2(16 * face, body_y - 16), Color("e0a04a"), 2.0)
 			_ringed_tail(c + Vector2(-22 * face, body_y + 2), 24.0, face, true)
 		"nightlane":
 			body_rx = 32.0
-			body_ry = 16.0
-			body_y = 6.0
+			body_ry = 22.0
+			body_y = 4.0
 			head_x = 28.0
-			leg_h = 22.0
+			leg_h = 18.0
 			_form_wings("moth", c, face, body_y - 6.0)
 			_ringed_tail(c + Vector2(-26 * face, body_y + 2), 32.0, face, true)
 			_ellipse(c + Vector2(6 * face, body_y - 2), Vector2(18, 7), Color(0.06, 0.06, 0.1, 0.45))
@@ -1342,9 +1383,9 @@ func _draw_adult(c: Vector2, face: float) -> void:
 			_ellipse(c + Vector2(12 * face, -24), Vector2(4, 3), Color("548a62"))
 			draw_circle(c + Vector2(6 * face, -18), 1.5, Color(0.72, 0.88, 0.75, 0.7))
 		"legend":
-			body_rx = 32.0
-			body_ry = 28.0
-			leg_h = 42.0
+			body_rx = 34.0
+			body_ry = 32.0
+			leg_h = 34.0
 			crown_kind = "gold"
 			var blaze := PackedVector2Array([
 				c + Vector2(8 * face, -12),
@@ -1355,8 +1396,8 @@ func _draw_adult(c: Vector2, face: float) -> void:
 			gleam = Color("fff3d0")
 		"alley_ghost":
 			body_rx = 36.0
-			body_ry = 26.0
-			leg_h = 40.0
+			body_ry = 32.0
+			leg_h = 32.0
 			snout = Color("b8c4d4")
 			gleam = Color("e8f0ff")
 			mask_c = Color("3a4250")
