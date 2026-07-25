@@ -16,6 +16,7 @@ config/icon="res://icon.svg"
 
 PetState="*res://scripts/pet_state.gd"
 JimothyAudio="*res://scripts/jimothy_audio.gd"
+JimothyNotify="*res://scripts/jimothy_notify.gd"
 
 [display]
 

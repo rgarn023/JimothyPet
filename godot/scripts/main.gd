@@ -23,6 +23,7 @@ const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
 @onready var btn_scold: Button = %BtnScold
 @onready var btn_clean: Button = %BtnClean
 @onready var btn_sound: Button = %BtnSound
+@onready var btn_alerts: Button = %BtnAlerts
 @onready var btn_forms: Button = %BtnForms
 @onready var btn_dev: Button = %BtnDev
 @onready var feed_panel: Control = %FeedPanel
@@ -53,6 +54,7 @@ func _ready() -> void:
 	_build_forms_panel()
 	_build_dev_panel()
 	_refresh_sound_button()
+	_refresh_alerts_button()
 	_refresh()
 	# Dead / leftover saves: land on a fresh rustling bush (no re-ascent).
 	if not PetState.alive:
@@ -409,6 +411,26 @@ func _on_sound_pressed() -> void:
 		PetState.sound_muted = not PetState.sound_muted
 		PetState.save_game()
 	_refresh_sound_button()
+
+
+func _refresh_alerts_button() -> void:
+	if btn_alerts == null:
+		return
+	btn_alerts.text = "Alerts: On" if PetState.alerts_enabled else "Alerts: Off"
+
+
+func _on_alerts_pressed() -> void:
+	PetState.alerts_enabled = not PetState.alerts_enabled
+	if PetState.alerts_enabled:
+		if JimothyNotify and JimothyNotify.has_method("request_permission_web"):
+			JimothyNotify.request_permission_web()
+		PetState.speech.emit("Care alerts on — hungry, playtime, and acting up.")
+		if JimothyNotify:
+			JimothyNotify.check_now()
+	else:
+		PetState.speech.emit("Care alerts off.")
+	PetState.save_game()
+	_refresh_alerts_button()
 
 
 func _on_forms_pressed() -> void:

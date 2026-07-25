@@ -31,12 +31,9 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
 - **Sound:** looping night ambience (crickets / wind) + raccoon chitters, rustles, crunch, and ascend whoosh — toggle with **Sound: On/Off**
+- **Care alerts:** optional notifications when hungry, bored, or acting up — toggle with **Alerts: On/Off** (web Notification API / desktop OS notify)
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
 - **Tap Jimothy** for smile / hop / nuzzle / spin reactions
-
-### Floating pet on Android?
-
-A web **Float** companion exists in the HTML build (Chrome PiP). A true Android “runs over other apps” pet needs a native overlay service (`SYSTEM_ALERT_WINDOW`) — not included in the pure Godot export yet. A home-screen status widget is the lighter native option.
 
 ## Export Android
 

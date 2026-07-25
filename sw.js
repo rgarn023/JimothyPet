@@ -1,5 +1,5 @@
-/* Jimothy service worker — offline shell for installed web / Android PWA */
-const CACHE = "jimothy-v4";
+/* Jimothy service worker — offline shell + care notification clicks */
+const CACHE = "jimothy-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -10,7 +10,7 @@ const ASSETS = [
   "./js/minigame.js",
   "./js/raccoon.js",
   "./js/sound.js",
-  "./js/companion.js",
+  "./js/notify.js",
   "./audio/night_ambience.wav",
   "./audio/chitter.wav",
   "./audio/chirp.wav",
@@ -53,6 +53,20 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || network;
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "./";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(target);
+      return undefined;
     })
   );
 });

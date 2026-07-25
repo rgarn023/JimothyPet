@@ -824,6 +824,11 @@ button {
   }
 }
 
+.utility-btn[aria-pressed="true"] {
+  border-color: rgba(240, 197, 122, 0.55);
+  color: var(--amber-soft);
+}
+
 .utility-btn {
   padding: 0.7rem 0.75rem;
   border-radius: 12px;

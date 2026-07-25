@@ -313,6 +313,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Sound: On"
 
+[node name="BtnAlerts" type="Button" parent="Margin/VBox/UtilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Alerts: Off"
+
 [node name="BtnForms" type="Button" parent="Margin/VBox/UtilityRow"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -561,6 +567,7 @@ text = "Bail Out"
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnScold" to="." method="_on_scold_pressed"]
 [connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnClean" to="." method="_on_clean_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnSound" to="." method="_on_sound_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnAlerts" to="." method="_on_alerts_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnForms" to="." method="_on_forms_pressed"]
 [connection signal="pressed" from="Margin/VBox/UtilityRow/BtnDev" to="." method="_on_dev_pressed"]
 [connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnBerries" to="." method="_on_food" binds= ["berries"]]

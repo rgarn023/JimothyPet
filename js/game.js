@@ -107,6 +107,7 @@
     formsUnlocked: { young: {}, teen: {}, adult: {} },
     devMode: false,
     soundMuted: false,
+    alertsEnabled: false,
   };
 
   const YOUNG_FORMS = ["puff", "looper", "shadow", "nub"];
@@ -438,6 +439,7 @@
       formsUnlocked: state.formsUnlocked || { young: {}, teen: {}, adult: {} },
       devMode: !!state.devMode,
       soundMuted: !!state.soundMuted,
+      alertsEnabled: !!state.alertsEnabled,
     });
     state.youngForm = pickYoungForm(state.genes);
     if ($("messageOk")) $("messageOk").textContent = "OK";
@@ -462,35 +464,51 @@
     save({ touchTick: false });
   }
 
-  function refreshFloatButton() {
-    const btn = $("btnFloat");
+  function refreshAlertsButton() {
+    const btn = $("btnAlerts");
     if (!btn) return;
-    if (!window.JimothyCompanion || !JimothyCompanion.supported()) {
-      btn.textContent = "Float: N/A";
+    if (!window.JimothyNotify || !JimothyNotify.supported()) {
+      btn.textContent = "Alerts: N/A";
       btn.disabled = true;
-      btn.title = "Floating companion needs Chrome/Edge (Document Picture-in-Picture)";
+      btn.title = "Notifications are not supported in this browser";
       btn.setAttribute("aria-pressed", "false");
       return;
     }
     btn.disabled = false;
-    const on = JimothyCompanion.isOpen();
-    btn.textContent = on ? "Float: On" : "Float: Off";
+    const on = !!state.alertsEnabled && JimothyNotify.isEnabled();
+    btn.textContent = on ? "Alerts: On" : "Alerts: Off";
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     btn.title = on
-      ? "Close floating Jimothy"
-      : "Open a tiny always-on-top Jimothy while you use other tabs";
+      ? "Care alerts on — hungry, play, acting up"
+      : "Turn on notifications when Jimothy needs care";
   }
 
-  async function toggleFloatCompanion() {
-    if (!window.JimothyCompanion) return;
-    if (!JimothyCompanion.supported()) {
-      say("Floating companion needs Chrome or Edge on desktop.");
+  async function toggleAlerts() {
+    if (!window.JimothyNotify || !JimothyNotify.supported()) {
+      say("Alerts aren’t supported in this browser.");
       return;
     }
-    const open = await JimothyCompanion.toggle();
-    refreshFloatButton();
-    if (open) say("Jimothy’s floating nearby — he’ll wander while you multitask.");
-    else say("Floating companion closed.");
+    const want = !state.alertsEnabled;
+    if (want) {
+      const ok = await JimothyNotify.setEnabled(true);
+      state.alertsEnabled = ok;
+      refreshAlertsButton();
+      save({ touchTick: false });
+      if (ok) {
+        say("Alerts on — I’ll ping you if he’s hungry, restless, or acting up.");
+        JimothyNotify.check(state);
+      } else if (JimothyNotify.permission() === "denied") {
+        say("Notifications are blocked. Enable them in browser settings for this site.");
+      } else {
+        say("Couldn’t enable alerts.");
+      }
+    } else {
+      state.alertsEnabled = false;
+      await JimothyNotify.setEnabled(false);
+      refreshAlertsButton();
+      save({ touchTick: false });
+      say("Care alerts off.");
+    }
   }
 
   function load() {
@@ -514,6 +532,7 @@
       if (!state.formsUnlocked) state.formsUnlocked = { young: {}, teen: {}, adult: {} };
       if (state.devMode == null) state.devMode = false;
       if (state.soundMuted == null) state.soundMuted = false;
+      if (state.alertsEnabled == null) state.alertsEnabled = false;
       unlockCurrentForm();
       syncRealtime({ announceDeath: false });
       return true;
@@ -567,10 +586,12 @@
     const keepForms = JSON.parse(JSON.stringify(state.formsUnlocked || { young: {}, teen: {}, adult: {} }));
     const keepDev = !!state.devMode;
     const keepMute = !!state.soundMuted;
+    const keepAlerts = !!state.alertsEnabled;
     resetDefaults();
     state.formsUnlocked = keepForms;
     state.devMode = keepDev;
     state.soundMuted = keepMute;
+    state.alertsEnabled = keepAlerts;
     save();
     if (window.RaccoonAnim) RaccoonAnim.reset();
     render();
@@ -1283,6 +1304,7 @@
     applyDecay(1);
     render();
     save();
+    if (state.alertsEnabled && window.JimothyNotify) JimothyNotify.check(state);
   }
 
   function wireIcons() {
@@ -1327,9 +1349,9 @@
         setSoundEnabled(next);
       });
     }
-    if ($("btnFloat")) {
-      $("btnFloat").addEventListener("click", () => {
-        toggleFloatCompanion();
+    if ($("btnAlerts")) {
+      $("btnAlerts").addEventListener("click", () => {
+        toggleAlerts();
       });
     }
     $("feedClose").addEventListener("click", closeFeed);
@@ -1415,17 +1437,13 @@
       JimothySound.setEnabled(!state.soundMuted, { announce: false });
     }
     refreshSoundButton();
-    if (window.JimothyCompanion) {
-      JimothyCompanion.setStateGetter(() => ({
-        stage: state.stage,
-        alive: state.alive,
-        ascending: state.ascending,
-        youngForm: state.youngForm,
-        adultForm: state.adultForm,
-      }));
-      JimothyCompanion.setOnChange(() => refreshFloatButton());
+    if (window.JimothyNotify) {
+      JimothyNotify.setOnChange(() => refreshAlertsButton());
+      if (state.alertsEnabled) {
+        JimothyNotify.setEnabled(true).then(() => refreshAlertsButton());
+      }
     }
-    refreshFloatButton();
+    refreshAlertsButton();
     save({ touchTick: false });
     if (window.RaccoonAnim) RaccoonAnim.init($("raccoonWrap"), $("raccoon"));
     render();
@@ -1440,11 +1458,13 @@
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
         save();
+        if (state.alertsEnabled && window.JimothyNotify) JimothyNotify.check(state);
         return;
       }
       syncRealtime({ announceDeath: true });
       render();
       save();
+      if (state.alertsEnabled && window.JimothyNotify) JimothyNotify.check(state);
     });
     window.addEventListener("focus", () => {
       syncRealtime({ announceDeath: true });

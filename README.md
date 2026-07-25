@@ -56,26 +56,11 @@ Satiety stops overfeeding; junk treats can make him sick. Baby kits and the bush
 
 Night ambience (crickets / soft wind) loops in the background, with raccoon chitters, bush rustles, eating crunches, and an ascend whoosh. Use **Sound: On/Off** to mute; preference is saved.
 
+## Care alerts
+
+Toggle **Alerts: On** to get notifications when Jimothy is hungry, wants to play, or is acting up (12‑minute cooldown per kind). Web uses the browser Notification API (works while the tab/PWA is open); Godot desktop uses OS notifications (`notify-send` / macOS). Preference is saved.
+
 ## Forms & Dumpster Dive
 
 - **Forms** shows every young → teen → adult path (care vs neglect forks). Unlocked nodes glow; this kit’s path is outlined.
 - **Dumpster Dive** is an alley rummage: food arcs out of the bin, Jimothy walks/chews on catch, and standing under the dumpster digs up a scrap.
-
-## Floating companion (web)
-
-Use **Float: On** (Chrome / Edge) to open a tiny always-on-top Jimothy window via Document Picture-in-Picture. He walks/hops while you use other tabs. Toggle off anytime.
-
-**Limits (browser security):**
-- Not a true OS desktop pet — web pages cannot draw on your wallpaper when the tab is fully closed.
-- The float window closes if you close the game tab.
-- Safari / Firefox: Float shows **N/A** (API not available).
-
-## Android / iPhone overlays
-
-| Idea | Feasible? | Notes |
-| --- | --- | --- |
-| Home-screen **widget** (stage / hunger glance) | Yes | Needs a native Android App Widget module alongside Godot |
-| **Draw-over-apps** pet (runs on top of other apps) | Yes | Needs `SYSTEM_ALERT_WINDOW` + a foreground service (custom Android plugin; not pure Godot) |
-| True iOS home-screen roaming pet | No | iOS forbids arbitrary overlays over other apps |
-
-So: web float companion is available now; Android “chat-head” style Jimothy would be a separate native add-on.
