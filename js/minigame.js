@@ -389,53 +389,193 @@ const DumpsterDive = (() => {
     ctx.fill();
   }
 
+  function shade(hex, amt) {
+    const n = hex.replace("#", "");
+    const v = parseInt(n.length === 3 ? n.split("").map((c) => c + c).join("") : n, 16);
+    const r = Math.max(0, Math.min(255, ((v >> 16) & 255) + amt));
+    const g = Math.max(0, Math.min(255, ((v >> 8) & 255) + amt));
+    const b = Math.max(0, Math.min(255, (v & 255) + amt));
+    return `rgb(${r},${g},${b})`;
+  }
+
   function drawItem(item) {
+    const ground = height - 54;
+    const elev = Math.max(0, ground - item.y);
+    const shadowScale = Math.max(0.32, 1 - elev / 240);
+    ctx.save();
+    ctx.fillStyle = `rgba(0,0,0,${0.28 * shadowScale})`;
+    ctx.beginPath();
+    ctx.ellipse(item.x + 2, ground + 5, 16 * shadowScale, 5.5 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
     ctx.save();
     ctx.translate(item.x, item.y);
     ctx.rotate(item.rot || 0);
+    // Faux pitch: squash while tumbling so scraps read as 3D objects in air.
+    const pitch = Math.sin((item.rot || 0) * 1.7) * 0.22;
+    ctx.scale(1 + Math.abs(pitch) * 0.12, 1 - Math.abs(pitch) * 0.38);
+
     if (item.kind === "rotten") {
-      ctx.fillStyle = item.color;
+      const r = item.r || 14;
+      const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, 1, 0, 0, r);
+      g.addColorStop(0, "#7a8a4a");
+      g.addColorStop(0.55, item.color || "#5a6b3a");
+      g.addColorStop(1, "#2e3518");
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.ellipse(0, 0, item.r, item.r * 0.75, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, r, r * 0.78, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#8a9a4a";
+      ctx.fillStyle = "rgba(40,48,20,0.55)";
       ctx.beginPath();
-      ctx.arc(-4, -2, 3, 0, Math.PI * 2);
-      ctx.arc(3, 1, 2.5, 0, Math.PI * 2);
+      ctx.ellipse(3, 4, r * 0.55, r * 0.35, 0.3, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = "#9aab55";
+      ctx.beginPath();
+      ctx.arc(-5, -3, 3.2, 0, Math.PI * 2);
+      ctx.arc(4, 0, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20,24,10,0.45)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-6, 2);
+      ctx.quadraticCurveTo(0, 6, 7, 1);
+      ctx.stroke();
     } else if (item.kind === "can") {
-      ctx.fillStyle = item.color;
-      roundRect(-10, -12, 20, 24, 4);
+      // Cylinder with rim + specular band
+      ctx.fillStyle = "#6a7a86";
+      roundRect(-11, -11, 22, 24, 5);
       ctx.fill();
-      ctx.fillStyle = "#e8f2f6";
-      ctx.fillRect(-8, -4, 16, 4);
-    } else if (item.kind === "berry") {
-      ctx.fillStyle = item.color;
-      ctx.beginPath();
-      ctx.arc(-4, 0, 7, 0, Math.PI * 2);
-      ctx.arc(5, -2, 7, 0, Math.PI * 2);
-      ctx.arc(0, 5, 6, 0, Math.PI * 2);
+      const body = ctx.createLinearGradient(-10, 0, 10, 0);
+      body.addColorStop(0, "#6f8494");
+      body.addColorStop(0.35, "#d7e6ee");
+      body.addColorStop(0.55, "#a8c4d4");
+      body.addColorStop(1, "#5a6e7a");
+      ctx.fillStyle = body;
+      roundRect(-10, -10, 20, 22, 4);
       ctx.fill();
-    } else if (item.kind === "fries") {
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.fillRect(-3, -8, 2.2, 18);
+      ctx.fillStyle = "#eef6fa";
+      roundRect(-9, -3, 18, 5, 2);
+      ctx.fill();
       ctx.fillStyle = "#c45c4a";
+      roundRect(-7, -2, 14, 3, 1);
+      ctx.fill();
+      ctx.fillStyle = "#8a9aa4";
+      roundRect(-9, -12, 18, 4, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      roundRect(-7, -11.5, 10, 2, 1);
+      ctx.fill();
+    } else if (item.kind === "berry") {
+      const berries = [
+        [-5, 1, 7.2, "#5a4a8a"],
+        [5, -2, 7.4, "#6b5aa0"],
+        [0, 6, 6.4, "#4a3a72"],
+        [2, -7, 4.8, "#7a6ab0"],
+      ];
+      for (const [bx, by, br, col] of berries) {
+        const g = ctx.createRadialGradient(bx - br * 0.35, by - br * 0.4, 1, bx, by, br);
+        g.addColorStop(0, shade(col, 55));
+        g.addColorStop(0.55, col);
+        g.addColorStop(1, shade(col, -40));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.beginPath();
+        ctx.arc(bx - br * 0.3, by - br * 0.35, br * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = "#3d6b4f";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-2, -10);
+      ctx.quadraticCurveTo(2, -14, 6, -9);
+      ctx.stroke();
+    } else if (item.kind === "fries") {
+      // Carton depth + fry sticks with highlights
+      ctx.fillStyle = "#8a3a2e";
+      roundRect(-11, 2, 22, 14, 3);
+      ctx.fill();
+      const carton = ctx.createLinearGradient(0, 0, 0, 16);
+      carton.addColorStop(0, "#d46a56");
+      carton.addColorStop(1, "#a04436");
+      ctx.fillStyle = carton;
       roundRect(-10, 0, 20, 14, 3);
       ctx.fill();
-      ctx.fillStyle = item.color;
-      ctx.fillRect(-7, -10, 3, 14);
-      ctx.fillRect(-1, -12, 3, 16);
-      ctx.fillRect(5, -9, 3, 13);
+      ctx.fillStyle = "#f0c57a";
+      ctx.font = "700 7px Outfit, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("FRIES", 0, 10);
+      const fries = [
+        [-7, -12, 3.2, 16, "#e0a04a"],
+        [-2, -14, 3.4, 18, "#f0c57a"],
+        [3, -11, 3.1, 15, "#d4923a"],
+        [7, -13, 2.8, 16, "#e8b45a"],
+      ];
+      for (const [fx, fy, fw, fh, col] of fries) {
+        const g = ctx.createLinearGradient(fx, fy, fx + fw, fy);
+        g.addColorStop(0, shade(col, -25));
+        g.addColorStop(0.4, shade(col, 30));
+        g.addColorStop(1, shade(col, -10));
+        ctx.fillStyle = g;
+        roundRect(fx, fy, fw, fh, 1.4);
+        ctx.fill();
+      }
     } else if (item.kind === "fish") {
-      ctx.fillStyle = item.color;
+      const body = ctx.createLinearGradient(0, -6, 0, 6);
+      body.addColorStop(0, "#c8e8f0");
+      body.addColorStop(0.45, "#8eb4c4");
+      body.addColorStop(1, "#4a7080");
+      ctx.fillStyle = body;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 12, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 13, 6.2, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = "#5a9eb0";
       ctx.beginPath();
       ctx.moveTo(10, 0);
-      ctx.lineTo(16, -5);
-      ctx.lineTo(16, 5);
+      ctx.lineTo(18, -6);
+      ctx.lineTo(16, 0);
+      ctx.lineTo(18, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#7ec8d4";
+      ctx.beginPath();
+      ctx.moveTo(-1, -6);
+      ctx.lineTo(3, -11);
+      ctx.lineTo(6, -5);
+      ctx.fill();
+      ctx.fillStyle = "#1b2a22";
+      ctx.beginPath();
+      ctx.arc(-6, -1, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(238,245,234,0.55)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-2, 1);
+      ctx.quadraticCurveTo(4, 3, 8, 0);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.beginPath();
+      ctx.ellipse(-3, -2.5, 4, 1.6, -0.3, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillStyle = item.color;
+      // Pizza wedge with crust rim + cheese thickness
+      ctx.fillStyle = "#8a4a28";
+      ctx.beginPath();
+      ctx.moveTo(1, -13);
+      ctx.lineTo(14, 12);
+      ctx.lineTo(-12, 12);
+      ctx.closePath();
+      ctx.fill();
+      const cheese = ctx.createLinearGradient(0, -12, 0, 12);
+      cheese.addColorStop(0, "#f0c57a");
+      cheese.addColorStop(0.55, "#e0a04a");
+      cheese.addColorStop(1, "#c48432");
+      ctx.fillStyle = cheese;
       ctx.beginPath();
       ctx.moveTo(0, -12);
       ctx.lineTo(12, 10);
@@ -443,11 +583,25 @@ const DumpsterDive = (() => {
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = "#c45c4a";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(-9, -4);
-      ctx.lineTo(9, -4);
+      ctx.moveTo(-10, -3);
+      ctx.lineTo(10, -3);
       ctx.stroke();
+      ctx.fillStyle = "#8a2f2f";
+      ctx.beginPath();
+      ctx.arc(-3, 3, 2.3, 0, Math.PI * 2);
+      ctx.arc(4, 5, 1.8, 0, Math.PI * 2);
+      ctx.arc(1, 0, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.beginPath();
+      ctx.moveTo(-2, -8);
+      ctx.lineTo(4, -2);
+      ctx.lineTo(-1, -1);
+      ctx.closePath();
+      ctx.fill();
     }
     ctx.restore();
   }

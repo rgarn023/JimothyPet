@@ -308,25 +308,87 @@ func _draw_dumpster(pf: Control) -> void:
 func _draw_item(pf: Control, item: Dictionary) -> void:
 	var p := Vector2(item.x, item.y)
 	var col: Color = item.color
+	var ground := pf.size.y - 54.0
+	var elev := maxf(0.0, ground - p.y)
+	var shadow_scale := maxf(0.32, 1.0 - elev / 240.0)
+	_draw_ellipse(pf, Vector2(p.x + 2.0, ground + 5.0), Vector2(16.0 * shadow_scale, 5.5 * shadow_scale), Color(0, 0, 0, 0.28 * shadow_scale))
+
+	var rot := float(item.rot)
+	var pitch := sin(rot * 1.7) * 0.22
+	var sx := 1.0 + absf(pitch) * 0.12
+	var sy := 1.0 - absf(pitch) * 0.38
+	pf.draw_set_transform(p, rot, Vector2(sx, sy))
 	match str(item.kind):
 		"rotten":
-			_draw_ellipse(pf, p, Vector2(item.r, item.r * 0.75), col)
+			var r: float = float(item.r)
+			_draw_ellipse(pf, Vector2.ZERO, Vector2(r, r * 0.78), col.darkened(0.15))
+			_draw_ellipse(pf, Vector2(-r * 0.25, -r * 0.28), Vector2(r * 0.55, r * 0.4), col.lightened(0.22))
+			_draw_ellipse(pf, Vector2(3, 4), Vector2(r * 0.55, r * 0.35), Color(0.16, 0.19, 0.08, 0.5))
+			pf.draw_circle(Vector2(-5, -3), 3.2, Color("9aab55"))
+			pf.draw_circle(Vector2(4, 0), 2.6, Color("8a9a4a"))
 		"can":
-			pf.draw_rect(Rect2(p.x - 10, p.y - 12, 20, 24), col, true, -1.0, true)
+			_draw_round_rect(pf, Rect2(-11, -11, 22, 24), Color("6a7a86"))
+			_draw_round_rect(pf, Rect2(-10, -10, 20, 22), col.lightened(0.12))
+			pf.draw_rect(Rect2(-3, -8, 2.2, 18), Color(1, 1, 1, 0.45))
+			_draw_round_rect(pf, Rect2(-9, -3, 18, 5), Color("eef6fa"))
+			_draw_round_rect(pf, Rect2(-7, -2, 14, 3), Color("c45c4a"))
+			_draw_round_rect(pf, Rect2(-9, -12, 18, 4), Color("8a9aa4"))
+			pf.draw_rect(Rect2(-7, -11.5, 10, 2), Color(1, 1, 1, 0.3))
 		"berry":
-			_draw_ellipse(pf, p + Vector2(-4, 0), Vector2(7, 7), col)
-			_draw_ellipse(pf, p + Vector2(5, -2), Vector2(7, 7), col)
+			_draw_berry(pf, Vector2(-5, 1), 7.2, Color("5a4a8a"))
+			_draw_berry(pf, Vector2(5, -2), 7.4, Color("6b5aa0"))
+			_draw_berry(pf, Vector2(0, 6), 6.4, Color("4a3a72"))
+			_draw_berry(pf, Vector2(2, -7), 4.8, Color("7a6ab0"))
+			pf.draw_polyline(PackedVector2Array([Vector2(-2, -10), Vector2(2, -14), Vector2(6, -9)]), Color("3d6b4f"), 1.6, true)
 		"fries":
-			pf.draw_rect(Rect2(p.x - 10, p.y, 20, 14), Color("c45c4a"), true, -1.0, true)
-			pf.draw_rect(Rect2(p.x - 7, p.y - 10, 3, 14), col)
-			pf.draw_rect(Rect2(p.x - 1, p.y - 12, 3, 16), col)
+			_draw_round_rect(pf, Rect2(-11, 2, 22, 14), Color("8a3a2e"))
+			_draw_round_rect(pf, Rect2(-10, 0, 20, 14), Color("c45c4a"))
+			_draw_fry(pf, -7, -12, 3.2, 16, Color("e0a04a"))
+			_draw_fry(pf, -2, -14, 3.4, 18, Color("f0c57a"))
+			_draw_fry(pf, 3, -11, 3.1, 15, Color("d4923a"))
+			_draw_fry(pf, 7, -13, 2.8, 16, Color("e8b45a"))
 		"fish":
-			_draw_ellipse(pf, p, Vector2(12, 5), col)
-			var fin := PackedVector2Array([p + Vector2(10, 0), p + Vector2(16, -5), p + Vector2(16, 5)])
-			pf.draw_colored_polygon(fin, col)
+			_draw_ellipse(pf, Vector2.ZERO, Vector2(13, 6.2), Color("8eb4c4"))
+			_draw_ellipse(pf, Vector2(-3, -2), Vector2(6, 2.4), Color(1, 1, 1, 0.28))
+			var fin := PackedVector2Array([Vector2(10, 0), Vector2(18, -6), Vector2(16, 0), Vector2(18, 6)])
+			pf.draw_colored_polygon(fin, Color("5a9eb0"))
+			var dorsal := PackedVector2Array([Vector2(-1, -6), Vector2(3, -11), Vector2(6, -5)])
+			pf.draw_colored_polygon(dorsal, Color("7ec8d4"))
+			pf.draw_circle(Vector2(-6, -1), 1.4, Color("1b2a22"))
+			pf.draw_polyline(PackedVector2Array([Vector2(-2, 1), Vector2(4, 3), Vector2(8, 0)]), Color(0.93, 0.96, 0.92, 0.55), 1.0, true)
 		_:
-			var tri := PackedVector2Array([p + Vector2(0, -12), p + Vector2(12, 10), p + Vector2(-12, 10)])
-			pf.draw_colored_polygon(tri, col)
+			var crust := PackedVector2Array([Vector2(1, -13), Vector2(14, 12), Vector2(-12, 12)])
+			pf.draw_colored_polygon(crust, Color("8a4a28"))
+			var cheese := PackedVector2Array([Vector2(0, -12), Vector2(12, 10), Vector2(-12, 10)])
+			pf.draw_colored_polygon(cheese, Color("e0a04a"))
+			pf.draw_line(Vector2(-10, -3), Vector2(10, -3), Color("c45c4a"), 3.2)
+			pf.draw_circle(Vector2(-3, 3), 2.3, Color("8a2f2f"))
+			pf.draw_circle(Vector2(4, 5), 1.8, Color("8a2f2f"))
+			pf.draw_circle(Vector2(1, 0), 1.5, Color("8a2f2f"))
+			var shine := PackedVector2Array([Vector2(-2, -8), Vector2(4, -2), Vector2(-1, -1)])
+			pf.draw_colored_polygon(shine, Color(1, 1, 1, 0.28))
+	pf.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_berry(pf: Control, c: Vector2, r: float, col: Color) -> void:
+	_draw_ellipse(pf, c, Vector2(r, r), col.darkened(0.12))
+	_draw_ellipse(pf, c + Vector2(-r * 0.28, -r * 0.32), Vector2(r * 0.45, r * 0.38), col.lightened(0.28))
+	pf.draw_circle(c + Vector2(-r * 0.3, -r * 0.35), r * 0.18, Color(1, 1, 1, 0.35))
+
+
+func _draw_fry(pf: Control, x: float, y: float, w: float, h: float, col: Color) -> void:
+	_draw_round_rect(pf, Rect2(x, y, w, h), col.darkened(0.08))
+	pf.draw_rect(Rect2(x + 0.6, y + 1.0, maxf(1.0, w * 0.35), h - 2.0), col.lightened(0.25))
+
+
+func _draw_round_rect(pf: Control, r: Rect2, color: Color) -> void:
+	# Soft rounded look via rect + end caps (cheap faux radius).
+	pf.draw_rect(Rect2(r.position + Vector2(2, 0), Vector2(maxf(1.0, r.size.x - 4), r.size.y)), color)
+	pf.draw_rect(Rect2(r.position + Vector2(0, 2), Vector2(r.size.x, maxf(1.0, r.size.y - 4))), color)
+	pf.draw_circle(r.position + Vector2(2, 2), 2.0, color)
+	pf.draw_circle(r.position + Vector2(r.size.x - 2, 2), 2.0, color)
+	pf.draw_circle(r.position + Vector2(2, r.size.y - 2), 2.0, color)
+	pf.draw_circle(r.position + Vector2(r.size.x - 2, r.size.y - 2), 2.0, color)
 
 
 func _draw_fx(pf: Control, f: Dictionary) -> void:

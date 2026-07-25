@@ -111,15 +111,15 @@ const RaccoonArt = (() => {
   }
 
   /** Pointed leaf tip for a jagged bushy silhouette. */
-  function leafTip(cx, cy, len, wid, fill, rot = 0) {
-    return `<path transform="translate(${cx} ${cy}) rotate(${rot})"
+  function leafTip(cx, cy, len, wid, fill, rot = 0, cls = "leaf") {
+    return `<path class="${cls}" transform="translate(${cx} ${cy}) rotate(${rot})"
       d="M0 ${-len * 0.55} Q${wid} 0 0 ${len * 0.45} Q${-wid} 0 0 ${-len * 0.55} Z"
       fill="${fill}"/>`;
   }
 
   /** Soft oval fill leaf for dense body. */
-  function leafPad(cx, cy, rx, ry, fill, rot = 0) {
-    return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"
+  function leafPad(cx, cy, rx, ry, fill, rot = 0, cls = "leaf") {
+    return `<ellipse class="${cls}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}"
       transform="rotate(${rot} ${cx} ${cy})"/>`;
   }
 
@@ -142,12 +142,14 @@ const RaccoonArt = (() => {
       [40, 62, 12, 9, -14], [58, 60, 14, 10, 2], [76, 62, 12, 9, 16],
       [48, 78, 12, 9, 0], [66, 78, 12, 9, 0],
     ];
+    const leafCls = ["leaf a", "leaf b", "leaf c", "leaf d", "leaf e"];
     pads.forEach(([x, y, rx, ry, rot], i) => {
-      body.push(leafPad(x, y, rx, ry, mid[i % mid.length], rot));
+      body.push(leafPad(x, y, rx, ry, mid[i % mid.length], rot, leafCls[i % leafCls.length]));
     });
     // Under-layer darker pads
     [[24, 90, 12, 8], [50, 96, 18, 8], [80, 90, 12, 8], [34, 68, 10, 8], [70, 66, 10, 8]].forEach(
-      ([x, y, rx, ry], i) => body.unshift(leafPad(x, y, rx, ry, deep[i % deep.length], i * 7))
+      ([x, y, rx, ry], i) =>
+        body.unshift(leafPad(x, y, rx, ry, deep[i % deep.length], i * 7, leafCls[(i + 2) % leafCls.length]))
     );
     // Lots of tip leaves poking out for a bushy ragged edge
     const tips = [
@@ -162,7 +164,7 @@ const RaccoonArt = (() => {
       [36, 72, 7, 3, 20], [56, 68, 7, 3, -18], [72, 74, 7, 3, 25],
     ];
     tips.forEach(([x, y, len, wid, rot], i) => {
-      body.push(leafTip(x, y, len, wid, lite[i % lite.length], rot));
+      body.push(leafTip(x, y, len, wid, lite[i % lite.length], rot, leafCls[i % leafCls.length]));
     });
     return svg(`
       <ellipse cx="58" cy="106" rx="52" ry="7" fill="#000" opacity="0.2"/>
@@ -916,7 +918,7 @@ const RaccoonAnim = (() => {
         animDur = 0.85;
         break;
       case "rustle":
-        animDur = 0.7;
+        animDur = 1.15;
         break;
       case "refuse":
         animDur = 0.95;
@@ -968,11 +970,12 @@ const RaccoonAnim = (() => {
 
     wrap.style.opacity = "1";
     if (stage === "bush") {
-      const amp = anim === "rustle" ? 5 + Math.sin(animT * 28) * 2 : 2;
-      poseX = Math.sin(t * 9) * amp + Math.sin(t * 3.3) * (amp * 0.7);
-      poseY = Math.sin(t * 7) * (amp * 0.7);
+      const amp = anim === "rustle" ? 9 + Math.sin(animT * 34) * 3.5 : 4.2;
+      poseX = Math.sin(t * 11) * amp + Math.sin(t * 4.1) * (amp * 0.85) + Math.sin(t * 17) * (amp * 0.22);
+      poseY = Math.sin(t * 8.2) * (amp * 0.8) + Math.cos(t * 13) * (amp * 0.25);
       facing = 1;
       wrap.classList.add("is-bush");
+      wrap.classList.toggle("is-rustling", anim === "rustle");
       if (anim === "rustle" && animT >= animDur) anim = "idle";
       applyTransform();
       return;

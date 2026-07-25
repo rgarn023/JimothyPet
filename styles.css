@@ -475,23 +475,39 @@ button {
   filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.25));
 }
 
-/* Bush rustle — layered foliage wiggle */
+/* Bush rustle — layered foliage wiggle (always-on breeze + hard shakes) */
+.raccoon-wrap.is-bush .bush-foliage .leaf {
+  transform-box: fill-box;
+  transform-origin: center;
+}
 .raccoon-wrap.is-bush .bush-foliage .leaf.a {
   transform-origin: 42px 78px;
-  animation: leaf-rustle 0.9s ease-in-out infinite;
+  animation: leaf-rustle 0.55s ease-in-out infinite;
 }
 .raccoon-wrap.is-bush .bush-foliage .leaf.b {
   transform-origin: 76px 80px;
-  animation: leaf-rustle 1.1s ease-in-out infinite reverse;
+  animation: leaf-rustle 0.7s ease-in-out infinite reverse;
 }
 .raccoon-wrap.is-bush .bush-foliage .leaf.c {
   transform-origin: 60px 68px;
-  animation: leaf-rustle 1.3s ease-in-out infinite;
+  animation: leaf-rustle 0.85s ease-in-out infinite;
 }
-.raccoon-wrap.is-bush .bush-foliage .leaf.d,
+.raccoon-wrap.is-bush .bush-foliage .leaf.d {
+  transform-origin: 50px 90px;
+  animation: leaf-rustle 0.48s ease-in-out infinite alternate;
+}
 .raccoon-wrap.is-bush .bush-foliage .leaf.e {
-  transform-origin: center;
-  animation: leaf-rustle 0.75s ease-in-out infinite alternate;
+  transform-origin: 70px 72px;
+  animation: leaf-rustle 0.62s 0.08s ease-in-out infinite alternate-reverse;
+}
+
+.raccoon-wrap.is-bush.is-rustling .bush-foliage .leaf.a,
+.raccoon-wrap.is-bush.is-rustling .bush-foliage .leaf.b,
+.raccoon-wrap.is-bush.is-rustling .bush-foliage .leaf.c,
+.raccoon-wrap.is-bush.is-rustling .bush-foliage .leaf.d,
+.raccoon-wrap.is-bush.is-rustling .bush-foliage .leaf.e {
+  animation-duration: 0.28s;
+  animation-timing-function: ease-in-out;
 }
 
 .raccoon-wrap.is-bush .bush-glint {
@@ -499,9 +515,10 @@ button {
 }
 
 @keyframes leaf-rustle {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  30% { transform: translate(2px, -1px) rotate(2deg); }
-  60% { transform: translate(-2px, 1px) rotate(-2deg); }
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  25% { transform: translate(5px, -3px) rotate(7deg) scale(1.03); }
+  50% { transform: translate(-4px, 2px) rotate(-6deg) scale(0.98); }
+  75% { transform: translate(3px, 3px) rotate(4deg) scale(1.02); }
 }
 
 @keyframes glint-pulse {

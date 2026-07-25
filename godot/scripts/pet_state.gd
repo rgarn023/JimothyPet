@@ -125,8 +125,14 @@ func _process(delta: float) -> void:
 			if not alive:
 				break
 		_anim_cooldown -= delta
-		if _anim_cooldown <= 0.0 and stage != "bush" and alive and not ascending:
-			_pulse_ambient_anim()
+		if _anim_cooldown <= 0.0 and alive and not ascending:
+			if stage == "bush":
+				_anim_cooldown = randf_range(1.6, 3.2)
+				anim_impulse.emit("rustle")
+				if JimothyAudio and randf() < 0.4:
+					JimothyAudio.play("rustle", -10.0)
+			else:
+				_pulse_ambient_anim()
 	_save_accum += delta
 	if _save_accum >= 5.0:
 		_save_accum = 0.0

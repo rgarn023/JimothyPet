@@ -910,12 +910,20 @@
 
   function ambientAnim(dt) {
     tapCooldown = Math.max(0, tapCooldown - dt);
-    if (!state.alive || state.ascending || state.stage === "bush") return;
+    if (!state.alive || state.ascending) return;
     if (window.RaccoonAnim && typeof RaccoonAnim.isBusy === "function" && RaccoonAnim.isBusy()) {
       return;
     }
     animCooldown -= dt;
     if (animCooldown > 0) return;
+
+    // Bush stage: gusty ambient rustles so foliage stays lively.
+    if (state.stage === "bush") {
+      animCooldown = randRange(1.6, 3.2);
+      pulseAnim("rustle");
+      if (Math.random() < 0.4 && window.JimothySound) JimothySound.play("rustle", 0.28);
+      return;
+    }
 
     if (state.stubborn || state.sick) {
       animCooldown = randRange(2.2, 3.6);

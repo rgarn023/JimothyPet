@@ -242,7 +242,7 @@ func play_anim(kind: String) -> void:
 		"spin":
 			_anim_dur = 0.85
 		"rustle":
-			_anim_dur = 0.7
+			_anim_dur = 1.15
 		"happy":
 			_anim_dur = 0.8
 			_smile = 1.0
@@ -273,13 +273,13 @@ func _process(delta: float) -> void:
 		return
 
 	if stage == "bush":
-		var bush_amp := 2.0
+		var bush_amp := 4.2
 		if _anim == "rustle":
-			bush_amp = 5.0 + sin(_anim_t * 28.0) * 2.0
+			bush_amp = 9.0 + sin(_anim_t * 34.0) * 3.5
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
-		_pose_x = sin(_t * 9.0) * bush_amp + sin(_t * 3.3) * (bush_amp * 0.7)
-		_pose_y = sin(_t * 7.0) * (bush_amp * 0.7)
+		_pose_x = sin(_t * 11.0) * bush_amp + sin(_t * 4.1) * (bush_amp * 0.85) + sin(_t * 17.0) * (bush_amp * 0.22)
+		_pose_y = sin(_t * 8.2) * (bush_amp * 0.8) + cos(_t * 13.0) * (bush_amp * 0.25)
 		queue_redraw()
 		return
 
@@ -799,13 +799,15 @@ func _draw_tip_leaf(c: Vector2, len: float, wid: float, color: Color, rot_deg: f
 
 
 func _draw_bush(c: Vector2) -> void:
-	var rustle := sin(_t * 10.0) * 1.2
-	var rustle2 := cos(_t * 7.5) * 1.0
+	var shake := 1.0 if _anim != "rustle" else 2.35
+	var rustle := sin(_t * 14.0) * 4.2 * shake
+	var rustle2 := cos(_t * 11.0) * 3.6 * shake
+	var rustle3 := sin(_t * 19.0 + 1.2) * 2.8 * shake
 	# Wide shrub shadow
-	_ellipse(c + Vector2(0, 52), Vector2(54, 7), Color(0, 0, 0, 0.2))
+	_ellipse(c + Vector2(rustle * 0.15, 52), Vector2(54, 7), Color(0, 0, 0, 0.2))
 	# Tiny soil-line twigs only
-	draw_line(c + Vector2(-12, 46), c + Vector2(-8, 40), Color("4a3424"), 1.8)
-	draw_line(c + Vector2(12, 46), c + Vector2(8, 40), Color("3d2c1e"), 1.6)
+	draw_line(c + Vector2(-12, 46), c + Vector2(-8 + rustle * 0.2, 40), Color("4a3424"), 1.8)
+	draw_line(c + Vector2(12, 46), c + Vector2(8 + rustle2 * 0.2, 40), Color("3d2c1e"), 1.6)
 	# Dense body pads — wider than tall
 	var deep: Array = [Color("1e3f2a"), Color("244a32"), Color("2a5236"), Color("2f5a3c")]
 	var mid: Array = [Color("355f44"), Color("3d6b4f"), Color("3a6648"), Color("2d5740")]
@@ -820,14 +822,19 @@ func _draw_bush(c: Vector2) -> void:
 	for i in pads.size():
 		var L: Array = pads[i]
 		var p := Vector2(float(L[0]), float(L[1]))
-		p.x += rustle * 0.1 if p.x < 0.0 else rustle2 * 0.1
-		_draw_oval_leaf(c + p, float(L[2]), float(L[3]), mid[i % mid.size()], float((i * 13) % 40) - 20.0)
+		var side := -1.0 if p.x < 0.0 else 1.0
+		p.x += (rustle if side < 0.0 else rustle2) * 0.55 + rustle3 * 0.2 * side
+		p.y += sin(_t * 12.0 + float(i) * 0.7) * 1.8 * shake
+		var wobble_rot := float((i * 13) % 40) - 20.0 + (rustle if side < 0.0 else rustle2) * 1.8
+		_draw_oval_leaf(c + p, float(L[2]), float(L[3]), mid[i % mid.size()], wobble_rot)
 	for i in 5:
 		var under_pts: Array[Vector2] = [
 			Vector2(-36, 36), Vector2(-8, 42), Vector2(20, 36), Vector2(-26, 14), Vector2(14, 12)
 		]
 		var under: Vector2 = under_pts[i]
-		_draw_oval_leaf(c + under, 12.0, 8.0, deep[i % deep.size()], float(i * 9))
+		under.x += sin(_t * 10.0 + float(i)) * 2.2 * shake
+		under.y += cos(_t * 9.0 + float(i) * 1.3) * 1.4 * shake
+		_draw_oval_leaf(c + under, 12.0, 8.0, deep[i % deep.size()], float(i * 9) + rustle * 0.8)
 	# Tip leaves for ragged bushy edge
 	var tips: Array = [
 		[-46, 28, 11, 5, -70], [-42, 16, 10, 4.5, -50], [-36, 6, 10, 4.5, -35],
@@ -842,11 +849,14 @@ func _draw_bush(c: Vector2) -> void:
 	for i in tips.size():
 		var T: Array = tips[i]
 		var p := Vector2(float(T[0]), float(T[1]))
-		p.x += rustle * 0.15 if p.x < 0.0 else rustle2 * 0.15
-		_draw_tip_leaf(c + p, float(T[2]), float(T[3]), lite[i % lite.size()], float(T[4]))
+		var side2 := -1.0 if p.x < 0.0 else 1.0
+		p.x += (rustle if side2 < 0.0 else rustle2) * 0.85 + sin(_t * 16.0 + float(i)) * 1.6 * shake
+		p.y += cos(_t * 14.0 + float(i) * 0.9) * 2.2 * shake
+		var tip_rot := float(T[4]) + (rustle if side2 < 0.0 else rustle2) * 2.8 + sin(_t * 18.0 + float(i)) * 6.0 * shake
+		_draw_tip_leaf(c + p, float(T[2]), float(T[3]), lite[i % lite.size()], tip_rot)
 	if age_hint() > 0.7:
-		draw_circle(c + Vector2(-8 + rustle, 22), 2.0, Color(0.98, 0.96, 0.9, 0.55))
-		draw_circle(c + Vector2(10 + rustle2, 24), 1.8, Color(0.98, 0.96, 0.9, 0.42))
+		draw_circle(c + Vector2(-8 + rustle, 22 + rustle3 * 0.3), 2.0, Color(0.98, 0.96, 0.9, 0.55))
+		draw_circle(c + Vector2(10 + rustle2, 24 - rustle * 0.2), 1.8, Color(0.98, 0.96, 0.9, 0.42))
 
 
 func age_hint() -> float:
