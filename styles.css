@@ -33,6 +33,8 @@ body.is-night {
   --brand: #f0c57a;
   --amber-soft: #f0c57a;
   --text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+  --hint: #f4f7f0;
+  --hint-shadow: 0 0 0 3px rgba(5, 12, 8, 0.72), 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
 body.is-day {
@@ -42,6 +44,8 @@ body.is-day {
   --amber-soft: #7a4a12;
   --mist: #1e3226;
   --text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  --hint: #102018;
+  --hint-shadow: 0 0 0 3px rgba(255, 255, 255, 0.72), 0 1px 2px rgba(255, 255, 255, 0.45);
 }
 
 *,
@@ -1478,10 +1482,12 @@ button {
 .hint {
   margin: 0;
   text-align: center;
-  font-size: 0.85rem;
-  color: var(--muted);
-  line-height: 1.4;
-  transition: color 1.2s ease;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--hint, var(--ink));
+  line-height: 1.45;
+  text-shadow: var(--hint-shadow, var(--text-shadow));
+  transition: color 1.2s ease, text-shadow 1.2s ease;
 }
 
 .status-row,

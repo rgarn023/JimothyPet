@@ -112,13 +112,22 @@ func _apply_day_night_text_colors() -> void:
 	var brand := Color("6a3f0c") if day else Color("f0c57a")
 	var muted := Color("2f4536") if day else Color("a8b8aa")
 	var ink := Color("15241a") if day else Color("eef5ea")
+	# Hint sits on the live forest backdrop — need stronger contrast than muted UI text.
+	var hint_col := Color("102018") if day else Color("f4f7f0")
+	var hint_shadow := Color(1, 1, 1, 0.82) if day else Color(0.02, 0.05, 0.03, 0.9)
 	if brand_label:
 		brand_label.add_theme_color_override("font_color", brand)
 	var tagline := get_node_or_null("Margin/VBox/Tagline") as Label
 	if tagline:
 		tagline.add_theme_color_override("font_color", muted)
 	if hint_label:
-		hint_label.add_theme_color_override("font_color", muted)
+		hint_label.add_theme_color_override("font_color", hint_col)
+		hint_label.add_theme_color_override("font_shadow_color", hint_shadow)
+		hint_label.add_theme_constant_override("shadow_offset_x", 0)
+		hint_label.add_theme_constant_override("shadow_offset_y", 1)
+		hint_label.add_theme_constant_override("outline_size", 4)
+		hint_label.add_theme_color_override("font_outline_color", hint_shadow)
+		hint_label.add_theme_font_size_override("font_size", 15)
 	if stage_name:
 		stage_name.add_theme_color_override("font_color", brand)
 	if clock_label:
