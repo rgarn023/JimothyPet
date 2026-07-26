@@ -129,7 +129,16 @@ func _apply_day_night_text_colors() -> void:
 		hint_label.add_theme_color_override("font_outline_color", hint_shadow)
 		hint_label.add_theme_font_size_override("font_size", 15)
 	if stage_name:
-		stage_name.add_theme_color_override("font_color", brand)
+		# Stage label sits on the clearing floor — amber alone washes out on dirt/leaves.
+		var stage_col := Color("1a1208") if day else Color("fff8e8")
+		var stage_outline := Color(1, 1, 1, 0.88) if day else Color(0.05, 0.04, 0.02, 0.92)
+		stage_name.add_theme_color_override("font_color", stage_col)
+		stage_name.add_theme_color_override("font_outline_color", stage_outline)
+		stage_name.add_theme_constant_override("outline_size", 5)
+		stage_name.add_theme_color_override("font_shadow_color", stage_outline)
+		stage_name.add_theme_constant_override("shadow_offset_x", 0)
+		stage_name.add_theme_constant_override("shadow_offset_y", 1)
+		stage_name.add_theme_font_size_override("font_size", 17)
 	if clock_label:
 		clock_label.add_theme_color_override("font_color", brand)
 	if age_label:
@@ -137,7 +146,10 @@ func _apply_day_night_text_colors() -> void:
 	if stage_chip:
 		stage_chip.add_theme_color_override("font_color", brand)
 	if alert_banner:
-		alert_banner.add_theme_color_override("font_color", brand)
+		var alert_col := Color("5a3208") if day else Color("ffe7b0")
+		alert_banner.add_theme_color_override("font_color", alert_col)
+		alert_banner.add_theme_color_override("font_outline_color", hint_shadow)
+		alert_banner.add_theme_constant_override("outline_size", 3)
 	for path in [
 		"Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HungerRow/L",
 		"Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HappyRow/L",
