@@ -57,7 +57,7 @@ Zips live in the repo [`dist/`](../dist/) folder:
    - **Project Settings → Plugins → NotificationScheduler → Enable**
    - **Project → Install Android Build Template…**
    - **Use Gradle Build** = On  
-4. Export / install APK **1.0.7+**  
+4. Export / install APK **1.0.8+**  
 5. On the phone, tap **Allow** on the notification popup  
 6. You should see Toast **“Jimothy alert sent”** and a shade notification  
 7. If the button says **Alerts: Allow**, tap it. If still blocked:  

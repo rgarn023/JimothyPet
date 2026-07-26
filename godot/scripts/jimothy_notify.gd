@@ -500,11 +500,12 @@ func _jw():
 func _android_sdk_int() -> int:
 	var jw = _jw()
 	if jw == null:
-		return 0
+		return 33 # assume modern Android if we can't read SDK
 	var Build = jw.wrap("android.os.Build$VERSION")
 	if Build == null:
-		return 0
-	return int(Build.SDK_INT)
+		return 33
+	var sdk := int(Build.SDK_INT)
+	return sdk if sdk > 0 else 33
 
 
 func _android_notifications_allowed() -> bool:
@@ -540,21 +541,40 @@ func _ensure_android_channel() -> bool:
 	if android_runtime == null or jw == null:
 		return false
 	var context = android_runtime.getApplicationContext()
+	if context == null:
+		var activity = android_runtime.getActivity()
+		if activity != null:
+			context = activity
+	if context == null:
+		return false
 	var sdk := _android_sdk_int()
-	if sdk >= 26:
-		var NotificationChannel = jw.wrap("android.app.NotificationChannel")
-		var channel = NotificationChannel.NotificationChannel(
-			ANDROID_CHANNEL_ID,
-			ANDROID_CHANNEL_NAME,
-			4
-		)
-		channel.setDescription("Hungry, play, acting up, waste, and new forms")
-		var nm = context.getSystemService("notification")
-		nm.createNotificationChannel(channel)
-		var err = jw.get_exception()
-		if err != null:
-			push_warning("JimothyNotify: channel error: %s" % str(err))
-			return false
+	if sdk < 26:
+		_android_channel_ready = true
+		return true
+	jw.get_exception() # clear
+	var NotificationChannel = jw.wrap("android.app.NotificationChannel")
+	if NotificationChannel == null:
+		return false
+	# IMPORTANCE_HIGH = 4
+	var channel = NotificationChannel.NotificationChannel(
+		String(ANDROID_CHANNEL_ID),
+		String(ANDROID_CHANNEL_NAME),
+		4
+	)
+	var err = jw.get_exception()
+	if err != null or channel == null:
+		push_warning("JimothyNotify: channel ctor: %s" % str(err))
+		return false
+	if channel.has_method("setDescription"):
+		channel.setDescription("Jimothy care alerts")
+	var nm = context.getSystemService("notification")
+	if nm == null:
+		return false
+	nm.createNotificationChannel(channel)
+	err = jw.get_exception()
+	if err != null:
+		push_warning("JimothyNotify: channel create: %s" % str(err))
+		return false
 	_android_channel_ready = true
 	return true
 
@@ -595,97 +615,108 @@ func _android_toast(message: String) -> void:
 
 
 func _post_android_jni(title: String, body: String) -> bool:
+	# Step markers stay in last_error so a mid-function crash still reports
+	# where it died (instead of the generic "JNI notify failed").
+	last_error = "JNI:start"
 	var android_runtime = _android_runtime()
 	var jw = _jw()
 	if android_runtime == null or jw == null:
-		last_error = "AndroidRuntime missing"
+		last_error = "JNI: no AndroidRuntime"
 		return false
 
-	# Don't hard-fail on the pre-check — still attempt the post.
 	if not _android_notifications_allowed():
 		if OS.has_method("request_permission"):
 			OS.request_permission(ANDROID_PERM)
 
+	last_error = "JNI:context"
 	var activity = android_runtime.getActivity()
 	var context = android_runtime.getApplicationContext()
 	if context == null and activity != null:
 		context = activity
 	if context == null:
-		last_error = "No Android context"
+		last_error = "JNI: no context"
 		return false
 
+	last_error = "JNI:channel"
+	_android_channel_ready = false
 	if not _ensure_android_channel():
-		# Recreate once more with activity service if needed.
-		_android_channel_ready = false
-		_ensure_android_channel()
+		last_error = "JNI: channel failed"
+		return false
 
-	var sdk := _android_sdk_int()
+	last_error = "JNI:icon"
 	var icon_id := _android_small_icon_id(context)
 	if icon_id == 0:
 		icon_id = 17301659 # android.R.drawable.ic_dialog_info
 
-	# Clear any stale Java exception before building.
-	jw.get_exception()
-
+	last_error = "JNI:builder"
+	jw.get_exception() # clear
 	var Builder = jw.wrap("android.app.Notification$Builder")
 	if Builder == null:
-		last_error = "Notification.Builder wrap failed"
+		last_error = "JNI: Builder wrap failed"
 		return false
 
+	var sdk := _android_sdk_int()
 	var builder
 	if sdk >= 26:
-		builder = Builder.Builder(context, ANDROID_CHANNEL_ID)
+		builder = Builder.Builder(context, String(ANDROID_CHANNEL_ID))
 	else:
 		builder = Builder.Builder(context)
 	var err = jw.get_exception()
 	if err != null or builder == null:
-		last_error = "Builder ctor failed"
-		push_warning("JimothyNotify: Builder ctor: %s" % str(err))
+		last_error = "JNI: Builder ctor failed"
 		return false
 
+	last_error = "JNI:setters"
 	builder.setSmallIcon(icon_id)
-	builder.setContentTitle(str(title))
-	builder.setContentText(str(body))
+	err = jw.get_exception()
+	if err != null:
+		last_error = "JNI: setSmallIcon failed"
+		return false
+	builder.setContentTitle(String(title))
+	err = jw.get_exception()
+	if err != null:
+		last_error = "JNI: setContentTitle failed"
+		return false
+	builder.setContentText(String(body))
+	err = jw.get_exception()
+	if err != null:
+		last_error = "JNI: setContentText failed"
+		return false
 	builder.setAutoCancel(true)
-	builder.setDefaults(-1)
-	if sdk < 26:
-		builder.setPriority(1)
+	# Avoid setDefaults() — deprecated and crashy on some OEM builds.
 
-	# Tap opens the game.
-	var launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName())
-	if launch != null:
-		var PendingIntent = jw.wrap("android.app.PendingIntent")
-		launch.addFlags(268435456)
-		var flags := 201326592 # FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE
-		var pending = PendingIntent.getActivity(context, _notify_id + 1, launch, flags)
-		if pending != null:
-			builder.setContentIntent(pending)
-
+	last_error = "JNI:build"
 	var notification = builder.build()
 	err = jw.get_exception()
 	if err != null or notification == null:
-		last_error = "Notification build failed"
-		push_warning("JimothyNotify: build: %s" % str(err))
+		last_error = "JNI: build() failed"
 		return false
 
+	last_error = "JNI:manager"
 	var nm = context.getSystemService("notification")
 	if nm == null and activity != null:
 		nm = activity.getSystemService("notification")
 	if nm == null:
-		last_error = "NotificationManager missing"
+		last_error = "JNI: no NotificationManager"
 		return false
 
+	last_error = "JNI:notify"
 	_notify_id += 1
-	nm.notify(_notify_id, notification)
+	# Use the 3-arg overload (tag, id, notification). The 2-arg notify(id, n)
+	# can collide with Godot Object / Java Object method resolution.
+	nm.notify("jimothy", _notify_id, notification)
 	err = jw.get_exception()
 	if err != null:
-		last_error = "notify() failed"
-		push_warning("JimothyNotify: notify: %s" % str(err))
-		return false
+		# Fallback: try 2-arg form.
+		jw.get_exception()
+		nm.notify(_notify_id, notification)
+		err = jw.get_exception()
+		if err != null:
+			last_error = "JNI: notify() failed"
+			return false
 
-	# If the OS switch is still off, treat as failure so the player gets guidance.
 	if not _android_notifications_allowed():
-		last_error = "Permission off — enable Notifications in Settings"
+		last_error = "Permission off in Settings"
 		return false
 
 	print("JimothyNotify: posted Android JNI notification id=", _notify_id, " icon=", icon_id)
