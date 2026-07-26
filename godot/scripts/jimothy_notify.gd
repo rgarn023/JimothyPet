@@ -48,6 +48,24 @@ func _setup_scheduler() -> void:
 	_scheduler.post_notifications_permission_granted.connect(_on_scheduler_perm_granted)
 	_scheduler.post_notifications_permission_denied.connect(_on_scheduler_perm_denied)
 	_scheduler.initialize()
+	# Plugin singleton can appear a moment after activity bind (esp. gdap path).
+	call_deferred("_retry_scheduler_init")
+	call_deferred("_schedule_scheduler_retries")
+
+
+func _schedule_scheduler_retries() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	tree.create_timer(0.5).timeout.connect(_retry_scheduler_init)
+	tree.create_timer(1.5).timeout.connect(_retry_scheduler_init)
+
+
+func _retry_scheduler_init() -> void:
+	if _scheduler_ready or _scheduler == null:
+		return
+	if Engine.has_singleton("NotificationSchedulerPlugin"):
+		_scheduler.initialize()
 
 
 func _on_scheduler_initialized() -> void:
@@ -655,16 +673,35 @@ func _post_android_jni(title: String, body: String) -> bool:
 		last_error = "JNI: Builder wrap failed"
 		return false
 
-	var sdk := _android_sdk_int()
-	var builder
-	if sdk >= 26:
-		builder = Builder.Builder(context, String(ANDROID_CHANNEL_ID))
-	else:
-		builder = Builder.Builder(context)
-	var err = jw.get_exception()
-	if err != null or builder == null:
+	# IMPORTANT: Use the 1-arg constructor only.
+	# Godot's JavaClassWrapper often fails to resolve the overloaded
+	# Builder(Context, String) and returns null ("JNI: Builder ctor failed").
+	# On API 26+ we call setChannelId() afterward instead.
+	var builder = null
+	var err = null
+	# Prefer Activity context; some devices reject Application context here.
+	for ctx in [activity, context]:
+		if ctx == null:
+			continue
+		jw.get_exception()
+		builder = Builder.Builder(ctx)
+		err = jw.get_exception()
+		if err == null and builder != null:
+			context = ctx
+			break
+		builder = null
+	if builder == null:
 		last_error = "JNI: Builder ctor failed"
 		return false
+
+	last_error = "JNI:channelId"
+	var sdk := _android_sdk_int()
+	if sdk >= 26:
+		builder.setChannelId(String(ANDROID_CHANNEL_ID))
+		err = jw.get_exception()
+		if err != null:
+			last_error = "JNI: setChannelId failed"
+			return false
 
 	last_error = "JNI:setters"
 	builder.setSmallIcon(icon_id)
@@ -683,7 +720,8 @@ func _post_android_jni(title: String, body: String) -> bool:
 		last_error = "JNI: setContentText failed"
 		return false
 	builder.setAutoCancel(true)
-	# Avoid setDefaults() — deprecated and crashy on some OEM builds.
+	if sdk < 26:
+		builder.setPriority(1)
 
 	last_error = "JNI:build"
 	var notification = builder.build()
