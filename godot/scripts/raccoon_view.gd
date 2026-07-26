@@ -112,14 +112,24 @@ func clear_ascend() -> void:
 	_facing = 1.0
 	_desired_facing = 1.0
 	_face_cooldown = 0.0
-	# Stay invisible after a finished life until a new kit starts.
-	if PetState != null and not PetState.alive and not PetState.ascending:
+	_sync_from_state()
+	# Invisible only while waiting for a new session; restore once a kit is alive.
+	if PetState != null and PetState.alive and not PetState.ascending:
+		reveal()
+	elif PetState != null and not PetState.alive and not PetState.ascending:
 		_fade = 0.0
 		modulate = Color(1, 1, 1, 0)
 	else:
-		_fade = 1.0
-		modulate = Color(1, 1, 1, 1)
-	_sync_from_state()
+		reveal()
+	queue_redraw()
+
+
+func reveal() -> void:
+	_fade = 1.0
+	_body_squash = 1.0
+	modulate = Color(1, 1, 1, 1)
+	visible = true
+	queue_redraw()
 
 
 func _view_front() -> bool:
@@ -354,8 +364,13 @@ func _process(delta: float) -> void:
 	# After ascend finishes, stay invisible until a new kit starts.
 	if PetState != null and not PetState.alive and not PetState.ascending:
 		_fade = 0.0
+		modulate = Color(1, 1, 1, 0)
 		queue_redraw()
 		return
+
+	# New kit / bush — make sure ascend fade never sticks.
+	if PetState != null and PetState.alive and modulate.a < 0.99:
+		reveal()
 
 	if stage == "bush":
 		var bush_amp := 4.2
@@ -365,6 +380,8 @@ func _process(delta: float) -> void:
 				_anim = "idle"
 		_pose_x = sin(_t * 11.0) * bush_amp + sin(_t * 4.1) * (bush_amp * 0.85) + sin(_t * 17.0) * (bush_amp * 0.22)
 		_pose_y = sin(_t * 8.2) * (bush_amp * 0.8) + cos(_t * 13.0) * (bush_amp * 0.25)
+		modulate = Color(1, 1, 1, 1)
+		_fade = 1.0
 		queue_redraw()
 		return
 

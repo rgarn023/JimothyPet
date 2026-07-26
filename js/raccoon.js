@@ -1182,10 +1182,13 @@ const RaccoonAnim = (() => {
     walkPhase = 0;
     speed = 0;
     headDip = 0;
+    onAscendFinished = null;
     if (wrap) {
       wrap.style.opacity = "1";
-      wrap.classList.remove("ascending");
+      wrap.style.visibility = "visible";
+      wrap.classList.remove("ascending", "stage-celebrating");
       wrap.classList.add("is-bush");
+      wrap.dataset.anim = "idle";
       const wings = wrap.querySelector(".ascend-wings");
       if (wings) wings.remove();
       clearFoodProp();
@@ -1402,11 +1405,27 @@ const RaccoonAnim = (() => {
       if (wings) wings.style.setProperty("--wing-span", String(wingSpan));
       wrap.classList.add("ascending");
       applyTransform();
-      if (u >= 1 && typeof onAscendFinished === "function") {
-        const cb = onAscendFinished;
-        onAscendFinished = null;
-        cb();
+      if (u >= 1) {
+        // Leave ascend state so later ticks don't keep opacity at 0.
+        anim = "gone";
+        animT = 0;
+        poseY = 0;
+        poseX = 0;
+        wrap.style.opacity = "0";
+        wrap.classList.remove("ascending");
+        if (typeof onAscendFinished === "function") {
+          const cb = onAscendFinished;
+          onAscendFinished = null;
+          cb();
+        }
       }
+      return;
+    }
+
+    if (anim === "gone") {
+      wrap.style.opacity = "0";
+      wrap.classList.remove("ascending", "is-bush");
+      applyTransform();
       return;
     }
 

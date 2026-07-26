@@ -328,7 +328,8 @@
     }
     const wrap = $("raccoonWrap");
     if (wrap) {
-      wrap.style.opacity = "1";
+      // Stay hidden until a new session starts (reset restores visibility).
+      wrap.style.opacity = "0";
       wrap.classList.remove("ascending", "is-bush", "stage-celebrating");
       const wings = wrap.querySelector(".ascend-wings");
       if (wings) wings.remove();
@@ -2311,6 +2312,16 @@
       if (shouldReset && (!state.alive || awaitingNewSession)) {
         awaitingNewSession = false;
         resetPet();
+        // Force bush visible after ascend fade left opacity at 0.
+        if (window.RaccoonAnim) RaccoonAnim.reset();
+        const wrap = $("raccoonWrap");
+        if (wrap) {
+          wrap.style.opacity = "1";
+          wrap.style.visibility = "visible";
+          wrap.classList.add("is-bush");
+          wrap.classList.remove("ascending");
+        }
+        lastArtKey = "";
         render();
         openScheduleModal();
         return;

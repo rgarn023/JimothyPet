@@ -1092,9 +1092,11 @@ func _on_reset_pressed() -> void:
 func _confirm_reset() -> void:
 	if _reset_panel:
 		_reset_panel.visible = false
+	PetState.reset_pet()
 	if raccoon and raccoon.has_method("clear_ascend"):
 		raccoon.clear_ascend()
-	PetState.reset_pet()
+	if raccoon and raccoon.has_method("reveal"):
+		raccoon.reveal()
 	_refresh()
 	_open_schedule_panel()
 
@@ -1263,9 +1265,12 @@ func _on_message_ok() -> void:
 	# After ascend: start a new session, then ask for wake/sleep times.
 	if _awaiting_new_kit or not PetState.alive:
 		_awaiting_new_kit = false
+		PetState.reset_pet()
+		# Reveal AFTER reset so clear_ascend/reveal see an alive bush kit.
 		if raccoon and raccoon.has_method("clear_ascend"):
 			raccoon.clear_ascend()
-		PetState.reset_pet()
+		if raccoon and raccoon.has_method("reveal"):
+			raccoon.reveal()
 		_refresh()
 		_open_schedule_after_message = false
 		_open_schedule_panel()
