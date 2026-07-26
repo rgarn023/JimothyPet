@@ -157,34 +157,43 @@ func _send_welcome_alert() -> void:
 		return
 	if PetState == null or not PetState.alerts_enabled:
 		return
-	_welcome_sent = true
-	# Defer one frame so permission grants are visible to both OS + plugin checks.
+	# Defer so permission grants settle; only mark sent after a real attempt.
 	call_deferred("_send_welcome_alert_now")
 
 
 func _send_welcome_alert_now() -> void:
+	if _welcome_sent:
+		return
+	if PetState == null or not PetState.alerts_enabled:
+		return
+	# If OS permission isn’t granted yet, ask and allow a later retry.
+	if OS.get_name() == "Android" and not os_permission_granted():
+		if OS.has_method("request_permission"):
+			OS.request_permission(ANDROID_PERM)
+		if _scheduler != null and _scheduler_ready:
+			_scheduler.request_post_notifications_permission()
+		_android_toast("Tap Allow for Jimothy notifications")
+		if PetState:
+			PetState.speech.emit(
+				"Allow notifications on the popup. If you don’t see one: phone Settings → Apps → JimothyPet → Notifications → On, then tap Alerts."
+			)
+		return
+
 	var ok := _post(
 		"Jimothy alerts on",
 		"Phone alerts for hunger, play, acting up, waste, and new forms."
 	)
+	_welcome_sent = true
 	if ok:
 		last_error = ""
 		if PetState:
-			PetState.speech.emit("Phone alert sent — check your notification shade.")
+			PetState.speech.emit("Phone alert sent — pull down the notification shade.")
 		_android_toast("Jimothy alert sent")
 	else:
-		last_error = last_error if last_error != "" else "Failed to post notification"
+		last_error = last_error if last_error != "" else "notify failed"
 		if PetState:
-			PetState.speech.emit(
-				"Alert failed: %s. Turn on Notifications for JimothyPet in phone Settings, and export with Gradle + NotificationScheduler enabled."
-				% last_error
-			)
-		# Keep toast short — Android truncates long toasts.
-		_android_toast("Alert failed: %s" % last_error.substr(0, 48))
-		if _scheduler != null and _scheduler_ready and _scheduler.has_method("open_app_info_settings"):
-			# Help the player flip the OS switch when permission was denied/blocked.
-			if not os_permission_granted():
-				_scheduler.open_app_info_settings()
+			PetState.speech.emit("Alert failed: %s" % last_error)
+		_android_toast("Alert failed: %s" % last_error.substr(0, 40))
 	check_now()
 
 
@@ -305,28 +314,22 @@ func request_permission() -> void:
 			check_now()
 		return
 
-	# Plugin path (requires Gradle custom build + enabled editor plugin).
+	# Always ask the OS directly — works with or without the Gradle plugin.
+	_ensure_android_channel()
+	if OS.has_method("request_permission"):
+		OS.request_permission(ANDROID_PERM)
+	elif OS.has_method("request_permissions"):
+		OS.request_permissions()
+
+	# Optional plugin path (only if NotificationScheduler is in the APK).
 	if _scheduler != null:
 		if not _scheduler_ready:
 			_scheduler.initialize()
-		if _scheduler_ready:
-			if _scheduler.has_post_notifications_permission():
-				_send_welcome_alert()
-			else:
-				_scheduler.request_post_notifications_permission()
-			# Also ask via OS API as a belt-and-suspenders prompt.
-			if OS.has_method("request_permission"):
-				OS.request_permission(ANDROID_PERM)
-			return
+		if _scheduler_ready and not _scheduler.has_post_notifications_permission():
+			_scheduler.request_post_notifications_permission()
 
-	# Fallback without plugin (one-click / non-Gradle exports).
-	_ensure_android_channel()
-	var already_granted := false
-	if OS.has_method("request_permission"):
-		already_granted = OS.request_permission(ANDROID_PERM)
-	else:
-		already_granted = OS.request_permissions()
-	if already_granted or _android_notifications_allowed():
+	# If already allowed, send the test shade alert now.
+	if os_permission_granted() or _android_notifications_allowed():
 		_send_welcome_alert()
 	else:
 		last_error = "Waiting for notification permission"
@@ -421,25 +424,40 @@ func request_permission_web() -> void:
 
 
 func _post_android(title: String, body: String) -> bool:
-	# Prefer immediate NotificationManager, then schedule via plugin as backup.
+	# Built-in NotificationManager first (works without Gradle plugins).
+	var jni_err := ""
 	var jni_ok := _post_android_jni(title, body)
-	var sched_ok := _post_android_scheduler(title, body)
+	if not jni_ok:
+		jni_err = last_error if last_error != "" else "JNI notify failed"
+
+	# Optional scheduler only if the editor plugin was packaged into the APK.
+	var sched_err := ""
+	var sched_ok := false
+	if _scheduler != null and _scheduler_ready and _plugin() != null:
+		sched_ok = _post_android_scheduler(title, body)
+		if not sched_ok:
+			sched_err = last_error if last_error != "" else "scheduler failed"
+	# else: plugin not in this APK — not an error by itself
+
 	if jni_ok or sched_ok:
 		last_error = ""
 		return true
-	if last_error == "":
-		last_error = "Android notify bridge failed"
+
+	var parts: PackedStringArray = []
+	if jni_err != "":
+		parts.append(jni_err)
+	if sched_err != "":
+		parts.append(sched_err)
+	if parts.is_empty():
+		parts.append("Could not post Android notification")
+	last_error = " / ".join(parts)
 	return false
 
 
 func _post_android_scheduler(title: String, body: String) -> bool:
-	if _scheduler == null or not _scheduler_ready:
-		if last_error == "":
-			last_error = "Scheduler not ready (enable plugin + Gradle export)"
-		return false
 	var plugin := _plugin()
 	if plugin == null:
-		last_error = "Plugin missing from APK (Gradle + NotificationScheduler)"
+		last_error = "NotificationScheduler not in APK"
 		return false
 	if not bool(plugin.has_post_notifications_permission()):
 		plugin.request_post_notifications_permission()
@@ -448,7 +466,6 @@ func _post_android_scheduler(title: String, body: String) -> bool:
 	if not _ensure_scheduler_channel():
 		return false
 	_notify_id += 1
-	# Plain String-key dict — required by Java NotificationData.isValid().
 	var data := {
 		"notification_id": _notify_id,
 		"channel_id": ANDROID_CHANNEL_ID,
@@ -581,91 +598,96 @@ func _post_android_jni(title: String, body: String) -> bool:
 	var android_runtime = _android_runtime()
 	var jw = _jw()
 	if android_runtime == null or jw == null:
-		last_error = "AndroidRuntime/JavaClassWrapper missing"
+		last_error = "AndroidRuntime missing"
 		return false
+
+	# Don't hard-fail on the pre-check — still attempt the post.
 	if not _android_notifications_allowed():
 		if OS.has_method("request_permission"):
 			OS.request_permission(ANDROID_PERM)
-		last_error = "Notification permission not granted"
-		return false
-	# Best-effort channel; still try to notify if channel APIs glitch.
-	if not _ensure_android_channel():
-		push_warning("JimothyNotify: channel ensure failed; still attempting notify")
 
+	var activity = android_runtime.getActivity()
 	var context = android_runtime.getApplicationContext()
+	if context == null and activity != null:
+		context = activity
+	if context == null:
+		last_error = "No Android context"
+		return false
+
+	if not _ensure_android_channel():
+		# Recreate once more with activity service if needed.
+		_android_channel_ready = false
+		_ensure_android_channel()
+
 	var sdk := _android_sdk_int()
 	var icon_id := _android_small_icon_id(context)
 	if icon_id == 0:
-		last_error = "No notification icon resource"
+		icon_id = 17301659 # android.R.drawable.ic_dialog_info
+
+	# Clear any stale Java exception before building.
+	jw.get_exception()
+
+	var Builder = jw.wrap("android.app.Notification$Builder")
+	if Builder == null:
+		last_error = "Notification.Builder wrap failed"
 		return false
 
-	# Prefer AndroidX NotificationCompat when the Gradle plugin pulled it in.
-	var notification = null
-	var err = null
-	var used_compat := false
-	var CompatBuilder = jw.wrap("androidx.core.app.NotificationCompat$Builder")
-	err = jw.get_exception()
-	if CompatBuilder != null and err == null:
-		var cbuilder = CompatBuilder.Builder(context, ANDROID_CHANNEL_ID)
-		err = jw.get_exception()
-		if err == null and cbuilder != null:
-			cbuilder.setSmallIcon(icon_id)
-			cbuilder.setContentTitle(title)
-			cbuilder.setContentText(body)
-			cbuilder.setAutoCancel(true)
-			cbuilder.setPriority(1) # PRIORITY_HIGH
-			cbuilder.setDefaults(-1)
-			notification = cbuilder.build()
-			err = jw.get_exception()
-			used_compat = err == null and notification != null
+	var builder
+	if sdk >= 26:
+		builder = Builder.Builder(context, ANDROID_CHANNEL_ID)
+	else:
+		builder = Builder.Builder(context)
+	var err = jw.get_exception()
+	if err != null or builder == null:
+		last_error = "Builder ctor failed"
+		push_warning("JimothyNotify: Builder ctor: %s" % str(err))
+		return false
 
-	if not used_compat:
-		jw.get_exception() # clear
-		var Builder = jw.wrap("android.app.Notification$Builder")
-		var builder
-		if sdk >= 26:
-			builder = Builder.Builder(context, ANDROID_CHANNEL_ID)
-		else:
-			builder = Builder.Builder(context)
-		err = jw.get_exception()
-		if err != null or builder == null:
-			last_error = "Builder failed: %s" % str(err)
-			return false
-		builder.setSmallIcon(icon_id)
-		builder.setContentTitle(title)
-		builder.setContentText(body)
-		builder.setAutoCancel(true)
-		builder.setOnlyAlertOnce(false)
-		builder.setDefaults(-1)
-		if sdk < 26:
-			builder.setPriority(1)
-		notification = builder.build()
-		err = jw.get_exception()
-		if err != null or notification == null:
-			last_error = "build: %s" % str(err)
-			push_warning("JimothyNotify: build failed: %s" % last_error)
-			return false
+	builder.setSmallIcon(icon_id)
+	builder.setContentTitle(str(title))
+	builder.setContentText(str(body))
+	builder.setAutoCancel(true)
+	builder.setDefaults(-1)
+	if sdk < 26:
+		builder.setPriority(1)
+
+	# Tap opens the game.
+	var launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName())
+	if launch != null:
+		var PendingIntent = jw.wrap("android.app.PendingIntent")
+		launch.addFlags(268435456)
+		var flags := 201326592 # FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE
+		var pending = PendingIntent.getActivity(context, _notify_id + 1, launch, flags)
+		if pending != null:
+			builder.setContentIntent(pending)
+
+	var notification = builder.build()
+	err = jw.get_exception()
+	if err != null or notification == null:
+		last_error = "Notification build failed"
+		push_warning("JimothyNotify: build: %s" % str(err))
+		return false
+
+	var nm = context.getSystemService("notification")
+	if nm == null and activity != null:
+		nm = activity.getSystemService("notification")
+	if nm == null:
+		last_error = "NotificationManager missing"
+		return false
 
 	_notify_id += 1
-	if used_compat:
-		var NotificationManagerCompat = jw.wrap("androidx.core.app.NotificationManagerCompat")
-		var nm_compat = NotificationManagerCompat.from(context)
-		nm_compat.notify(_notify_id, notification)
-	else:
-		var nm = context.getSystemService("notification")
-		nm.notify(_notify_id, notification)
+	nm.notify(_notify_id, notification)
 	err = jw.get_exception()
 	if err != null:
-		last_error = "notify: %s" % str(err)
-		push_warning("JimothyNotify: notify failed: %s" % last_error)
+		last_error = "notify() failed"
+		push_warning("JimothyNotify: notify: %s" % str(err))
 		return false
 
-	print(
-		"JimothyNotify: posted Android notification id=",
-		_notify_id,
-		" compat=",
-		used_compat,
-		" icon=",
-		icon_id
-	)
+	# If the OS switch is still off, treat as failure so the player gets guidance.
+	if not _android_notifications_allowed():
+		last_error = "Permission off — enable Notifications in Settings"
+		return false
+
+	print("JimothyNotify: posted Android JNI notification id=", _notify_id, " icon=", icon_id)
+	last_error = ""
 	return true

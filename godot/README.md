@@ -45,17 +45,16 @@ Zips live in the repo [`dist/`](../dist/) folder:
 
 ## Export Android (phone shade alerts)
 
-Phone alerts use the **NotificationScheduler** addon (`addons/NotificationSchedulerPlugin`, Godot 4.7).
-
 1. Install Godot **4.7.1** export templates + Android SDK  
-2. Confirm **Project → Project Settings → Plugins → NotificationScheduler** is **Enable**  
-3. **Project → Install Android Build Template…** (once — creates `android/build`)  
-4. **Project → Export → Android**  
-   - **Use Gradle Build** = On (required)  
-   - Package `com.jimothy.pet`  
-5. Export / install the APK (**version 1.0.6+**)  
-6. First launch: accept **Allow notifications**  
-7. You should see a short Toast **“Jimothy alert sent”** and a shade notification **“Jimothy alerts on”** within ~1s  
-8. If the Alerts button says **Alerts: Allow**, tap it and grant permission (or phone **Settings → Apps → JimothyPet → Notifications → On**)
-
-One-click / non-Gradle Android export will not include the scheduler plugin.
+2. **Project → Export → Android** and turn **ON**:
+   - **Permissions → Post Notifications** (required)
+   - Schedule Exact Alarm, Use Exact Alarm, Wake Lock, Receive Boot Completed  
+3. Recommended for best delivery:
+   - **Project Settings → Plugins → NotificationScheduler → Enable**
+   - **Project → Install Android Build Template…**
+   - **Use Gradle Build** = On  
+4. Export / install APK **1.0.7+**  
+5. On the phone, tap **Allow** on the notification popup  
+6. You should see Toast **“Jimothy alert sent”** and a shade notification  
+7. If the button says **Alerts: Allow**, tap it. If still blocked:  
+   **Settings → Apps → JimothyPet → Notifications → On**
