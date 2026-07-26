@@ -1,5 +1,5 @@
 /* Jimothy service worker — offline shell + care notification clicks */
-const CACHE = "jimothy-v26";
+const CACHE = "jimothy-v27";
 const ASSETS = [
   "./",
   "./index.html",

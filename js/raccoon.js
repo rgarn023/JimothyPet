@@ -1617,25 +1617,38 @@ const RaccoonAnim = (() => {
       }
       case "stageUp": {
         const u = Math.min(1, animT / animDur);
-        // 10s grow celebration: bounce, spin hops, settle into new form.
-        if (u < 0.2) {
-          const p = u / 0.2;
-          poseY = -Math.sin(p * Math.PI) * 22;
-          poseX = Math.sin(t * 8) * 6;
-        } else if (u < 0.55) {
-          const p = (u - 0.2) / 0.35;
-          poseY = -Math.abs(Math.sin(p * Math.PI * 3)) * 18;
-          poseX = Math.sin(t * 10) * 16;
-          walkPhase += dt * 8;
-        } else if (u < 0.82) {
-          const p = (u - 0.55) / 0.27;
-          poseY = -Math.sin(p * Math.PI) * 12;
-          poseX += (0 - poseX) * Math.min(1, dt * 2.2);
-          headDip = Math.sin(t * 6) * 3;
+        // Detailed silent morph: coil → vanish → bloom → settle.
+        if (u < 0.22) {
+          const p = u / 0.22;
+          poseY = Math.sin(p * Math.PI) * 6;
+          poseX = Math.sin(t * 14) * (4 + p * 10);
+          headDip = p * 8;
+          walkPhase += dt * 10;
+        } else if (u < 0.38) {
+          const p = (u - 0.22) / 0.16;
+          poseY = -p * 8;
+          poseX = Math.sin(t * 18) * (14 * (1 - p));
+          headDip = 8 * (1 - p);
+        } else if (u < 0.45) {
+          poseY = -4;
+          poseX = 0;
+          headDip = 0;
+        } else if (u < 0.7) {
+          const p = (u - 0.45) / 0.25;
+          poseY = -Math.sin(p * Math.PI) * 26;
+          poseX = Math.sin(t * 9) * 12 * (1 - p * 0.5);
+          headDip = -Math.sin(p * Math.PI) * 4;
+          walkPhase += dt * 7;
+          if (p > 0.35 && p < 0.55) requestFacing(facing < 0 ? 1 : -1);
+        } else if (u < 0.88) {
+          const p = (u - 0.7) / 0.18;
+          poseY = -Math.abs(Math.sin(p * Math.PI * 2)) * 12;
+          poseX = Math.sin(t * 8) * 8 * (1 - p);
+          headDip = Math.sin(t * 10) * 2;
         } else {
-          const p = (u - 0.82) / 0.18;
-          poseY = -Math.sin(p * Math.PI) * 6 * (1 - p);
-          poseX += (0 - poseX) * Math.min(1, dt * 3);
+          const p = (u - 0.88) / 0.12;
+          poseY = -Math.sin(p * Math.PI) * 5 * (1 - p);
+          poseX += (0 - poseX) * Math.min(1, dt * 3.5);
           headDip = 2 * (1 - p);
         }
         if (animT >= animDur) {

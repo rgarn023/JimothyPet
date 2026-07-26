@@ -295,30 +295,59 @@ func _process(delta: float) -> void:
 	if _anim == "stageUp":
 		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 		_smile = 1.0
-		if u < 0.2:
-			var p := u / 0.2
-			_pose_y = -sin(p * PI) * 22.0
-			_pose_x = sin(_t * 8.0) * 6.0
-		elif u < 0.55:
-			var p2 := (u - 0.2) / 0.35
-			_pose_y = -absf(sin(p2 * PI * 3.0)) * 18.0
-			_pose_x = sin(_t * 10.0) * 16.0
-			_walk_phase += delta * 8.0
-		elif u < 0.82:
-			var p3 := (u - 0.55) / 0.27
-			_pose_y = -sin(p3 * PI) * 12.0
-			_pose_x = lerpf(_pose_x, 0.0, minf(1.0, delta * 2.2))
-			_head_dip = sin(_t * 6.0) * 3.0
+		# Coil → vanish → bloom → settle (matches web morph timing).
+		if u < 0.22:
+			var p := u / 0.22
+			_pose_y = sin(p * PI) * 6.0
+			_pose_x = sin(_t * 14.0) * (4.0 + p * 10.0)
+			_head_dip = p * 8.0
+			_body_squash = lerpf(1.0, 0.55, p)
+			_fade = lerpf(1.0, 0.65, p)
+			_walk_phase += delta * 10.0
+		elif u < 0.38:
+			var p2 := (u - 0.22) / 0.16
+			_pose_y = -p2 * 8.0
+			_pose_x = sin(_t * 18.0) * (14.0 * (1.0 - p2))
+			_head_dip = 8.0 * (1.0 - p2)
+			_body_squash = lerpf(0.55, 0.12, p2)
+			_fade = lerpf(0.65, 0.05, p2)
+		elif u < 0.45:
+			_pose_y = -4.0
+			_pose_x = 0.0
+			_head_dip = 0.0
+			_body_squash = 0.08
+			_fade = 0.0
+		elif u < 0.7:
+			var p3 := (u - 0.45) / 0.25
+			_pose_y = -sin(p3 * PI) * 26.0
+			_pose_x = sin(_t * 9.0) * 12.0 * (1.0 - p3 * 0.5)
+			_head_dip = -sin(p3 * PI) * 4.0
+			_body_squash = lerpf(0.2, 1.15, smoothstep(0.0, 1.0, p3))
+			_fade = smoothstep(0.0, 0.35, p3)
+			_walk_phase += delta * 7.0
+			if p3 > 0.35 and p3 < 0.55:
+				_request_facing(-_facing if _facing != 0.0 else 1.0)
+		elif u < 0.88:
+			var p4 := (u - 0.7) / 0.18
+			_pose_y = -absf(sin(p4 * PI * 2.0)) * 12.0
+			_pose_x = sin(_t * 8.0) * 8.0 * (1.0 - p4)
+			_head_dip = sin(_t * 10.0) * 2.0
+			_body_squash = lerpf(1.15, 1.0, p4)
+			_fade = 1.0
 		else:
-			var p4 := (u - 0.82) / 0.18
-			_pose_y = -sin(p4 * PI) * 6.0 * (1.0 - p4)
-			_pose_x = lerpf(_pose_x, 0.0, minf(1.0, delta * 3.0))
-			_head_dip = 2.0 * (1.0 - p4)
+			var p5 := (u - 0.88) / 0.12
+			_pose_y = -sin(p5 * PI) * 5.0 * (1.0 - p5)
+			_pose_x = lerpf(_pose_x, 0.0, minf(1.0, delta * 3.5))
+			_head_dip = 2.0 * (1.0 - p5)
+			_body_squash = 1.0
+			_fade = 1.0
 		if _anim_t >= _anim_dur:
 			_anim = "idle"
 			_pose_y = 0.0
 			_pose_x = 0.0
 			_head_dip = 0.0
+			_body_squash = 1.0
+			_fade = 1.0
 		queue_redraw()
 		return
 
@@ -615,12 +644,13 @@ func _draw() -> void:
 		var glow_a := (1.0 - _fade) * 0.35 + _wing_span * 0.25
 		_ellipse(c + Vector2(0, 10), Vector2(70, 40), Color(0.95, 0.88, 0.55, glow_a * 0.35))
 	elif _anim == "stageUp":
-		var pulse := 0.35 + 0.45 * absf(sin(_t * 3.0))
-		_ellipse(c + Vector2(0, 8), Vector2(55, 36), Color(0.95, 0.8, 0.4, pulse * 0.28))
+		_draw_stage_up_fx(c)
 
 	var face := _facing if _facing != 0.0 else 1.0
 	var old_mod := modulate
 	if _anim == "ascend":
+		modulate = Color(1, 1, 1, _fade)
+	elif _anim == "stageUp":
 		modulate = Color(1, 1, 1, _fade)
 
 	if _anim == "ascend" and _wing_span > 0.05:
@@ -628,6 +658,9 @@ func _draw() -> void:
 
 	# Head dip nudges the silhouette down while chewing / sniffing.
 	var draw_c := c + Vector2(0, _head_dip * 0.45)
+	if _anim == "stageUp" and _body_squash != 1.0:
+		draw_set_transform(draw_c, 0.0, Vector2(_body_squash, 1.0 / maxf(0.2, _body_squash)))
+		draw_c = Vector2.ZERO
 
 	if _is_sleeping() and _anim != "ascend":
 		_draw_nest_bed(c + Vector2(0, 18))
@@ -646,6 +679,9 @@ func _draw() -> void:
 				_draw_adult(draw_c, face)
 			_:
 				_draw_baby(draw_c, face)
+
+	if _anim == "stageUp" and _body_squash != 1.0:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if _anim == "eat" and _eat_flash > 0.05:
 		_draw_food_prop(c, face, clampf(_anim_t / _anim_dur, 0.0, 1.0))
@@ -1077,6 +1113,38 @@ func _ringed_tail(base: Vector2, length: float, face: float, rings: bool = true)
 			var t := 0.2 + float(i) * 0.18
 			var p := base.lerp(tip, t)
 			_ellipse(p, Vector2(4, 3), Color("c8c8d0").darkened(0.05))
+
+
+func _draw_stage_up_fx(c: Vector2) -> void:
+	var u := clampf(_anim_t / maxf(0.01, _anim_dur), 0.0, 1.0)
+	var aura := 0.2 + 0.55 * absf(sin(_t * 3.2))
+	if u > 0.3 and u < 0.55:
+		aura = 0.85
+	_ellipse(c + Vector2(0, 8), Vector2(58, 40), Color(0.95, 0.8, 0.4, aura * 0.32))
+	# Expanding ring near morph flash
+	if u > 0.34 and u < 0.62:
+		var ring_t := (u - 0.34) / 0.28
+		var rr := lerpf(16.0, 72.0, ring_t)
+		draw_arc(c, rr, 0.0, TAU, 36, Color(0.94, 0.77, 0.48, 0.7 * (1.0 - ring_t)), 2.2, true)
+	# Swirling leaves
+	for i in 10:
+		var ang := _t * 2.4 + float(i) * TAU / 10.0
+		var rad := lerpf(18.0, 62.0, clampf(u * 1.2, 0.0, 1.0))
+		var lp := c + Vector2(cos(ang), sin(ang) * 0.72) * rad
+		var leaf_a := 0.85 if u < 0.85 else (1.0 - u) / 0.15
+		var col := Color("6fbf84") if i % 2 == 0 else Color("3d6b4f")
+		col.a = leaf_a * 0.9
+		draw_set_transform(lp, ang + 0.8, Vector2.ONE)
+		_ellipse(Vector2.ZERO, Vector2(7, 3.5), col)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# Sparks on bloom
+	if u > 0.4:
+		for i in 8:
+			var a2 := float(i) * TAU / 8.0 + _t
+			var push := lerpf(10.0, 48.0, clampf((u - 0.4) / 0.35, 0.0, 1.0))
+			var sp := c + Vector2(cos(a2), sin(a2)) * push
+			var sa := 0.9 * (1.0 - clampf((u - 0.55) / 0.4, 0.0, 1.0))
+			draw_circle(sp, 2.2, Color(0.96, 0.8, 0.4, sa))
 
 
 func _is_sleeping() -> bool:

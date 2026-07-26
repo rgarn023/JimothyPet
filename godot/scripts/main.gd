@@ -47,9 +47,7 @@ var _open_schedule_after_message: bool = false
 var _stage_celebrating: bool = false
 var _pending_stage_title: String = ""
 var _pending_stage_body: String = ""
-var _stage_banner: PanelContainer
-var _stage_banner_label: Label
-var _stage_banner_sub: Label
+var _was_daytime: int = -1
 var _forms_panel: ColorRect
 var _forms_list: VBoxContainer
 var _dev_panel: ColorRect
@@ -69,7 +67,6 @@ var _brand_tap_times: Array[float] = []
 
 func _ready() -> void:
 	_make_panels_transparent()
-	_build_stage_banner()
 	PetState.state_changed.connect(_refresh)
 	PetState.speech.connect(_on_speech)
 	PetState.pet_died.connect(_on_pet_died)
@@ -93,6 +90,7 @@ func _ready() -> void:
 	_wire_brand_secret()
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
+	_apply_day_night_text_colors()
 	_refresh()
 	# Dead / leftover saves: wait for player to start a new session (no auto bush).
 	if PetState.ascending:
@@ -103,48 +101,50 @@ func _ready() -> void:
 		_open_schedule_panel()
 
 
-func _build_stage_banner() -> void:
-	var stage_area := raccoon.get_parent() if raccoon else null
-	if stage_area == null:
-		return
-	_stage_banner = PanelContainer.new()
-	_stage_banner.visible = false
-	_stage_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_stage_banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_stage_banner.offset_left = -120
-	_stage_banner.offset_right = 120
-	_stage_banner.offset_top = 8
-	_stage_banner.offset_bottom = 78
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.1, 0.07, 0.78)
-	style.border_color = Color(0.94, 0.77, 0.48, 0.4)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(12)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	_stage_banner.add_theme_stylebox_override("panel", style)
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
-	_stage_banner.add_child(vbox)
-	var kicker := Label.new()
-	kicker.text = "GROWING UP"
-	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kicker.add_theme_font_size_override("font_size", 11)
-	kicker.add_theme_color_override("font_color", Color(0.94, 0.77, 0.48, 0.8))
-	vbox.add_child(kicker)
-	_stage_banner_label = Label.new()
-	_stage_banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_stage_banner_label.add_theme_font_size_override("font_size", 20)
-	_stage_banner_label.add_theme_color_override("font_color", Color("f0c57a"))
-	vbox.add_child(_stage_banner_label)
-	_stage_banner_sub = Label.new()
-	_stage_banner_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_stage_banner_sub.add_theme_font_size_override("font_size", 12)
-	_stage_banner_sub.add_theme_color_override("font_color", Color(0.85, 0.92, 0.86, 0.9))
-	vbox.add_child(_stage_banner_sub)
-	stage_area.add_child(_stage_banner)
+func _is_daytime() -> bool:
+	var t := Time.get_time_dict_from_system()
+	var h := float(t.hour) + float(t.minute) / 60.0
+	return h >= 6.0 and h < 20.0
+
+
+func _apply_day_night_text_colors() -> void:
+	var day := _is_daytime()
+	var brand := Color("6a3f0c") if day else Color("f0c57a")
+	var muted := Color("2f4536") if day else Color("a8b8aa")
+	var ink := Color("15241a") if day else Color("eef5ea")
+	if brand_label:
+		brand_label.add_theme_color_override("font_color", brand)
+	var tagline := get_node_or_null("Margin/VBox/Tagline") as Label
+	if tagline:
+		tagline.add_theme_color_override("font_color", muted)
+	if hint_label:
+		hint_label.add_theme_color_override("font_color", muted)
+	if stage_name:
+		stage_name.add_theme_color_override("font_color", brand)
+	if clock_label:
+		clock_label.add_theme_color_override("font_color", brand)
+	if age_label:
+		age_label.add_theme_color_override("font_color", brand)
+	if stage_chip:
+		stage_chip.add_theme_color_override("font_color", brand)
+	if alert_banner:
+		alert_banner.add_theme_color_override("font_color", brand)
+	for path in [
+		"Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HungerRow/L",
+		"Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HappyRow/L",
+		"Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HealthRow/L",
+		"Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/DisciplineRow/L",
+	]:
+		var lab := get_node_or_null(path) as Label
+		if lab:
+			lab.add_theme_color_override("font_color", muted if day else Color("9aab9c"))
+	if speech_label:
+		if day:
+			speech_label.add_theme_color_override("font_color", ink)
+			speech_label.add_theme_color_override("font_shadow_color", Color(1, 1, 1, 0.75))
+		else:
+			speech_label.add_theme_color_override("font_color", Color("1b2a22"))
+			speech_label.add_theme_color_override("font_shadow_color", Color(0.91, 0.937, 0.894, 1))
 
 
 func _make_panels_transparent() -> void:
@@ -157,6 +157,10 @@ func _make_panels_transparent() -> void:
 
 func _process(_delta: float) -> void:
 	clock_label.text = Time.get_time_string_from_system().substr(0, 5)
+	var day_i := 1 if _is_daytime() else 0
+	if day_i != _was_daytime:
+		_was_daytime = day_i
+		_apply_day_night_text_colors()
 
 
 func _build_overlay_panel(title_text: String) -> Dictionary:
@@ -930,39 +934,28 @@ func _on_speech(text: String) -> void:
 func _on_stage_changed(stage: String) -> void:
 	var title := ""
 	var body := ""
-	var sub := ""
 	match stage:
 		"baby":
 			title = "Baby Kit!"
 			body = "Jimothy burst from the bush. Keep him fed and cozy."
-			sub = "He leaves the leaves behind"
 		"young":
 			title = "Young Kit!"
 			body = "Form: %s. His teen/adult path is already leaning this way." % PetState.young_form.capitalize()
-			sub = str(PetState.young_form).capitalize()
 		"teen":
 			title = "Teen Kit!"
 			body = "Form: %s. Keep caring — he keeps growing." % PetState.teen_form.capitalize()
-			sub = str(PetState.teen_form).capitalize()
 		"adult":
 			title = "Adult Cryptid!"
 			body = "%s Jimothy — care well and he may linger longer; neglect shortens his sky-bound days." % PetState.adult_form_title()
-			sub = PetState.adult_form_title()
 		_:
 			return
-	_begin_stage_celebration(title, body, sub)
+	_begin_stage_celebration(title, body)
 
 
-func _begin_stage_celebration(title: String, body: String, subtitle: String = "") -> void:
+func _begin_stage_celebration(title: String, body: String) -> void:
 	_stage_celebrating = true
 	_pending_stage_title = title
 	_pending_stage_body = body
-	if _stage_banner_label:
-		_stage_banner_label.text = title
-	if _stage_banner_sub:
-		_stage_banner_sub.text = subtitle
-	if _stage_banner:
-		_stage_banner.visible = true
 	_refresh()
 	var timer := get_tree().create_timer(10.0)
 	timer.timeout.connect(_end_stage_celebration, CONNECT_ONE_SHOT)
@@ -970,8 +963,6 @@ func _begin_stage_celebration(title: String, body: String, subtitle: String = ""
 
 func _end_stage_celebration() -> void:
 	_stage_celebrating = false
-	if _stage_banner:
-		_stage_banner.visible = false
 	var title := _pending_stage_title
 	var body := _pending_stage_body
 	_pending_stage_title = ""

@@ -345,16 +345,45 @@
     save({ touchTick: false });
   }
 
-  function beginStageCelebration(stageKey, title, body, subtitle = "") {
+  function spawnStageFx() {
+    const fx = $("stageFx");
+    if (!fx) return;
+    fx.innerHTML = "";
+    fx.hidden = false;
+    fx.appendChild(Object.assign(document.createElement("div"), { className: "fx-ring" }));
+    fx.appendChild(Object.assign(document.createElement("div"), { className: "fx-flash" }));
+    for (let i = 0; i < 10; i++) {
+      const leaf = document.createElement("div");
+      leaf.className = `fx-leaf l${(i % 4) + 1}`;
+      leaf.style.animationDelay = `${(i * 0.08).toFixed(2)}s`;
+      leaf.style.setProperty("--spin", `${i * 36}deg`);
+      fx.appendChild(leaf);
+    }
+    const sparks = [
+      [28, -36], [-32, -28], [40, 8], [-38, 14], [12, -48], [-16, 36], [48, -12], [-46, -8],
+    ];
+    sparks.forEach(([dx, dy], i) => {
+      const spark = document.createElement("div");
+      spark.className = "fx-spark";
+      spark.style.setProperty("--dx", `${dx}px`);
+      spark.style.setProperty("--dy", `${dy}px`);
+      spark.style.animationDelay = `${(0.2 + i * 0.07).toFixed(2)}s`;
+      fx.appendChild(spark);
+    });
+  }
+
+  function clearStageFx() {
+    const fx = $("stageFx");
+    if (!fx) return;
+    fx.hidden = true;
+    fx.innerHTML = "";
+  }
+
+  function beginStageCelebration(_stageKey, title, body, _subtitle = "") {
     stageCelebrating = true;
     pendingStageMessage = { title, body };
     if (stageCelebrateTimer) clearTimeout(stageCelebrateTimer);
-    const banner = $("stageTransition");
-    const label = $("stageTransitionLabel");
-    const sub = $("stageTransitionSub");
-    if (label) label.textContent = title;
-    if (sub) sub.textContent = subtitle || "";
-    if (banner) banner.hidden = false;
+    spawnStageFx();
     const wrap = $("raccoonWrap");
     if (wrap) wrap.classList.add("stage-celebrating");
     pulseAnim("stageUp");
@@ -367,8 +396,7 @@
 
   function endStageCelebration() {
     stageCelebrating = false;
-    const banner = $("stageTransition");
-    if (banner) banner.hidden = true;
+    clearStageFx();
     const wrap = $("raccoonWrap");
     if (wrap) wrap.classList.remove("stage-celebrating");
     const msg = pendingStageMessage;
