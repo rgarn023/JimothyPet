@@ -31,7 +31,7 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
 - **Sound:** looping night ambience (crickets / wind) + raccoon chitters, rustles, crunch, and ascend whoosh — toggle with **Sound: On/Off**
-- **Care alerts:** optional notifications when hungry, bored, acting up, nest waste, or a **new form** — toggle with **Alerts: On/Off** (web Notification API / desktop OS notify)
+- **Care alerts:** real **OS / browser / Android** notifications when hungry, bored, acting up, nest waste, or a **new form** — toggle **Settings → Alerts: On** (allow the permission prompt). In-editor desktop may use OS toasts; phone alerts need an Android APK or the web/PWA build.
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
 - **Tap Jimothy** for smile / hop / nuzzle / spin reactions
 
@@ -47,4 +47,6 @@ Zips live in the repo [`dist/`](../dist/) folder:
 
 1. Install Godot **4.7.1** export templates  
 2. Configure Android SDK  
-3. **Project → Export → Android** (`com.jimothy.pet`)
+3. **Project → Export → Android** (`com.jimothy.pet`)  
+4. Export includes **POST_NOTIFICATIONS** — after install, open the app → **Settings → Alerts: On** and accept the Android permission prompt  
+5. Care alerts then appear in the phone notification shade (not only inside the game)

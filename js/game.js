@@ -782,12 +782,14 @@
       refreshAlertsButton();
       save({ touchTick: false });
       if (ok) {
-        say("Alerts on — care needs, nest waste, and new forms.");
+        say(
+          "Care alerts on — browser / phone notifications for hunger, play, acting up, waste, and new forms."
+        );
         JimothyNotify.check(state);
       } else if (JimothyNotify.permission() === "denied") {
-        say("Notifications are blocked. Enable them in browser settings for this site.");
+        say("Notifications blocked — enable them in browser or phone settings for this site.");
       } else {
-        say("Couldn’t enable alerts.");
+        say("Couldn’t enable alerts — allow the browser notification prompt.");
       }
     } else {
       state.alertsEnabled = false;

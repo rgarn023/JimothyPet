@@ -96,11 +96,16 @@ const JimothyNotify = (() => {
     };
 
     try {
-      if (document.hidden && "serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        if (reg && reg.showNotification) {
-          await reg.showNotification(title, notifOpts);
-          return true;
+      // Prefer the service worker on phones / PWAs — more reliable as a system notification.
+      if ("serviceWorker" in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            await reg.showNotification(title, notifOpts);
+            return true;
+          }
+        } catch {
+          /* fall through to Notification API */
         }
       }
       const n = new Notification(title, notifOpts);

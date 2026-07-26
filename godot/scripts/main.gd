@@ -1045,9 +1045,16 @@ func _refresh_alerts_button() -> void:
 func _on_alerts_pressed() -> void:
 	PetState.alerts_enabled = not PetState.alerts_enabled
 	if PetState.alerts_enabled:
-		if JimothyNotify and JimothyNotify.has_method("request_permission_web"):
+		if JimothyNotify and JimothyNotify.has_method("request_permission"):
+			JimothyNotify.request_permission()
+		elif JimothyNotify and JimothyNotify.has_method("request_permission_web"):
 			JimothyNotify.request_permission_web()
-		PetState.speech.emit("Care alerts on — care needs, waste, and new forms.")
+		var where := "phone / browser notifications"
+		if OS.get_name() == "Android":
+			where = "Android notifications (allow the permission prompt)"
+		elif OS.has_feature("web"):
+			where = "browser notifications (allow the permission prompt)"
+		PetState.speech.emit("Care alerts on — %s for hunger, play, acting up, waste, and new forms." % where)
 		if JimothyNotify:
 			JimothyNotify.check_now()
 	else:
