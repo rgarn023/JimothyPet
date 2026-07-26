@@ -763,12 +763,18 @@
       return;
     }
     btn.disabled = false;
-    const on = !!state.alertsEnabled && JimothyNotify.isEnabled();
-    btn.textContent = on ? "Alerts: On" : "Alerts: Off";
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
-    btn.title = on
+    if (!state.alertsEnabled) {
+      btn.textContent = "Alerts: Off";
+      btn.setAttribute("aria-pressed", "false");
+      btn.title = "Turn on notifications when Jimothy needs care";
+      return;
+    }
+    const granted = JimothyNotify.isEnabled();
+    btn.textContent = granted ? "Alerts: On" : "Alerts: Allow";
+    btn.setAttribute("aria-pressed", granted ? "true" : "false");
+    btn.title = granted
       ? "Care alerts on — hunger, play, acting up, waste, new forms"
-      : "Turn on notifications when Jimothy needs care";
+      : "Tap to allow browser / phone notifications";
   }
 
   async function toggleAlerts() {
@@ -776,21 +782,48 @@
       say("Alerts aren’t supported in this browser.");
       return;
     }
+    // Retry permission without turning alerts off when still pending/denied.
+    if (state.alertsEnabled && !JimothyNotify.isEnabled()) {
+      const ok = await JimothyNotify.setEnabled(true);
+      refreshAlertsButton();
+      save({ touchTick: false });
+      if (ok) {
+        say("Care alerts on — check your phone notification shade.");
+        JimothyNotify.show(
+          "boot",
+          "Jimothy alerts on",
+          "Phone / browser alerts for hunger, play, acting up, waste, and new forms.",
+          { force: true, tag: "jimothy-alerts-on" }
+        );
+        JimothyNotify.check(state);
+      } else if (JimothyNotify.permission() === "denied") {
+        say("Notifications blocked — enable them in browser or phone settings for this site.");
+      } else {
+        say("Allow the browser notification prompt, then tap Alerts again.");
+      }
+      return;
+    }
     const want = !state.alertsEnabled;
     if (want) {
       const ok = await JimothyNotify.setEnabled(true);
-      state.alertsEnabled = ok;
+      state.alertsEnabled = true;
       refreshAlertsButton();
       save({ touchTick: false });
       if (ok) {
         say(
           "Care alerts on — browser / phone notifications for hunger, play, acting up, waste, and new forms."
         );
+        JimothyNotify.show(
+          "boot",
+          "Jimothy alerts on",
+          "Phone / browser alerts for hunger, play, acting up, waste, and new forms.",
+          { force: true, tag: "jimothy-alerts-on" }
+        );
         JimothyNotify.check(state);
       } else if (JimothyNotify.permission() === "denied") {
         say("Notifications blocked — enable them in browser or phone settings for this site.");
       } else {
-        say("Couldn’t enable alerts — allow the browser notification prompt.");
+        say("Couldn’t enable alerts — allow the browser notification prompt, then tap Alerts: Allow.");
       }
     } else {
       state.alertsEnabled = false;
@@ -2408,19 +2441,12 @@
     refreshSoundButtons();
     if (window.JimothyNotify) {
       JimothyNotify.setOnChange(() => refreshAlertsButton());
-      if (state.alertsEnabled) {
-        const hadPermission = JimothyNotify.permission() === "granted";
-        JimothyNotify.setEnabled(true).then((ok) => {
+      // Mobile browsers require a user tap to grant notification permission.
+      // If already granted, enable quietly; otherwise show Alerts: Allow.
+      if (state.alertsEnabled && JimothyNotify.permission() === "granted") {
+        JimothyNotify.setEnabled(true).then(() => {
           refreshAlertsButton();
-          if (ok && !hadPermission) {
-            JimothyNotify.show(
-              "boot",
-              "Jimothy alerts on",
-              "Phone / browser alerts for hunger, play, acting up, waste, and new forms.",
-              { force: true, tag: "jimothy-alerts-on" }
-            );
-          }
-          if (ok) JimothyNotify.check(state);
+          JimothyNotify.check(state);
         });
       }
     }

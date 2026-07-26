@@ -1060,12 +1060,33 @@ func _on_sfx_pressed() -> void:
 func _refresh_alerts_button() -> void:
 	if btn_alerts == null:
 		return
-	btn_alerts.text = "Alerts: On" if PetState.alerts_enabled else "Alerts: Off"
+	if not PetState.alerts_enabled:
+		btn_alerts.text = "Alerts: Off"
+		return
+	if JimothyNotify and JimothyNotify.has_method("os_permission_granted") \
+			and not JimothyNotify.os_permission_granted():
+		btn_alerts.text = "Alerts: Allow"
+	else:
+		btn_alerts.text = "Alerts: On"
 
 
 func _on_alerts_pressed() -> void:
+	# If alerts are on but OS permission is missing, tapping retries the prompt
+	# instead of turning alerts off.
+	if PetState.alerts_enabled and JimothyNotify \
+			and JimothyNotify.has_method("os_permission_granted") \
+			and not JimothyNotify.os_permission_granted():
+		if JimothyNotify.has_method("request_permission"):
+			JimothyNotify.request_permission()
+		PetState.speech.emit("Allow notifications on the permission prompt (or enable them in phone Settings).")
+		_refresh_alerts_button()
+		return
+
 	PetState.alerts_enabled = not PetState.alerts_enabled
 	if PetState.alerts_enabled:
+		# Reset welcome so a fresh test notification is sent.
+		if JimothyNotify and JimothyNotify.has_method("reset_welcome"):
+			JimothyNotify.reset_welcome()
 		if JimothyNotify and JimothyNotify.has_method("request_permission"):
 			JimothyNotify.request_permission()
 		elif JimothyNotify and JimothyNotify.has_method("request_permission_web"):

@@ -31,7 +31,7 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
 - **Sound:** raccoon chitters, rustles, crunch, chew, cry, ascend, etc. — toggle in **Settings → Sound → Jimothy: On**. Android APKs load imported WAV samples via `ResourceLoader` (re-export after pulling latest if an older build was silent).
-- **Care alerts:** real **OS / browser / Android** notifications when hungry, bored, acting up, nest waste, or a **new form** — toggle **Settings → Alerts: On** (allow the permission prompt). In-editor desktop may use OS toasts; phone alerts need an Android APK or the web/PWA build.
+- **Care alerts:** real **OS / browser / Android** shade notifications when hungry, bored, acting up, nest waste, or a **new form**. **Alerts default ON**; the button shows **Alerts: Allow** until the phone grants permission. Phone APKs need the Gradle steps below.
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
 - **Tap Jimothy** for smile / hop / nuzzle / spin reactions
 
@@ -43,18 +43,19 @@ Zips live in the repo [`dist/`](../dist/) folder:
 - `JimothyPet-godot-4.7.1.zip` — full repo (web + Godot)
 - `Jimothy-web.zip` — browser-only build
 
-## Export Android (notifications require custom Gradle build)
+## Export Android (phone shade alerts)
 
-Phone shade alerts use the **LocalNotification** plugin under `android/plugins/`.
+Phone alerts use the **NotificationScheduler** addon (`addons/NotificationSchedulerPlugin`, Godot 4.7).
 
-1. Install Godot **4.7.1** export templates  
-2. Configure Android SDK (same as before)  
+1. Install Godot **4.7.1** export templates + Android SDK  
+2. Confirm **Project → Project Settings → Plugins → NotificationScheduler** is **Enable**  
 3. **Project → Install Android Build Template…** (once — creates `android/build`)  
 4. **Project → Export → Android**  
-   - **Use Gradle Build** = On  
-   - **Plugins → Local Notification** = On  
+   - **Use Gradle Build** = On (required)  
    - Package `com.jimothy.pet`  
-5. Export / install the APK  
-6. On first launch, **Alerts are ON by default** — accept the Android notification permission prompt  
-7. You should get **“Jimothy alerts on”** within about a second; care needs then notify in the shade  
-8. If denied: phone **Settings → Apps → JimothyPet → Notifications → On**
+5. Export / install the APK (**version 1.0.5+**)  
+6. First launch: accept **Allow notifications**  
+7. You should see a short Toast **“Jimothy alert sent”** and a shade notification **“Jimothy alerts on”** within ~1s  
+8. If the Alerts button says **Alerts: Allow**, tap it and grant permission (or phone **Settings → Apps → JimothyPet → Notifications → On**)
+
+One-click / non-Gradle Android export will not include the scheduler plugin.

@@ -1,13 +1,16 @@
 extends Node
 ## Care notifications — hungry / play / acting up / waste / new form.
-## Android: prefers LocalNotification plugin (reliable shade alerts), with
-## JavaClassWrapper NotificationManager as fallback.
+## Android: NotificationScheduler plugin (Gradle) + UI-thread NotificationManager
+## fallback + Toast confirmation so failures are visible in-game.
 ## Web: Notification API (+ service worker). Desktop: OS toasts.
 
 const COOLDOWN_SEC := 12 * 60
 const ANDROID_CHANNEL_ID := "jimothy_care"
 const ANDROID_CHANNEL_NAME := "Jimothy care"
 const ANDROID_PERM := "android.permission.POST_NOTIFICATIONS"
+const SCHEDULER_SCRIPT := preload("res://addons/NotificationSchedulerPlugin/NotificationScheduler.gd")
+const CHANNEL_SCRIPT := preload("res://addons/NotificationSchedulerPlugin/model/NotificationChannel.gd")
+const DATA_SCRIPT := preload("res://addons/NotificationSchedulerPlugin/model/NotificationData.gd")
 
 var _last := {
 	"hungry": -999999,
@@ -20,16 +23,83 @@ var _android_channel_ready: bool = false
 var _notify_id: int = 1100
 var _perm_connected: bool = false
 var _bootstrapped: bool = false
-## Session-only — avoid spamming “alerts on” every resume.
 var _welcome_sent: bool = false
+var _scheduler: Node = null
+var _scheduler_ready: bool = false
+var _scheduler_channel_ready: bool = false
+## Last delivery diagnostic for UI / speech.
+var last_error: String = ""
 
 
 func _ready() -> void:
 	if PetState:
 		PetState.state_changed.connect(_on_state)
 		PetState.stage_changed.connect(_on_stage)
+	_setup_scheduler()
 	_connect_permission_signal()
 	call_deferred("_bootstrap_alerts")
+
+
+func _setup_scheduler() -> void:
+	if OS.get_name() != "Android":
+		return
+	_scheduler = SCHEDULER_SCRIPT.new()
+	_scheduler.name = "NotificationScheduler"
+	add_child(_scheduler)
+	_scheduler.initialization_completed.connect(_on_scheduler_initialized)
+	_scheduler.post_notifications_permission_granted.connect(_on_scheduler_perm_granted)
+	_scheduler.post_notifications_permission_denied.connect(_on_scheduler_perm_denied)
+	_scheduler.initialize()
+
+
+func _on_scheduler_initialized() -> void:
+	_scheduler_ready = true
+	print("JimothyNotify: NotificationScheduler ready")
+	_ensure_scheduler_channel()
+	# Exact alarms keep the ~1s “alerts on” test reliable on Android 12+.
+	if _scheduler.has_method("has_schedule_exact_alarm_permission") \
+			and not _scheduler.has_schedule_exact_alarm_permission() \
+			and _scheduler.has_method("request_schedule_exact_alarm_permission"):
+		_scheduler.request_schedule_exact_alarm_permission()
+	if PetState and PetState.alerts_enabled:
+		if _scheduler.has_post_notifications_permission():
+			_send_welcome_alert()
+		else:
+			_scheduler.request_post_notifications_permission()
+
+
+func _on_scheduler_perm_granted(_permission_name: String) -> void:
+	_ensure_scheduler_channel()
+	_send_welcome_alert()
+
+
+func _on_scheduler_perm_denied(_permission_name: String) -> void:
+	last_error = "Notification permission denied"
+	if PetState:
+		PetState.speech.emit(
+			"Phone notifications blocked — open Settings → Apps → JimothyPet → Notifications → On."
+		)
+	_android_toast("Enable Jimothy notifications in Settings")
+
+
+func _ensure_scheduler_channel() -> bool:
+	if _scheduler == null or not _scheduler_ready:
+		return false
+	if _scheduler_channel_ready:
+		return true
+	var channel = CHANNEL_SCRIPT.new()
+	channel.set_id(ANDROID_CHANNEL_ID)
+	channel.set_name(ANDROID_CHANNEL_NAME)
+	channel.set_description("Hungry, play, acting up, waste, and new forms")
+	channel.set_importance(CHANNEL_SCRIPT.Importance.HIGH)
+	channel.set_badge_enabled(true)
+	var result: int = int(_scheduler.create_notification_channel(channel))
+	# OK or already exists
+	if result == OK or result == ERR_ALREADY_EXISTS:
+		_scheduler_channel_ready = true
+		return true
+	push_warning("JimothyNotify: channel create failed err=%s" % result)
+	return false
 
 
 func _bootstrap_alerts() -> void:
@@ -39,7 +109,6 @@ func _bootstrap_alerts() -> void:
 	_connect_permission_signal()
 	if PetState == null:
 		return
-	# Alerts default ON — ask for OS/browser permission on first launch.
 	if PetState.alerts_enabled:
 		request_permission()
 
@@ -51,11 +120,25 @@ func _connect_permission_signal() -> void:
 	if tree and tree.has_signal("on_request_permissions_result"):
 		tree.on_request_permissions_result.connect(_on_permissions_result)
 		_perm_connected = true
-	# Plugin permission flow
-	var ln := get_node_or_null("/root/LocalNotification")
-	if ln and ln.has_signal("on_permission_request_completed"):
-		if not ln.is_connected("on_permission_request_completed", Callable(self, "_on_plugin_permission_done")):
-			ln.on_permission_request_completed.connect(_on_plugin_permission_done)
+
+
+func os_permission_granted() -> bool:
+	if OS.has_feature("web"):
+		return _web_permission_granted()
+	if OS.get_name() != "Android":
+		return true
+	if _scheduler != null and _scheduler_ready:
+		return bool(_scheduler.has_post_notifications_permission())
+	return _android_notifications_allowed()
+
+
+func _web_permission_granted() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var status = JavaScriptBridge.eval(
+		"(function(){ return ('Notification' in window) ? Notification.permission : 'unsupported'; })();"
+	)
+	return str(status) == "granted"
 
 
 func _send_welcome_alert() -> void:
@@ -64,15 +147,24 @@ func _send_welcome_alert() -> void:
 	if PetState == null or not PetState.alerts_enabled:
 		return
 	_welcome_sent = true
-	_post(
+	var ok := _post(
 		"Jimothy alerts on",
 		"Phone alerts for hunger, play, acting up, waste, and new forms."
 	)
+	if ok:
+		last_error = ""
+		if PetState:
+			PetState.speech.emit("Phone alert sent — check your notification shade.")
+		_android_toast("Jimothy alert sent")
+	else:
+		last_error = last_error if last_error != "" else "Failed to post notification"
+		if PetState:
+			PetState.speech.emit(
+				"Couldn’t reach the phone shade (%s). Use Gradle export + allow Notifications in Settings."
+				% last_error
+			)
+		_android_toast("Jimothy alert failed")
 	check_now()
-
-
-func _on_plugin_permission_done() -> void:
-	_send_welcome_alert()
 
 
 func _on_permissions_result(permission: String, granted: bool) -> void:
@@ -81,7 +173,10 @@ func _on_permissions_result(permission: String, granted: bool) -> void:
 	if granted:
 		_send_welcome_alert()
 	elif PetState:
-		PetState.speech.emit("Notification permission denied — enable it in Android Settings → Apps → JimothyPet.")
+		last_error = "Notification permission denied"
+		PetState.speech.emit(
+			"Notification permission denied — enable it in Android Settings → Apps → JimothyPet."
+		)
 
 
 func _notification(what: int) -> void:
@@ -168,6 +263,11 @@ func supports_os_notifications() -> bool:
 			return false
 
 
+## Allow UI to force a fresh welcome/test notification on the next grant.
+func reset_welcome() -> void:
+	_welcome_sent = false
+
+
 ## Call when the player turns Alerts on — requests OS / browser permission.
 func request_permission() -> void:
 	_connect_permission_signal()
@@ -175,7 +275,6 @@ func request_permission() -> void:
 		request_permission_web()
 		return
 	if OS.get_name() != "Android":
-		# Desktop: confirmation toast/notification once per session.
 		if not _welcome_sent:
 			_welcome_sent = true
 			_post(
@@ -185,21 +284,21 @@ func request_permission() -> void:
 			check_now()
 		return
 
-	# Prefer the LocalNotification plugin permission flow.
-	var ln := get_node_or_null("/root/LocalNotification")
-	if ln and ln.has_method("init"):
-		ln.init()
-	if ln and ln.has_method("available") and ln.available():
-		if ln.isPermissionGranted():
-			_send_welcome_alert()
-		else:
-			ln.requestPermission()
-			# Also ask via OS in case the plugin dialog was already dismissed once.
+	# Plugin path (requires Gradle custom build + enabled editor plugin).
+	if _scheduler != null:
+		if not _scheduler_ready:
+			_scheduler.initialize()
+		if _scheduler_ready:
+			if _scheduler.has_post_notifications_permission():
+				_send_welcome_alert()
+			else:
+				_scheduler.request_post_notifications_permission()
+			# Also ask via OS API as a belt-and-suspenders prompt.
 			if OS.has_method("request_permission"):
 				OS.request_permission(ANDROID_PERM)
-		return
+			return
 
-	# Fallback without plugin
+	# Fallback without plugin (one-click / non-Gradle exports).
 	_ensure_android_channel()
 	var already_granted := false
 	if OS.has_method("request_permission"):
@@ -208,6 +307,9 @@ func request_permission() -> void:
 		already_granted = OS.request_permissions()
 	if already_granted or _android_notifications_allowed():
 		_send_welcome_alert()
+	else:
+		last_error = "Waiting for notification permission"
+		_android_toast("Allow Jimothy notifications")
 
 
 func _post(title: String, body: String) -> bool:
@@ -298,37 +400,46 @@ func request_permission_web() -> void:
 
 
 func _post_android(title: String, body: String) -> bool:
-	var ln := get_node_or_null("/root/LocalNotification")
-	if ln and ln.has_method("init"):
-		ln.init()
-	var has_plugin: bool = ln != null and ln.has_method("available") and bool(ln.available())
-	if has_plugin and ln.has_method("isPermissionGranted") and not ln.isPermissionGranted():
-		ln.requestPermission()
-
-	# 1) Immediate NotificationManager post (works while the process is alive).
+	# 1) NotificationScheduler (exact AlarmManager + proper channel/icon).
+	if _post_android_scheduler(title, body):
+		return true
+	# 2) Immediate NotificationManager on the UI thread.
 	if _post_android_jni(title, body):
-		# Also schedule via plugin so a shade alert still arrives if the OS
-		# suppressed the in-process notify (common on some OEMs).
-		if has_plugin and ln.isPermissionGranted():
-			_notify_id += 1
-			ln.show(title, body, 1, _notify_id)
 		return true
-
-	# 2) LocalNotification AlarmManager schedule (Gradle custom build + plugin).
-	if has_plugin and ln.isPermissionGranted():
-		_notify_id += 1
-		ln.show(title, body, 1, _notify_id)
-		print("JimothyNotify: scheduled via LocalNotification tag=", _notify_id, " title=", title)
-		return true
-
-	if has_plugin:
-		push_warning("JimothyNotify: waiting for notification permission.")
-	else:
-		push_warning(
-			"JimothyNotify: Android notify failed — install Android Build Template, enable "
-			+ "Gradle + LocalNotification, re-export, and allow the permission prompt."
-		)
+	if last_error == "":
+		last_error = "Android notify bridge failed"
 	return false
+
+
+func _post_android_scheduler(title: String, body: String) -> bool:
+	if _scheduler == null or not _scheduler_ready:
+		return false
+	if not _scheduler.has_post_notifications_permission():
+		_scheduler.request_post_notifications_permission()
+		last_error = "Waiting for notification permission"
+		return false
+	if not _ensure_scheduler_channel():
+		last_error = "Notification channel missing"
+		return false
+	_notify_id += 1
+	# Pass an explicit dict — NotificationData's default _init references
+	# NotificationScheduler constants and can fail to resolve at parse time.
+	var data = DATA_SCRIPT.new({
+		"notification_id": _notify_id,
+		"channel_id": ANDROID_CHANNEL_ID,
+		"title": title,
+		"content": body,
+		"small_icon_name": "ic_default_notification",
+		"delay": 1,
+	})
+	var result: int = int(_scheduler.schedule(data))
+	if result != OK:
+		push_warning("JimothyNotify: scheduler.schedule failed err=%s" % result)
+		last_error = "Scheduler error %s" % result
+		return false
+	print("JimothyNotify: scheduled via NotificationScheduler id=", _notify_id, " title=", title)
+	last_error = ""
+	return true
 
 
 func _android_runtime():
@@ -350,16 +461,20 @@ func _android_sdk_int() -> int:
 	if jw == null:
 		return 0
 	var Build = jw.wrap("android.os.Build$VERSION")
+	if Build == null:
+		return 0
 	return int(Build.SDK_INT)
 
 
 func _android_notifications_allowed() -> bool:
 	if OS.get_name() != "Android":
 		return false
-	var ln := get_node_or_null("/root/LocalNotification")
-	if ln and ln.has_method("available") and ln.available() and ln.has_method("isPermissionGranted"):
-		return ln.isPermissionGranted()
+	if _scheduler != null and _scheduler_ready:
+		return bool(_scheduler.has_post_notifications_permission())
 	var sdk := _android_sdk_int()
+	# If we can't read SDK, still attempt to post.
+	if sdk == 0:
+		return true
 	if sdk >= 33:
 		var granted: PackedStringArray = OS.get_granted_permissions()
 		var has_perm := false
@@ -371,7 +486,7 @@ func _android_notifications_allowed() -> bool:
 			return false
 	var android_runtime = _android_runtime()
 	if android_runtime == null:
-		return sdk > 0 and sdk < 33
+		return true
 	var context = android_runtime.getApplicationContext()
 	var nm = context.getSystemService("notification")
 	if nm == null:
@@ -409,8 +524,8 @@ func _ensure_android_channel() -> bool:
 func _android_small_icon_id(context) -> int:
 	var resources = context.getResources()
 	var pkg: String = str(context.getPackageName())
-	# Prefer the app icon from the Godot Android template, then system glyphs.
 	for entry in [
+		["ic_default_notification", "drawable", pkg],
 		["icon", "mipmap", pkg],
 		["notification_icon", "mipmap", pkg],
 		["icon", "drawable", pkg],
@@ -424,16 +539,36 @@ func _android_small_icon_id(context) -> int:
 	return 17301659 # android.R.drawable.ic_dialog_info
 
 
+func _android_toast(message: String) -> void:
+	if OS.get_name() != "Android":
+		return
+	var android_runtime = _android_runtime()
+	var jw = _jw()
+	if android_runtime == null or jw == null:
+		return
+	var activity = android_runtime.getActivity()
+	if activity == null:
+		return
+	var msg := message
+	var toast_callable = func() -> void:
+		var ToastClass = jw.wrap("android.widget.Toast")
+		ToastClass.makeText(activity, msg, ToastClass.LENGTH_LONG).show()
+	activity.runOnUiThread(android_runtime.createRunnableFromGodotCallable(toast_callable))
+
+
 func _post_android_jni(title: String, body: String) -> bool:
 	var android_runtime = _android_runtime()
 	var jw = _jw()
 	if android_runtime == null or jw == null:
+		last_error = "AndroidRuntime/JavaClassWrapper missing"
 		return false
 	if not _android_notifications_allowed():
 		if OS.has_method("request_permission"):
 			OS.request_permission(ANDROID_PERM)
+		last_error = "Notification permission not granted"
 		return false
 	if not _ensure_android_channel():
+		last_error = "Could not create notification channel"
 		return false
 
 	var context = android_runtime.getApplicationContext()
@@ -452,26 +587,26 @@ func _post_android_jni(title: String, body: String) -> bool:
 	builder.setContentText(body)
 	builder.setAutoCancel(true)
 	builder.setOnlyAlertOnce(false)
-	# DEFAULT_ALL — sound / vibrate / lights when the channel allows it.
 	builder.setDefaults(-1)
 	if sdk < 26:
-		builder.setPriority(1) # PRIORITY_HIGH
+		builder.setPriority(1)
 	else:
-		builder.setVisibility(1) # VISIBILITY_PUBLIC
+		builder.setVisibility(1)
 
 	var launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName())
 	if launch != null:
-		launch.addFlags(268435456) # FLAG_ACTIVITY_NEW_TASK
-		var flags := 201326592 # FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE
+		launch.addFlags(268435456)
+		var flags := 201326592
 		if sdk < 23:
-			flags = 134217728 # FLAG_UPDATE_CURRENT
-		var pending = PendingIntent.getActivity(context, _notify_id, launch, flags)
+			flags = 134217728
+		var pending = PendingIntent.getActivity(context, _notify_id + 1, launch, flags)
 		builder.setContentIntent(pending)
 
 	var notification = builder.build()
 	var err = jw.get_exception()
 	if err != null:
-		push_warning("JimothyNotify: build failed: %s" % str(err))
+		last_error = "build: %s" % str(err)
+		push_warning("JimothyNotify: build failed: %s" % last_error)
 		return false
 
 	var nm = context.getSystemService("notification")
@@ -479,7 +614,10 @@ func _post_android_jni(title: String, body: String) -> bool:
 	nm.notify(_notify_id, notification)
 	err = jw.get_exception()
 	if err != null:
-		push_warning("JimothyNotify: notify failed: %s" % str(err))
+		last_error = "notify: %s" % str(err)
+		push_warning("JimothyNotify: notify failed: %s" % last_error)
 		return false
+
 	print("JimothyNotify: posted Android JNI notification id=", _notify_id)
+	last_error = ""
 	return true
