@@ -53,7 +53,7 @@ Phone alerts use the **NotificationScheduler** addon (`addons/NotificationSchedu
 4. **Project → Export → Android**  
    - **Use Gradle Build** = On (required)  
    - Package `com.jimothy.pet`  
-5. Export / install the APK (**version 1.0.5+**)  
+5. Export / install the APK (**version 1.0.6+**)  
 6. First launch: accept **Allow notifications**  
 7. You should see a short Toast **“Jimothy alert sent”** and a shade notification **“Jimothy alerts on”** within ~1s  
 8. If the Alerts button says **Alerts: Allow**, tap it and grant permission (or phone **Settings → Apps → JimothyPet → Notifications → On**)

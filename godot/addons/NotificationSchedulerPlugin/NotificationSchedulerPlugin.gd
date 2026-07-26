@@ -46,10 +46,14 @@ class AndroidExportPlugin extends EditorExportPlugin:
 
 
 	func _get_android_libraries(platform: EditorExportPlatform, debug: bool) -> PackedStringArray:
+		# Absolute res:// paths are unambiguous for Godot's Android export.
 		if debug:
-			return PackedStringArray(["%s/bin/debug/%s-debug.aar" % [PLUGIN_NAME, PLUGIN_NAME]])
-		else:
-			return PackedStringArray(["%s/bin/release/%s-release.aar" % [PLUGIN_NAME, PLUGIN_NAME]])
+			return PackedStringArray([
+				"res://addons/%s/bin/debug/%s-debug.aar" % [PLUGIN_NAME, PLUGIN_NAME]
+			])
+		return PackedStringArray([
+			"res://addons/%s/bin/release/%s-release.aar" % [PLUGIN_NAME, PLUGIN_NAME]
+		])
 
 
 	func _get_name() -> String:
