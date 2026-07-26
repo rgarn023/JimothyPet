@@ -113,15 +113,11 @@ func clear_ascend() -> void:
 	_desired_facing = 1.0
 	_face_cooldown = 0.0
 	_sync_from_state()
-	# Invisible only while waiting for a new session; restore once a kit is alive.
-	if PetState != null and PetState.alive and not PetState.ascending:
-		reveal()
-	elif PetState != null and not PetState.alive and not PetState.ascending:
+	# Invisible only while waiting for a new session; sync reveals once alive.
+	if PetState != null and not PetState.alive and not PetState.ascending:
 		_fade = 0.0
 		modulate = Color(1, 1, 1, 0)
-	else:
-		reveal()
-	queue_redraw()
+		queue_redraw()
 
 
 func reveal() -> void:
@@ -178,6 +174,15 @@ func _sync_from_state() -> void:
 		mood = "stubborn"
 	else:
 		mood = "idle"
+	# Living kit after ascend/reset — never keep the post-fade invisible state.
+	if PetState != null and PetState.alive and not PetState.ascending:
+		if _anim in ["ascend", "gone"] or _fade < 0.99 or modulate.a < 0.99:
+			_anim = "idle"
+			_anim_t = 0.0
+			_pose_x = 0.0
+			_pose_y = 0.0
+			_wing_span = 0.0
+			reveal()
 	queue_redraw()
 
 
@@ -296,11 +301,32 @@ func _process(delta: float) -> void:
 		_pose_y = -u * 160.0 - sin(u * PI) * 12.0
 		_pose_x = sin(_t * 1.6) * (8.0 * (1.0 - u * 0.5))
 		_fade = 1.0 - smoothstep(0.55, 1.0, u)
+		modulate = Color(1, 1, 1, _fade)
 		queue_redraw()
 		if u >= 1.0 and not _ascend_done_emitted:
 			_ascend_done_emitted = true
+			# Leave ascend so later frames don't keep applying fade=0.
+			_anim = "gone"
+			_anim_t = 0.0
+			_pose_x = 0.0
+			_pose_y = 0.0
+			_wing_span = 0.0
+			_fade = 0.0
+			modulate = Color(1, 1, 1, 0)
 			ascend_finished.emit()
 		return
+
+	if _anim == "gone":
+		_fade = 0.0
+		modulate = Color(1, 1, 1, 0)
+		# New session may have revived the kit while we were still "gone".
+		if PetState != null and PetState.alive and not PetState.ascending:
+			_anim = "idle"
+			_anim_t = 0.0
+			reveal()
+		else:
+			queue_redraw()
+			return
 
 	if _anim == "stageUp":
 		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
@@ -649,10 +675,10 @@ func _draw() -> void:
 		return
 	_draw_clearing()
 	# Empty nest after ascend until the player starts a new session.
-	if PetState != null and not PetState.alive and not PetState.ascending and _anim != "ascend":
+	if PetState != null and not PetState.alive and not PetState.ascending and _anim not in ["ascend"]:
 		return
 	var c := size * 0.5 + Vector2(_pose_x, _pose_y)
-	if stage == "bush" and _anim != "ascend":
+	if stage == "bush" and _anim not in ["ascend", "gone"]:
 		_draw_bush(size * 0.5)
 		return
 

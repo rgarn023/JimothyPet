@@ -1182,11 +1182,14 @@ const RaccoonAnim = (() => {
     walkPhase = 0;
     speed = 0;
     headDip = 0;
-    onAscendFinished = null;
+    stage = "bush";
+    alive = true;
+    // Keep ascend callback — endLife rebinds it; clearing here broke nothing
+    // but left a window where a late tick could still be in "gone".
     if (wrap) {
       wrap.style.opacity = "1";
       wrap.style.visibility = "visible";
-      wrap.classList.remove("ascending", "stage-celebrating");
+      wrap.classList.remove("ascending", "stage-celebrating", "is-rustling");
       wrap.classList.add("is-bush");
       wrap.dataset.anim = "idle";
       const wings = wrap.querySelector(".ascend-wings");
@@ -1233,6 +1236,20 @@ const RaccoonAnim = (() => {
     stage = info.stage || "bush";
     ageSec = info.ageSec || 0;
     alive = info.alive !== false || !!info.ascending;
+    // New living kit: leave post-ascend "gone"/stuck fade immediately.
+    if (alive && !info.ascending && (anim === "gone" || anim === "ascend")) {
+      anim = "idle";
+      animT = 0;
+      poseX = 0;
+      poseY = 0;
+      if (wrap) {
+        wrap.style.opacity = "1";
+        wrap.style.visibility = "visible";
+        wrap.classList.remove("ascending");
+        const wings = wrap.querySelector(".ascend-wings");
+        if (wings) wings.remove();
+      }
+    }
     if (wrap) {
       const showBush = stage === "bush" && alive && anim !== "ascend" && !info.ascending;
       wrap.classList.toggle("is-bush", showBush);
@@ -1240,8 +1257,11 @@ const RaccoonAnim = (() => {
       wrap.dataset.anim = anim;
       wrap.dataset.view = getView();
       wrap.dataset.facing = getView() === "front" ? "front" : facing < 0 ? "left" : "right";
-      if (showBush) {
+      if (alive && !info.ascending) {
         wrap.style.opacity = "1";
+        wrap.style.visibility = "visible";
+      }
+      if (showBush) {
         const wings = wrap.querySelector(".ascend-wings");
         if (wings) wings.remove();
       }
@@ -1423,10 +1443,22 @@ const RaccoonAnim = (() => {
     }
 
     if (anim === "gone") {
-      wrap.style.opacity = "0";
-      wrap.classList.remove("ascending", "is-bush");
-      applyTransform();
-      return;
+      // Only stay hidden while the kit is actually gone. If a new session
+      // already marked us alive, recover instead of re-zeroing opacity.
+      if (alive) {
+        anim = "idle";
+        animT = 0;
+        poseX = 0;
+        poseY = 0;
+        wrap.style.opacity = "1";
+        wrap.style.visibility = "visible";
+        wrap.classList.remove("ascending");
+      } else {
+        wrap.style.opacity = "0";
+        wrap.classList.remove("ascending", "is-bush");
+        applyTransform();
+        return;
+      }
     }
 
     wrap.style.opacity = "1";

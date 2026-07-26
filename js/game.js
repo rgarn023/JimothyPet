@@ -911,7 +911,19 @@
     state.sleepHour = keepSleep;
     state.scheduleSet = false;
     save();
-    if (window.RaccoonAnim) RaccoonAnim.reset();
+    if (window.RaccoonAnim) {
+      RaccoonAnim.reset();
+      // Re-arm ascend completion for the next life.
+      RaccoonAnim.setOnAscendFinished(() => onAscendFinished());
+    }
+    lastArtKey = "";
+    const wrap = $("raccoonWrap");
+    if (wrap) {
+      wrap.style.opacity = "1";
+      wrap.style.visibility = "visible";
+      wrap.classList.add("is-bush");
+      wrap.classList.remove("ascending", "stage-celebrating");
+    }
     render();
     say("A roadside bush shivers… something’s in there.");
     sfx("bush");
@@ -2312,17 +2324,6 @@
       if (shouldReset && (!state.alive || awaitingNewSession)) {
         awaitingNewSession = false;
         resetPet();
-        // Force bush visible after ascend fade left opacity at 0.
-        if (window.RaccoonAnim) RaccoonAnim.reset();
-        const wrap = $("raccoonWrap");
-        if (wrap) {
-          wrap.style.opacity = "1";
-          wrap.style.visibility = "visible";
-          wrap.classList.add("is-bush");
-          wrap.classList.remove("ascending");
-        }
-        lastArtKey = "";
-        render();
         openScheduleModal();
         return;
       }
