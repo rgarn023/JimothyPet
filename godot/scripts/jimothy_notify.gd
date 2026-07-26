@@ -211,7 +211,7 @@ func _send_welcome_alert_now() -> void:
 		last_error = last_error if last_error != "" else "notify failed"
 		if PetState:
 			PetState.speech.emit("Alert failed: %s" % last_error)
-		_android_toast("Alert failed: %s" % last_error.substr(0, 40))
+		_android_toast("Alert failed: %s" % last_error.substr(0, 80))
 	check_now()
 
 
@@ -632,9 +632,179 @@ func _android_toast(message: String) -> void:
 	activity.runOnUiThread(android_runtime.createRunnableFromGodotCallable(toast_callable))
 
 
+func _android_jarray(jw, component_class, items: Array):
+	## Build a real Java array (needed for Class[] / Object[] vararg APIs).
+	var ArrayClass = jw.wrap("java.lang.reflect.Array")
+	if ArrayClass == null or component_class == null:
+		return null
+	jw.get_exception()
+	var arr = ArrayClass.newInstance(component_class, int(items.size()))
+	if jw.get_exception() != null or arr == null:
+		return null
+	for i in items.size():
+		ArrayClass.set(arr, int(i), items[i])
+		if jw.get_exception() != null:
+			return null
+	return arr
+
+
+func _android_reflect_new_with_class(jw, cls, param_classes: Array, args: Array):
+	## Class.getConstructor(Class[]) + Constructor.newInstance(Object[]) via real Java arrays.
+	if cls == null:
+		return null
+	jw.get_exception()
+	var JClass = jw.wrap("java.lang.Class")
+	if JClass == null:
+		return null
+	var Class_cls = JClass.forName("java.lang.Class")
+	var Object_cls = JClass.forName("java.lang.Object")
+	if Class_cls == null or Object_cls == null:
+		return null
+	var param_types = _android_jarray(jw, Class_cls, param_classes)
+	if param_types == null:
+		return null
+	jw.get_exception()
+	var ctor = null
+	# Prefer getDeclaredConstructor — public getConstructor(Class...) is a vararg and flaky.
+	ctor = cls.getDeclaredConstructor(param_types)
+	if jw.get_exception() != null:
+		ctor = null
+	if ctor == null:
+		jw.get_exception()
+		ctor = cls.getConstructor(param_types)
+		if jw.get_exception() != null or ctor == null:
+			return null
+	if ctor.has_method("setAccessible"):
+		ctor.setAccessible(true)
+		jw.get_exception()
+	var java_args = _android_jarray(jw, Object_cls, args)
+	if java_args == null:
+		return null
+	jw.get_exception()
+	var inst = ctor.newInstance(java_args)
+	if jw.get_exception() != null or inst == null:
+		return null
+	return inst
+
+
+func _android_make_builder(jw, context, channel_id: String) -> Dictionary:
+	## Returns {builder, detail}. JavaClassWrapper ctor matching is flaky for nested classes.
+	var failures: PackedStringArray = []
+	jw.get_exception()
+	var sdk := _android_sdk_int()
+	var channel := String(channel_id)
+
+	# --- Path A/B: wrap Notification$Builder ---
+	var Builder = jw.wrap("android.app.Notification$Builder")
+	if Builder == null:
+		failures.append("wrap$=null")
+	else:
+		# 1-arg then setChannelId (avoids 2-arg overload bugs).
+		jw.get_exception()
+		var builder_a = Builder.Builder(context)
+		var err_a = jw.get_exception()
+		if err_a == null and builder_a != null:
+			if sdk >= 26 and builder_a.has_method("setChannelId"):
+				builder_a.setChannelId(channel)
+				jw.get_exception()
+			return {"builder": builder_a, "detail": "Builder 1arg"}
+		failures.append("1arg:%s" % str(err_a))
+
+		jw.get_exception()
+		var builder_b = Builder.Builder(context, channel)
+		var err_b = jw.get_exception()
+		if err_b == null and builder_b != null:
+			return {"builder": builder_b, "detail": "Builder 2arg"}
+		failures.append("2arg:%s" % str(err_b))
+
+	# --- Path C: ClassLoader / forName + reflective constructors with real Java arrays ---
+	var JClass = jw.wrap("java.lang.Class")
+	var context_cls = null
+	var string_cls = null
+	if JClass != null:
+		jw.get_exception()
+		context_cls = JClass.forName("android.content.Context")
+		string_cls = JClass.forName("java.lang.String")
+
+	var builder_cls = null
+	if context != null and context.has_method("getClassLoader"):
+		jw.get_exception()
+		var loader = context.getClassLoader()
+		if loader != null and loader.has_method("loadClass"):
+			builder_cls = loader.loadClass("android.app.Notification$Builder")
+			if jw.get_exception() != null:
+				builder_cls = null
+			else:
+				failures.append("loadClass ok")
+	if builder_cls == null and JClass != null:
+		jw.get_exception()
+		builder_cls = JClass.forName("android.app.Notification$Builder")
+		if jw.get_exception() != null:
+			builder_cls = null
+
+	if builder_cls != null and context_cls != null:
+		if sdk >= 26 and string_cls != null:
+			var inst2 = _android_reflect_new_with_class(
+				jw, builder_cls, [context_cls, string_cls], [context, channel]
+			)
+			if inst2 != null:
+				return {"builder": inst2, "detail": "reflect 2arg"}
+			failures.append("reflect2=null")
+		var inst1 = _android_reflect_new_with_class(jw, builder_cls, [context_cls], [context])
+		if inst1 != null:
+			if sdk >= 26 and inst1.has_method("setChannelId"):
+				inst1.setChannelId(channel)
+				jw.get_exception()
+			return {"builder": inst1, "detail": "reflect 1arg"}
+		failures.append("reflect1=null")
+
+		# Last resort: walk getDeclaredConstructors() and try each matching arity.
+		jw.get_exception()
+		var ctors = builder_cls.getDeclaredConstructors()
+		if jw.get_exception() != null:
+			ctors = null
+		if ctors != null:
+			var ArrayClass = jw.wrap("java.lang.reflect.Array")
+			var Object_cls = JClass.forName("java.lang.Object") if JClass != null else null
+			var n: int = 0
+			if ArrayClass != null:
+				n = int(ArrayClass.getLength(ctors))
+			for i in n:
+				jw.get_exception()
+				var ctor = ArrayClass.get(ctors, int(i))
+				if ctor == null:
+					continue
+				if ctor.has_method("setAccessible"):
+					ctor.setAccessible(true)
+				var params = ctor.getParameterTypes() if ctor.has_method("getParameterTypes") else null
+				var argc: int = 0
+				if params != null and ArrayClass != null:
+					argc = int(ArrayClass.getLength(params))
+				var try_args: Array = []
+				if argc == 1:
+					try_args = [context]
+				elif argc == 2 and sdk >= 26:
+					try_args = [context, channel]
+				else:
+					continue
+				var java_args = _android_jarray(jw, Object_cls, try_args)
+				if java_args == null:
+					continue
+				jw.get_exception()
+				var inst = ctor.newInstance(java_args)
+				if jw.get_exception() == null and inst != null:
+					if argc == 1 and sdk >= 26 and inst.has_method("setChannelId"):
+						inst.setChannelId(channel)
+						jw.get_exception()
+					return {"builder": inst, "detail": "ctorWalk %d" % argc}
+			failures.append("ctorWalk fail n=%d" % n)
+	else:
+		failures.append("no builder_cls/context_cls")
+
+	return {"builder": null, "detail": " / ".join(failures)}
+
+
 func _post_android_jni(title: String, body: String) -> bool:
-	# Step markers stay in last_error so a mid-function crash still reports
-	# where it died (instead of the generic "JNI notify failed").
 	last_error = "JNI:start"
 	var android_runtime = _android_runtime()
 	var jw = _jw()
@@ -648,9 +818,9 @@ func _post_android_jni(title: String, body: String) -> bool:
 
 	last_error = "JNI:context"
 	var activity = android_runtime.getActivity()
-	var context = android_runtime.getApplicationContext()
-	if context == null and activity != null:
-		context = activity
+	var app_ctx = android_runtime.getApplicationContext()
+	# Prefer Activity — some OEMs reject Application context for Notification.Builder.
+	var context = activity if activity != null else app_ctx
 	if context == null:
 		last_error = "JNI: no context"
 		return false
@@ -658,52 +828,27 @@ func _post_android_jni(title: String, body: String) -> bool:
 	last_error = "JNI:channel"
 	_android_channel_ready = false
 	if not _ensure_android_channel():
-		last_error = "JNI: channel failed"
-		return false
+		push_warning("JimothyNotify: channel ensure failed; continuing")
 
 	last_error = "JNI:icon"
 	var icon_id := _android_small_icon_id(context)
 	if icon_id == 0:
-		icon_id = 17301659 # android.R.drawable.ic_dialog_info
+		icon_id = 17301659
 
 	last_error = "JNI:builder"
-	jw.get_exception() # clear
-	var Builder = jw.wrap("android.app.Notification$Builder")
-	if Builder == null:
-		last_error = "JNI: Builder wrap failed"
-		return false
-
-	# IMPORTANT: Use the 1-arg constructor only.
-	# Godot's JavaClassWrapper often fails to resolve the overloaded
-	# Builder(Context, String) and returns null ("JNI: Builder ctor failed").
-	# On API 26+ we call setChannelId() afterward instead.
-	var builder = null
-	var err = null
-	# Prefer Activity context; some devices reject Application context here.
-	for ctx in [activity, context]:
-		if ctx == null:
-			continue
-		jw.get_exception()
-		builder = Builder.Builder(ctx)
-		err = jw.get_exception()
-		if err == null and builder != null:
-			context = ctx
-			break
-		builder = null
+	var made: Dictionary = _android_make_builder(jw, context, ANDROID_CHANNEL_ID)
+	var builder = made.get("builder", null)
+	if builder == null and activity != null and app_ctx != null and activity != app_ctx:
+		made = _android_make_builder(jw, app_ctx, ANDROID_CHANNEL_ID)
+		builder = made.get("builder", null)
+		if builder != null:
+			context = app_ctx
 	if builder == null:
-		last_error = "JNI: Builder ctor failed"
+		last_error = "JNI builder: %s" % str(made.get("detail", "failed"))
 		return false
-
-	last_error = "JNI:channelId"
-	var sdk := _android_sdk_int()
-	if sdk >= 26:
-		builder.setChannelId(String(ANDROID_CHANNEL_ID))
-		err = jw.get_exception()
-		if err != null:
-			last_error = "JNI: setChannelId failed"
-			return false
 
 	last_error = "JNI:setters"
+	var err = null
 	builder.setSmallIcon(icon_id)
 	err = jw.get_exception()
 	if err != null:
@@ -720,7 +865,7 @@ func _post_android_jni(title: String, body: String) -> bool:
 		last_error = "JNI: setContentText failed"
 		return false
 	builder.setAutoCancel(true)
-	if sdk < 26:
+	if _android_sdk_int() < 26 and builder.has_method("setPriority"):
 		builder.setPriority(1)
 
 	last_error = "JNI:build"
@@ -740,12 +885,9 @@ func _post_android_jni(title: String, body: String) -> bool:
 
 	last_error = "JNI:notify"
 	_notify_id += 1
-	# Use the 3-arg overload (tag, id, notification). The 2-arg notify(id, n)
-	# can collide with Godot Object / Java Object method resolution.
 	nm.notify("jimothy", _notify_id, notification)
 	err = jw.get_exception()
 	if err != null:
-		# Fallback: try 2-arg form.
 		jw.get_exception()
 		nm.notify(_notify_id, notification)
 		err = jw.get_exception()
@@ -757,6 +899,13 @@ func _post_android_jni(title: String, body: String) -> bool:
 		last_error = "Permission off in Settings"
 		return false
 
-	print("JimothyNotify: posted Android JNI notification id=", _notify_id, " icon=", icon_id)
+	print(
+		"JimothyNotify: posted Android JNI notification id=",
+		_notify_id,
+		" icon=",
+		icon_id,
+		" via=",
+		str(made.get("detail", "?"))
+	)
 	last_error = ""
 	return true
