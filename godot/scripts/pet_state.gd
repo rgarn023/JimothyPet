@@ -120,7 +120,10 @@ var ambience_muted: bool = true
 ## When true, Jimothy raccoon SFX are muted (persists).
 var sfx_muted: bool = false
 ## When true, care notifications (hungry / play / acting up / waste) are allowed.
-var alerts_enabled: bool = false
+## Defaults ON so first launch can prompt for phone / browser permission.
+var alerts_enabled: bool = true
+## One-time migration marker so upgrading installs turn alerts on once.
+var care_alerts_default_v1: bool = false
 ## Last successful food key — used by eat animation prop.
 var last_fed_food: String = "berries"
 ## Local wake hour 0–23.
@@ -1230,6 +1233,7 @@ func to_dict() -> Dictionary:
 		"ambience_muted": true,
 		"sfx_muted": sfx_muted,
 		"alerts_enabled": alerts_enabled,
+		"care_alerts_default_v1": care_alerts_default_v1,
 		"wake_hour": wake_hour,
 		"sleep_hour": sleep_hour,
 		"schedule_set": schedule_set,
@@ -1293,7 +1297,12 @@ func from_dict(d: Dictionary) -> void:
 	sound_muted = bool(d.get("sound_muted", false))
 	ambience_muted = true
 	sfx_muted = bool(d.get("sfx_muted", sound_muted))
-	alerts_enabled = bool(d.get("alerts_enabled", false))
+	alerts_enabled = bool(d.get("alerts_enabled", true))
+	care_alerts_default_v1 = bool(d.get("care_alerts_default_v1", false))
+	# Upgrading installs: force alerts ON once so phone permission can be requested.
+	if not care_alerts_default_v1:
+		alerts_enabled = true
+		care_alerts_default_v1 = true
 	wake_hour = int(d.get("wake_hour", 7))
 	sleep_hour = int(d.get("sleep_hour", 22))
 	schedule_set = bool(d.get("schedule_set", false))

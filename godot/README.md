@@ -43,11 +43,18 @@ Zips live in the repo [`dist/`](../dist/) folder:
 - `JimothyPet-godot-4.7.1.zip` — full repo (web + Godot)
 - `Jimothy-web.zip` — browser-only build
 
-## Export Android
+## Export Android (notifications require custom Gradle build)
+
+Phone shade alerts use the **LocalNotification** plugin under `android/plugins/`.
 
 1. Install Godot **4.7.1** export templates  
-2. Configure Android SDK  
-3. **Project → Export → Android** (`com.jimothy.pet`)  
-4. Export includes **POST_NOTIFICATIONS** — after install, open the app → **Settings → Alerts: On** and accept the Android permission prompt  
-5. You should see a confirmation notification (“Jimothy alerts on”). Care needs (hungry, play, acting up, waste, new form) then appear in the phone shade  
-6. If no prompt appears: phone **Settings → Apps → JimothyPet → Notifications → On**
+2. Configure Android SDK (same as before)  
+3. **Project → Install Android Build Template…** (once — creates `android/build`)  
+4. **Project → Export → Android**  
+   - **Use Gradle Build** = On  
+   - **Plugins → Local Notification** = On  
+   - Package `com.jimothy.pet`  
+5. Export / install the APK  
+6. On first launch, **Alerts are ON by default** — accept the Android notification permission prompt  
+7. You should get **“Jimothy alerts on”** within about a second; care needs then notify in the shade  
+8. If denied: phone **Settings → Apps → JimothyPet → Notifications → On**

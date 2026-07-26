@@ -113,7 +113,7 @@
     soundMuted: false,
     ambienceMuted: true,
     sfxMuted: false,
-    alertsEnabled: false,
+    alertsEnabled: true,
     /** Local wake hour 0–23 (inclusive start of awake window). */
     wakeHour: 7,
     /** Local sleep hour 0–23 (inclusive start of sleep window). */
@@ -636,7 +636,8 @@
       soundMuted: !!state.soundMuted,
       ambienceMuted: true,
       sfxMuted: !!state.sfxMuted,
-      alertsEnabled: !!state.alertsEnabled,
+      alertsEnabled: true,
+      careAlertsDefaultV1: true,
       wakeHour: state.wakeHour == null ? 7 : state.wakeHour,
       sleepHour: state.sleepHour == null ? 22 : state.sleepHour,
       scheduleSet: false,
@@ -824,7 +825,12 @@
       if (state.soundMuted == null) state.soundMuted = false;
       state.ambienceMuted = true;
       if (state.sfxMuted == null) state.sfxMuted = !!state.soundMuted;
-      if (state.alertsEnabled == null) state.alertsEnabled = false;
+      if (state.alertsEnabled == null) state.alertsEnabled = true;
+      // One-time: ensure upgrades prompt for browser/phone notifications.
+      if (!state.careAlertsDefaultV1) {
+        state.alertsEnabled = true;
+        state.careAlertsDefaultV1 = true;
+      }
       if (state.wakeHour == null) state.wakeHour = 7;
       if (state.sleepHour == null) state.sleepHour = 22;
       if (state.scheduleSet == null) state.scheduleSet = false;
@@ -2403,7 +2409,19 @@
     if (window.JimothyNotify) {
       JimothyNotify.setOnChange(() => refreshAlertsButton());
       if (state.alertsEnabled) {
-        JimothyNotify.setEnabled(true).then(() => refreshAlertsButton());
+        const hadPermission = JimothyNotify.permission() === "granted";
+        JimothyNotify.setEnabled(true).then((ok) => {
+          refreshAlertsButton();
+          if (ok && !hadPermission) {
+            JimothyNotify.show(
+              "boot",
+              "Jimothy alerts on",
+              "Phone / browser alerts for hunger, play, acting up, waste, and new forms.",
+              { force: true, tag: "jimothy-alerts-on" }
+            );
+          }
+          if (ok) JimothyNotify.check(state);
+        });
       }
     }
     refreshAlertsButton();

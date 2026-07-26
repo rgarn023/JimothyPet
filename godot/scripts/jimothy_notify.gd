@@ -1,9 +1,8 @@
 extends Node
 ## Care notifications — hungry / play / acting up / waste / new form.
-## Posts real OS / browser notifications (not only in-game banners):
-## - Android: NotificationManager via JavaClassWrapper + AndroidRuntime
-## - Web export: Notification API (+ service worker when available)
-## - Linux: notify-send · macOS: osascript · Windows: PowerShell toast
+## Android: prefers LocalNotification plugin (reliable shade alerts), with
+## JavaClassWrapper NotificationManager as fallback.
+## Web: Notification API (+ service worker). Desktop: OS toasts.
 
 const COOLDOWN_SEC := 12 * 60
 const ANDROID_CHANNEL_ID := "jimothy_care"
@@ -18,8 +17,11 @@ var _last := {
 	"form": -999999,
 }
 var _android_channel_ready: bool = false
-var _notify_id: int = 1001
+var _notify_id: int = 1100
 var _perm_connected: bool = false
+var _bootstrapped: bool = false
+## Session-only — avoid spamming “alerts on” every resume.
+var _welcome_sent: bool = false
 
 
 func _ready() -> void:
@@ -27,6 +29,19 @@ func _ready() -> void:
 		PetState.state_changed.connect(_on_state)
 		PetState.stage_changed.connect(_on_stage)
 	_connect_permission_signal()
+	call_deferred("_bootstrap_alerts")
+
+
+func _bootstrap_alerts() -> void:
+	if _bootstrapped:
+		return
+	_bootstrapped = true
+	_connect_permission_signal()
+	if PetState == null:
+		return
+	# Alerts default ON — ask for OS/browser permission on first launch.
+	if PetState.alerts_enabled:
+		request_permission()
 
 
 func _connect_permission_signal() -> void:
@@ -36,19 +51,36 @@ func _connect_permission_signal() -> void:
 	if tree and tree.has_signal("on_request_permissions_result"):
 		tree.on_request_permissions_result.connect(_on_permissions_result)
 		_perm_connected = true
+	# Plugin permission flow
+	var ln := get_node_or_null("/root/LocalNotification")
+	if ln and ln.has_signal("on_permission_request_completed"):
+		if not ln.is_connected("on_permission_request_completed", Callable(self, "_on_plugin_permission_done")):
+			ln.on_permission_request_completed.connect(_on_plugin_permission_done)
+
+
+func _send_welcome_alert() -> void:
+	if _welcome_sent:
+		return
+	if PetState == null or not PetState.alerts_enabled:
+		return
+	_welcome_sent = true
+	_post(
+		"Jimothy alerts on",
+		"Phone alerts for hunger, play, acting up, waste, and new forms."
+	)
+	check_now()
+
+
+func _on_plugin_permission_done() -> void:
+	_send_welcome_alert()
 
 
 func _on_permissions_result(permission: String, granted: bool) -> void:
 	if permission != ANDROID_PERM:
 		return
-	if granted and PetState and PetState.alerts_enabled:
-		_ensure_android_channel()
-		_post(
-			"Jimothy alerts on",
-			"Phone alerts for hunger, play, acting up, waste, and new forms."
-		)
-		check_now()
-	elif not granted and PetState:
+	if granted:
+		_send_welcome_alert()
+	elif PetState:
 		PetState.speech.emit("Notification permission denied — enable it in Android Settings → Apps → JimothyPet.")
 
 
@@ -142,21 +174,40 @@ func request_permission() -> void:
 	if OS.has_feature("web"):
 		request_permission_web()
 		return
-	if OS.get_name() == "Android":
-		_ensure_android_channel()
-		# Returns true if already granted; false if a system prompt was shown.
-		var already_granted := false
-		if OS.has_method("request_permission"):
-			already_granted = OS.request_permission(ANDROID_PERM)
-		else:
-			already_granted = OS.request_permissions()
-		if already_granted or _android_notifications_allowed():
+	if OS.get_name() != "Android":
+		# Desktop: confirmation toast/notification once per session.
+		if not _welcome_sent:
+			_welcome_sent = true
 			_post(
 				"Jimothy alerts on",
-				"Phone alerts for hunger, play, acting up, waste, and new forms."
+				"Desktop alerts for hunger, play, acting up, waste, and new forms."
 			)
 			check_now()
-		# Otherwise wait for MainLoop.on_request_permissions_result.
+		return
+
+	# Prefer the LocalNotification plugin permission flow.
+	var ln := get_node_or_null("/root/LocalNotification")
+	if ln and ln.has_method("init"):
+		ln.init()
+	if ln and ln.has_method("available") and ln.available():
+		if ln.isPermissionGranted():
+			_send_welcome_alert()
+		else:
+			ln.requestPermission()
+			# Also ask via OS in case the plugin dialog was already dismissed once.
+			if OS.has_method("request_permission"):
+				OS.request_permission(ANDROID_PERM)
+		return
+
+	# Fallback without plugin
+	_ensure_android_channel()
+	var already_granted := false
+	if OS.has_method("request_permission"):
+		already_granted = OS.request_permission(ANDROID_PERM)
+	else:
+		already_granted = OS.request_permissions()
+	if already_granted or _android_notifications_allowed():
+		_send_welcome_alert()
 
 
 func _post(title: String, body: String) -> bool:
@@ -246,6 +297,40 @@ func request_permission_web() -> void:
 """)
 
 
+func _post_android(title: String, body: String) -> bool:
+	var ln := get_node_or_null("/root/LocalNotification")
+	if ln and ln.has_method("init"):
+		ln.init()
+	var has_plugin: bool = ln != null and ln.has_method("available") and bool(ln.available())
+	if has_plugin and ln.has_method("isPermissionGranted") and not ln.isPermissionGranted():
+		ln.requestPermission()
+
+	# 1) Immediate NotificationManager post (works while the process is alive).
+	if _post_android_jni(title, body):
+		# Also schedule via plugin so a shade alert still arrives if the OS
+		# suppressed the in-process notify (common on some OEMs).
+		if has_plugin and ln.isPermissionGranted():
+			_notify_id += 1
+			ln.show(title, body, 1, _notify_id)
+		return true
+
+	# 2) LocalNotification AlarmManager schedule (Gradle custom build + plugin).
+	if has_plugin and ln.isPermissionGranted():
+		_notify_id += 1
+		ln.show(title, body, 1, _notify_id)
+		print("JimothyNotify: scheduled via LocalNotification tag=", _notify_id, " title=", title)
+		return true
+
+	if has_plugin:
+		push_warning("JimothyNotify: waiting for notification permission.")
+	else:
+		push_warning(
+			"JimothyNotify: Android notify failed — install Android Build Template, enable "
+			+ "Gradle + LocalNotification, re-export, and allow the permission prompt."
+		)
+	return false
+
+
 func _android_runtime():
 	if OS.get_name() != "Android":
 		return null
@@ -271,6 +356,9 @@ func _android_sdk_int() -> int:
 func _android_notifications_allowed() -> bool:
 	if OS.get_name() != "Android":
 		return false
+	var ln := get_node_or_null("/root/LocalNotification")
+	if ln and ln.has_method("available") and ln.available() and ln.has_method("isPermissionGranted"):
+		return ln.isPermissionGranted()
 	var sdk := _android_sdk_int()
 	if sdk >= 33:
 		var granted: PackedStringArray = OS.get_granted_permissions()
@@ -283,7 +371,6 @@ func _android_notifications_allowed() -> bool:
 			return false
 	var android_runtime = _android_runtime()
 	if android_runtime == null:
-		# Permission list said yes (or pre-33) but runtime missing — allow attempt.
 		return sdk > 0 and sdk < 33
 	var context = android_runtime.getApplicationContext()
 	var nm = context.getSystemService("notification")
@@ -298,13 +385,11 @@ func _ensure_android_channel() -> bool:
 	var android_runtime = _android_runtime()
 	var jw = _jw()
 	if android_runtime == null or jw == null:
-		push_warning("JimothyNotify: AndroidRuntime/JavaClassWrapper missing.")
 		return false
 	var context = android_runtime.getApplicationContext()
 	var sdk := _android_sdk_int()
 	if sdk >= 26:
 		var NotificationChannel = jw.wrap("android.app.NotificationChannel")
-		# IMPORTANCE_HIGH = 4 (heads-up + shade)
 		var channel = NotificationChannel.NotificationChannel(
 			ANDROID_CHANNEL_ID,
 			ANDROID_CHANNEL_NAME,
@@ -322,24 +407,29 @@ func _ensure_android_channel() -> bool:
 
 
 func _android_small_icon_id(context) -> int:
-	# MUST be a white/alpha system status icon. Full-color launcher mipmaps are rejected.
 	var resources = context.getResources()
-	for name in ["ic_dialog_info", "stat_notify_chat", "ic_menu_info_details", "ic_popup_reminder"]:
-		var id: int = int(resources.getIdentifier(name, "drawable", "android"))
+	var pkg: String = str(context.getPackageName())
+	# Prefer the app icon from the Godot Android template, then system glyphs.
+	for entry in [
+		["icon", "mipmap", pkg],
+		["notification_icon", "mipmap", pkg],
+		["icon", "drawable", pkg],
+		["ic_dialog_info", "drawable", "android"],
+		["stat_notify_chat", "drawable", "android"],
+		["ic_popup_reminder", "drawable", "android"],
+	]:
+		var id: int = int(resources.getIdentifier(str(entry[0]), str(entry[1]), str(entry[2])))
 		if id != 0:
 			return id
-	return 17301659 # android.R.drawable.ic_dialog_info fallback constant
+	return 17301659 # android.R.drawable.ic_dialog_info
 
 
-func _post_android(title: String, body: String) -> bool:
+func _post_android_jni(title: String, body: String) -> bool:
 	var android_runtime = _android_runtime()
 	var jw = _jw()
 	if android_runtime == null or jw == null:
-		push_warning("JimothyNotify: Android notify bridge unavailable.")
 		return false
 	if not _android_notifications_allowed():
-		push_warning("JimothyNotify: POST_NOTIFICATIONS not granted.")
-		# Ask again so a later care event can succeed after the user accepts.
 		if OS.has_method("request_permission"):
 			OS.request_permission(ANDROID_PERM)
 		return false
@@ -357,16 +447,16 @@ func _post_android(title: String, body: String) -> bool:
 	else:
 		builder = Builder.Builder(context)
 
-	var icon_id := _android_small_icon_id(context)
-	builder.setSmallIcon(icon_id)
+	builder.setSmallIcon(_android_small_icon_id(context))
 	builder.setContentTitle(title)
 	builder.setContentText(body)
 	builder.setAutoCancel(true)
 	builder.setOnlyAlertOnce(false)
+	# DEFAULT_ALL — sound / vibrate / lights when the channel allows it.
+	builder.setDefaults(-1)
 	if sdk < 26:
 		builder.setPriority(1) # PRIORITY_HIGH
 	else:
-		# Help some OEMs show while app is foregrounded.
 		builder.setVisibility(1) # VISIBILITY_PUBLIC
 
 	var launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName())
@@ -374,7 +464,7 @@ func _post_android(title: String, body: String) -> bool:
 		launch.addFlags(268435456) # FLAG_ACTIVITY_NEW_TASK
 		var flags := 201326592 # FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE
 		if sdk < 23:
-			flags = 134217728
+			flags = 134217728 # FLAG_UPDATE_CURRENT
 		var pending = PendingIntent.getActivity(context, _notify_id, launch, flags)
 		builder.setContentIntent(pending)
 
@@ -386,11 +476,10 @@ func _post_android(title: String, body: String) -> bool:
 
 	var nm = context.getSystemService("notification")
 	_notify_id += 1
-	# NotificationManager.notify is thread-safe — call directly (UI-thread runnable was dropping errors).
 	nm.notify(_notify_id, notification)
 	err = jw.get_exception()
 	if err != null:
 		push_warning("JimothyNotify: notify failed: %s" % str(err))
 		return false
-	print("JimothyNotify: posted Android notification id=", _notify_id, " title=", title)
+	print("JimothyNotify: posted Android JNI notification id=", _notify_id)
 	return true

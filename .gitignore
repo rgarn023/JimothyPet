@@ -4,9 +4,13 @@ node_modules/
 
 # Godot
 godot/.godot/
-godot/android/
 godot/.mono/
+# Keep Android plugins; ignore generated custom-build output
+godot/android/build/
+godot/android/.gradle/
+godot/android/local.properties
 build/
 *.apk
 *.aab
 *.pck
+scripts/__pycache__/
