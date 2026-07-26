@@ -46,9 +46,13 @@ Zips live in the repo [`dist/`](../dist/) folder:
 ## Export Android (phone shade alerts)
 
 1. Install Godot **4.7.1** export templates + Android SDK  
-2. **Project → Export → Android** and turn **ON**:
-   - **Permissions → Post Notifications** (required)
-   - Schedule Exact Alarm, Use Exact Alarm, Wake Lock, Receive Boot Completed  
+2. **Project → Export → Android → Permissions** — turn **ON**:
+   - **Post Notifications** (this is the important one)
+   - **Wake Lock**
+   - **Receive Boot Completed**
+   - **Set Alarm** (Godot’s name; there is no “Schedule Exact Alarm” checkbox in 4.7)
+   - Optional: under **Custom Permissions** add  
+     `android.permission.SCHEDULE_EXACT_ALARM` and `android.permission.USE_EXACT_ALARM`  
 3. Recommended for best delivery:
    - **Project Settings → Plugins → NotificationScheduler → Enable**
    - **Project → Install Android Build Template…**
