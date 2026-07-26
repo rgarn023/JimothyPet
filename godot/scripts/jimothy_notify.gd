@@ -1,5 +1,6 @@
 extends Node
-## Care notifications — hungry / play / acting up / waste / new form.
+## Care notifications — specific needs (hungry / sick / acting up / waste / bored)
+## and combinations of those, plus new-form milestones.
 ## Android: NotificationScheduler plugin (Gradle) + UI-thread NotificationManager
 ## fallback + Toast confirmation so failures are visible in-game.
 ## Web: Notification API (+ service worker). Desktop: OS toasts.
@@ -11,12 +12,10 @@ const ANDROID_PERM := "android.permission.POST_NOTIFICATIONS"
 const SCHEDULER_SCRIPT := preload("res://addons/NotificationSchedulerPlugin/NotificationScheduler.gd")
 
 var _last := {
-	"hungry": -999999,
-	"play": -999999,
-	"stubborn": -999999,
-	"waste": -999999,
+	"care": -999999,
 	"form": -999999,
 }
+var _last_care_fp: String = ""
 var _android_channel_ready: bool = false
 var _notify_id: int = 1100
 var _perm_connected: bool = false
@@ -118,7 +117,7 @@ func _ensure_scheduler_channel() -> bool:
 	var channel := {
 		"channel_id": ANDROID_CHANNEL_ID,
 		"channel_name": ANDROID_CHANNEL_NAME,
-		"channel_description": "Hungry, play, acting up, waste, and new forms",
+		"channel_description": "Hungry, sick, acting up, waste, bored, and new forms",
 		"channel_importance": 4, # HIGH
 		"badge_enabled": true,
 	}
@@ -199,7 +198,7 @@ func _send_welcome_alert_now() -> void:
 
 	var ok := _post(
 		"Jimothy alerts on",
-		"Phone alerts for hunger, play, acting up, waste, and new forms."
+		"You’ll get a shade alert when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
 	)
 	_welcome_sent = true
 	if ok:
@@ -265,31 +264,92 @@ func check_now() -> void:
 	if not PetState.alive or PetState.ascending or PetState.stage == "bush":
 		return
 
+	var snap := _care_snapshot()
+	if snap["flags"].is_empty():
+		_last_care_fp = ""
+		return
+
 	var now := Time.get_unix_time_from_system()
+	var fp: String = str(snap["fp"])
+	var last_care: float = float(_last.get("care", -999999))
+	# Resend immediately when the set of needs changes; otherwise respect cooldown.
+	if fp == _last_care_fp and now - last_care < COOLDOWN_SEC:
+		return
+
+	var title := _care_title(snap["flags"])
+	var body := _care_body(snap["lines"])
+	if not _post(title, body):
+		return
+	_last["care"] = now
+	_last_care_fp = fp
+
+
+func _care_snapshot() -> Dictionary:
+	var flags: PackedStringArray = []
+	var lines: PackedStringArray = []
+
+	if PetState.sick:
+		flags.append("sick")
+		lines.append("Sick — open Action → Heal (upset stomach).")
 	if PetState.stubborn:
-		_try_send("stubborn", "Jimothy is acting up", _stubborn_body(), now)
+		flags.append("acting up")
+		if PetState.stubborn_reason != "":
+			lines.append("Acting up — he’s %s. Scold him." % PetState.stubborn_reason)
+		else:
+			lines.append("Acting up — open Action → Scold.")
 	if PetState.hunger < 25.0:
-		_try_send("hungry", "Jimothy is hungry", "He’s hunting for a real meal. Time to feed him.", now)
-	if PetState.stage != "baby" and PetState.energy >= 18.0 and PetState.happy < 25.0:
-		_try_send(
-			"play",
-			"Jimothy wants to play",
-			"Restless cryptid energy — try a Dumpster Dive night run.",
-			now
-		)
+		flags.append("hungry")
+		lines.append("Hungry — feed him a real meal.")
 	if PetState.has_mess:
-		_try_send(
-			"waste",
-			"Jimothy left a mess",
-			"Nest waste is piling up — open the app and Clean.",
-			now
-		)
+		flags.append("waste")
+		if PetState.mess_count <= 1:
+			lines.append("Waste — one pile in the nest. Clean it.")
+		else:
+			lines.append("Waste — %d piles in the nest. Clean them." % PetState.mess_count)
+	if PetState.stage != "baby" and PetState.energy >= 18.0 and PetState.happy < 25.0:
+		flags.append("bored")
+		lines.append("Bored — open Play for a game.")
+	elif PetState.health < 30.0 and not PetState.sick:
+		flags.append("run-down")
+		lines.append("Run-down — skip treats; offer fish or berries.")
+
+	return {
+		"flags": flags,
+		"lines": lines,
+		"fp": "|".join(flags),
+	}
 
 
-func _stubborn_body() -> String:
-	if PetState.stubborn_reason != "":
-		return "He’s %s. Open the app and scold him." % PetState.stubborn_reason
-	return "He’s being stubborn — open the app and scold him."
+func _care_title(flags: PackedStringArray) -> String:
+	var n := flags.size()
+	if n == 0:
+		return "Jimothy needs care"
+	if n == 1:
+		match flags[0]:
+			"sick":
+				return "Jimothy is sick"
+			"acting up":
+				return "Jimothy is acting up"
+			"hungry":
+				return "Jimothy is hungry"
+			"waste":
+				return "Jimothy left a mess"
+			"bored":
+				return "Jimothy is bored"
+			"run-down":
+				return "Jimothy is run-down"
+			_:
+				return "Jimothy needs care"
+	if n == 2:
+		return "Jimothy: %s & %s" % [flags[0], flags[1]]
+	# Keep shade titles short when many needs stack.
+	return "Jimothy needs care (%d things)" % n
+
+
+func _care_body(lines: PackedStringArray) -> String:
+	if lines.is_empty():
+		return "Open the app — something changed."
+	return "\n".join(lines)
 
 
 func _try_send(kind: String, title: String, body: String, now: float, force: bool = false) -> void:
@@ -327,7 +387,7 @@ func request_permission() -> void:
 			_welcome_sent = true
 			_post(
 				"Jimothy alerts on",
-				"Desktop alerts for hunger, play, acting up, waste, and new forms."
+				"Desktop alerts when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
 			)
 			check_now()
 		return

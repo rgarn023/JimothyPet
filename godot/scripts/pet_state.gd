@@ -898,7 +898,7 @@ func alert_text() -> Dictionary:
 	if hunger < 25.0:
 		return {"text": "He’s hunting for a real meal.", "danger": true}
 	if happy < 25.0:
-		return {"text": "Restless cryptid energy. Try a night run (Play).", "danger": false}
+		return {"text": "Restless cryptid energy. Open Play for a game.", "danger": false}
 	if health < 30.0:
 		return {"text": "He’s run-down — skip treats, offer fish or berries.", "danger": true}
 	return {}
@@ -1090,7 +1090,7 @@ func can_start_play(roll_stubborn: bool = false) -> String:
 		state_changed.emit()
 		return "tired"
 	if stubborn and stubborn_reason.contains("exercise"):
-		speech.emit("He plants his paws. No night run until you scold him.")
+		speech.emit("He plants his paws. No games until you scold him.")
 		state_changed.emit()
 		return "stubborn"
 	# Only roll stubborn when opening the picker — not again when launching a game.

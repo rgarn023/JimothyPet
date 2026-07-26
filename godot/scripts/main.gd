@@ -924,7 +924,7 @@ func _refresh() -> void:
 	elif PetState.mess_count > 0:
 		hint_label.text = "Waste in the nest — open Action → Clean."
 	elif PetState.stage == "baby":
-		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for a full night run yet."
+		hint_label.text = "Tap Jimothy for smiles and hops. Too tiny for full games yet."
 	else:
 		hint_label.text = "Tap Jimothy to pet him. Good care lengthens his days."
 
@@ -1096,7 +1096,10 @@ func _on_alerts_pressed() -> void:
 			where = "Android notifications — allow the permission prompt if shown (or enable in system Settings)"
 		elif OS.has_feature("web"):
 			where = "browser notifications (allow the permission prompt)"
-		PetState.speech.emit("Care alerts on — %s for hunger, play, acting up, waste, and new forms." % where)
+		PetState.speech.emit(
+			"Care alerts on — %s when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
+			% where
+		)
 		if JimothyNotify:
 			JimothyNotify.check_now()
 	else:

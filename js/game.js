@@ -773,7 +773,7 @@
     btn.textContent = granted ? "Alerts: On" : "Alerts: Allow";
     btn.setAttribute("aria-pressed", granted ? "true" : "false");
     btn.title = granted
-      ? "Care alerts on — hunger, play, acting up, waste, new forms"
+      ? "Care alerts on — hungry, sick, acting up, waste, bored, new forms"
       : "Tap to allow browser / phone notifications";
   }
 
@@ -792,7 +792,7 @@
         JimothyNotify.show(
           "boot",
           "Jimothy alerts on",
-          "Phone / browser alerts for hunger, play, acting up, waste, and new forms.",
+          "You’ll get alerts when he’s hungry, sick, acting up, left waste, bored, or finds a new form.",
           { force: true, tag: "jimothy-alerts-on" }
         );
         JimothyNotify.check(state);
@@ -811,12 +811,12 @@
       save({ touchTick: false });
       if (ok) {
         say(
-          "Care alerts on — browser / phone notifications for hunger, play, acting up, waste, and new forms."
+          "Care alerts on — browser / phone notifications for hungry, sick, acting up, waste, bored, and new forms."
         );
         JimothyNotify.show(
           "boot",
           "Jimothy alerts on",
-          "Phone / browser alerts for hunger, play, acting up, waste, and new forms.",
+          "You’ll get alerts when he’s hungry, sick, acting up, left waste, bored, or finds a new form.",
           { force: true, tag: "jimothy-alerts-on" }
         );
         JimothyNotify.check(state);
@@ -1317,7 +1317,7 @@
       return { text: "He’s hunting for a real meal.", danger: true };
     }
     if (state.happy < 25) {
-      return { text: "Restless cryptid energy. Try a night run (Play).", danger: false };
+      return { text: "Restless cryptid energy. Open Play for a game.", danger: false };
     }
     if (state.health < 30) {
       return { text: "He’s run-down — skip treats, offer fish or berries.", danger: true };
@@ -1551,7 +1551,7 @@
       $("hint").textContent = "Waste in the nest — open Action → Clean.";
     } else if (state.stage === "baby") {
       $("hint").textContent =
-        "Tap Jimothy for smiles and hops. Too tiny for a full night run yet.";
+        "Tap Jimothy for smiles and hops. Too tiny for full games yet.";
     } else {
       $("hint").textContent = "Tap Jimothy to pet him. Good care lengthens his days.";
     }
@@ -1908,7 +1908,7 @@
       return "tired";
     }
     if (state.stubborn && state.stubbornReason.includes("exercise")) {
-      say("He plants his paws. No night run until you scold him.");
+      say("He plants his paws. No games until you scold him.");
       render();
       return "stubborn";
     }

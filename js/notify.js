@@ -1,11 +1,13 @@
 /**
- * Care notifications — hungry, play, acting up, waste, new form.
+ * Care notifications — specific needs (hungry / sick / acting up / waste / bored)
+ * and combinations, plus new-form milestones.
  * Uses Notification API (+ service worker when the tab is hidden).
  */
 const JimothyNotify = (() => {
-  const COOLDOWN_MS = 12 * 60 * 1000; // per-kind cooldown (care needs)
+  const COOLDOWN_MS = 12 * 60 * 1000;
   let enabled = false;
-  let lastSent = { hungry: 0, play: 0, stubborn: 0, waste: 0, form: 0 };
+  let lastSent = { care: 0, form: 0 };
+  let lastCareFp = "";
   let onChange = null;
 
   function supported() {
@@ -28,7 +30,11 @@ const JimothyNotify = (() => {
   function loadCooldowns() {
     try {
       const raw = localStorage.getItem("jimothy-notify-cooldowns");
-      if (raw) lastSent = { ...lastSent, ...JSON.parse(raw) };
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        lastSent = { ...lastSent, ...parsed };
+        if (parsed.lastCareFp) lastCareFp = String(parsed.lastCareFp);
+      }
     } catch {
       /* ignore */
     }
@@ -36,7 +42,10 @@ const JimothyNotify = (() => {
 
   function saveCooldowns() {
     try {
-      localStorage.setItem("jimothy-notify-cooldowns", JSON.stringify(lastSent));
+      localStorage.setItem(
+        "jimothy-notify-cooldowns",
+        JSON.stringify({ ...lastSent, lastCareFp })
+      );
     } catch {
       /* ignore */
     }
@@ -73,17 +82,12 @@ const JimothyNotify = (() => {
     return enabled;
   }
 
-  function canSend(kind) {
-    if (!isEnabled()) return false;
-    const now = Date.now();
-    return now - (lastSent[kind] || 0) >= COOLDOWN_MS;
-  }
-
   async function show(kind, title, body, opts = {}) {
     const force = !!opts.force;
-    if (!force && !canSend(kind)) return false;
     if (!isEnabled()) return false;
-    lastSent[kind] = Date.now();
+    const now = Date.now();
+    if (!force && now - (lastSent[kind] || 0) < COOLDOWN_MS) return false;
+    lastSent[kind] = now;
     saveCooldowns();
 
     const notifOpts = {
@@ -96,7 +100,6 @@ const JimothyNotify = (() => {
     };
 
     try {
-      // Prefer the service worker on phones / PWAs — more reliable as a system notification.
       if ("serviceWorker" in navigator) {
         try {
           const reg = await navigator.serviceWorker.ready;
@@ -105,7 +108,7 @@ const JimothyNotify = (() => {
             return true;
           }
         } catch {
-          /* fall through to Notification API */
+          /* fall through */
         }
       }
       const n = new Notification(title, notifOpts);
@@ -120,7 +123,6 @@ const JimothyNotify = (() => {
     }
   }
 
-  /** Rare milestone — new form / stage. Bypasses care cooldown. */
   function notifyForm(stage, formLabel) {
     const pretty = formLabel || capitalize(stage);
     const title = "Jimothy found a new form";
@@ -141,44 +143,103 @@ const JimothyNotify = (() => {
   }
 
   function capitalize(s) {
-    return String(s || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    return String(s || "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  /** Inspect pet state and fire care alerts when needed. */
+  function careSnapshot(state) {
+    const flags = [];
+    const lines = [];
+
+    if (state.sick) {
+      flags.push("sick");
+      lines.push("Sick — open Action → Heal (upset stomach).");
+    }
+    if (state.stubborn) {
+      flags.push("acting up");
+      lines.push(
+        state.stubbornReason
+          ? `Acting up — he’s ${state.stubbornReason}. Scold him.`
+          : "Acting up — open Action → Scold."
+      );
+    }
+    if (state.hunger < 25) {
+      flags.push("hungry");
+      lines.push("Hungry — feed him a real meal.");
+    }
+    const messCount = state.messCount || (state.hasMess ? 1 : 0);
+    if (messCount > 0 || state.hasMess) {
+      flags.push("waste");
+      lines.push(
+        messCount <= 1
+          ? "Waste — one pile in the nest. Clean it."
+          : `Waste — ${messCount} piles in the nest. Clean them.`
+      );
+    }
+    const canPlay = state.stage !== "baby" && state.energy >= 18 && state.happy < 25;
+    if (canPlay) {
+      flags.push("bored");
+      lines.push("Bored — open Play for a game.");
+    } else if (state.health < 30 && !state.sick) {
+      flags.push("run-down");
+      lines.push("Run-down — skip treats; offer fish or berries.");
+    }
+
+    return { flags, lines, fp: flags.join("|") };
+  }
+
+  function careTitle(flags) {
+    const n = flags.length;
+    if (n === 0) return "Jimothy needs care";
+    if (n === 1) {
+      switch (flags[0]) {
+        case "sick":
+          return "Jimothy is sick";
+        case "acting up":
+          return "Jimothy is acting up";
+        case "hungry":
+          return "Jimothy is hungry";
+        case "waste":
+          return "Jimothy left a mess";
+        case "bored":
+          return "Jimothy is bored";
+        case "run-down":
+          return "Jimothy is run-down";
+        default:
+          return "Jimothy needs care";
+      }
+    }
+    if (n === 2) return `Jimothy: ${flags[0]} & ${flags[1]}`;
+    return `Jimothy needs care (${n} things)`;
+  }
+
+  /** Inspect pet state and fire one combined care alert when needed. */
   function check(state) {
     if (!state || !state.alive || state.ascending || state.stage === "bush") return;
+    if (!isEnabled()) return;
 
-    if (state.stubborn) {
-      show(
-        "stubborn",
-        "Jimothy is acting up",
-        state.stubbornReason
-          ? `He’s ${state.stubbornReason}. Open the app and scold him.`
-          : "He’s being stubborn — open the app and scold him."
-      );
+    const snap = careSnapshot(state);
+    if (!snap.flags.length) {
+      lastCareFp = "";
+      saveCooldowns();
+      return;
     }
 
-    if (state.hunger < 25) {
-      show("hungry", "Jimothy is hungry", "He’s hunting for a real meal. Time to feed him.");
+    const now = Date.now();
+    if (snap.fp === lastCareFp && now - (lastSent.care || 0) < COOLDOWN_MS) {
+      return;
     }
 
-    const canPlay =
-      state.stage !== "baby" && state.energy >= 18 && state.happy < 25;
-    if (canPlay) {
-      show(
-        "play",
-        "Jimothy wants to play",
-        "Restless cryptid energy — try a Dumpster Dive night run."
-      );
-    }
-
-    if ((state.messCount || 0) > 0 || state.hasMess) {
-      show(
-        "waste",
-        "Jimothy left a mess",
-        "Nest waste is piling up — open the app and Clean."
-      );
-    }
+    show("care", careTitle(snap.flags), snap.lines.join("\n"), {
+      force: true,
+      tag: `jimothy-care-${snap.fp.replace(/\|/g, "-")}`,
+    }).then((ok) => {
+      if (ok) {
+        lastCareFp = snap.fp;
+        saveCooldowns();
+      }
+    });
   }
 
   return {
