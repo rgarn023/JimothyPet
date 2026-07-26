@@ -826,6 +826,152 @@ func _evolve_if_needed() -> void:
 		save_game()
 
 
+## Predicted OS alerts while the app is closed. Each entry:
+## { key, delay (sec), title, body }
+func predict_care_alerts() -> Array:
+	var out: Array = []
+	if not alive or ascending:
+		return out
+
+	const HUNGER_RATE := 0.0028
+	const HAPPY_RATE := 0.0022
+	const MAX_DELAY := 7 * 24 * 3600
+
+	if stage == "bush":
+		var bush_delay := int(ceili(bush_end() - age_sec))
+		bush_delay = clampi(bush_delay, 1, MAX_DELAY)
+		out.append({
+			"key": "bush",
+			"delay": bush_delay,
+			"title": "Jimothy popped out of the bush",
+			"body": "Baby kit Jimothy burst from the leaves. Open the app!",
+		})
+		return out
+
+	# Already-true needs — fire shortly after backgrounding.
+	if sick:
+		out.append({
+			"key": "sick",
+			"delay": 1,
+			"title": "Jimothy is sick",
+			"body": "Upset stomach — open Action → Heal.",
+		})
+	if stubborn:
+		var acting_body := "Open Action → Scold."
+		if stubborn_reason != "":
+			acting_body = "He’s %s. Open Action → Scold." % stubborn_reason
+		out.append({
+			"key": "acting",
+			"delay": 1 if not sick else 2,
+			"title": "Jimothy is acting up",
+			"body": acting_body,
+		})
+	if hunger < 25.0:
+		out.append({
+			"key": "hungry",
+			"delay": 1,
+			"title": "Jimothy is hungry",
+			"body": "He’s hunting for a real meal. Time to feed him.",
+		})
+	elif hunger > 25.0:
+		var hungry_delay := int(ceili((hunger - 25.0) / HUNGER_RATE))
+		hungry_delay = clampi(hungry_delay, 1, MAX_DELAY)
+		out.append({
+			"key": "hungry",
+			"delay": hungry_delay,
+			"title": "Jimothy is hungry",
+			"body": "He’s hunting for a real meal. Time to feed him.",
+		})
+	if has_mess:
+		var waste_body := "One waste pile in the nest — Clean it."
+		if mess_count > 1:
+			waste_body = "%d waste piles in the nest — Clean them." % mess_count
+		out.append({
+			"key": "waste",
+			"delay": 1,
+			"title": "Jimothy left a mess",
+			"body": waste_body,
+		})
+	elif mess_count < MAX_MESS:
+		# Expected wait from waste spawn chance (~0.00022 / sec).
+		var waste_delay := clampi(int(ceili(1.0 / 0.00022)), 1800, MAX_DELAY)
+		out.append({
+			"key": "waste",
+			"delay": waste_delay,
+			"title": "Jimothy left a mess",
+			"body": "Nest waste showed up — open the app and Clean.",
+		})
+
+	if stage != "baby":
+		if happy < 25.0 and energy >= 18.0:
+			out.append({
+				"key": "bored",
+				"delay": 1,
+				"title": "Jimothy is bored",
+				"body": "Restless energy — open Play for a game.",
+			})
+		elif happy > 25.0:
+			var bored_delay := int(ceili((happy - 25.0) / HAPPY_RATE))
+			bored_delay = clampi(bored_delay, 1, MAX_DELAY)
+			out.append({
+				"key": "bored",
+				"delay": bored_delay,
+				"title": "Jimothy is bored",
+				"body": "Restless energy — open Play for a game.",
+			})
+
+	if not sick:
+		var illness_rate := _illness_daily_rate()
+		if illness_rate > 0.05:
+			var sick_delay := clampi(int(ceili(86400.0 / illness_rate)), 1800, MAX_DELAY)
+			out.append({
+				"key": "sick",
+				"delay": sick_delay,
+				"title": "Jimothy is sick",
+				"body": "He’s feeling queasy — open Action → Heal.",
+			})
+	if not stubborn and stage != "baby":
+		var tantrum_rate := _tantrum_daily_rate()
+		if tantrum_rate > 0.05:
+			var act_delay := clampi(int(ceili(86400.0 / tantrum_rate)), 1800, MAX_DELAY)
+			out.append({
+				"key": "acting",
+				"delay": act_delay,
+				"title": "Jimothy is acting up",
+				"body": "He’s being stubborn — open Action → Scold.",
+			})
+
+	# Next growth milestone.
+	var next_delay := 0
+	var next_title := ""
+	var next_body := ""
+	match stage:
+		"baby":
+			next_delay = int(ceili(baby_end() - age_sec))
+			next_title = "Jimothy found a new form"
+			next_body = "He’s a young kit now. Open the app to see his form."
+		"young":
+			next_delay = int(ceili(young_end() - age_sec))
+			next_title = "Jimothy found a new form"
+			next_body = "Teen kit era — open the app to see him."
+		"teen":
+			next_delay = int(ceili(teen_end() - age_sec))
+			next_title = "Jimothy found a new form"
+			next_body = "Fully grown Jimothy — open the app."
+		_:
+			next_delay = 0
+	if next_delay > 0:
+		next_delay = clampi(next_delay, 1, MAX_DELAY)
+		out.append({
+			"key": "form",
+			"delay": next_delay,
+			"title": next_title,
+			"body": next_body,
+		})
+
+	return out
+
+
 func stage_label() -> String:
 	match stage:
 		"bush": return "Bush"

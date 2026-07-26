@@ -10,6 +10,17 @@ const ANDROID_CHANNEL_ID := "jimothy_care"
 const ANDROID_CHANNEL_NAME := "Jimothy care"
 const ANDROID_PERM := "android.permission.POST_NOTIFICATIONS"
 const SCHEDULER_SCRIPT := preload("res://addons/NotificationSchedulerPlugin/NotificationScheduler.gd")
+## Stable AlarmManager ids so closed-app alerts can be cancelled / replaced.
+const SCHED_IDS := {
+	"bush": 1210,
+	"hungry": 1211,
+	"bored": 1212,
+	"sick": 1213,
+	"acting": 1214,
+	"waste": 1215,
+	"form": 1216,
+	"care": 1217,
+}
 
 var _last := {
 	"care": -999999,
@@ -71,7 +82,7 @@ func _on_scheduler_initialized() -> void:
 	_scheduler_ready = true
 	print("JimothyNotify: NotificationScheduler ready")
 	_ensure_scheduler_channel()
-	# Exact alarms keep the ~1s “alerts on” test reliable on Android 12+.
+	# Exact alarms keep closed-app / timed care alerts reliable on Android 12+.
 	if _scheduler.has_method("has_schedule_exact_alarm_permission") \
 			and not _scheduler.has_schedule_exact_alarm_permission() \
 			and _scheduler.has_method("request_schedule_exact_alarm_permission"):
@@ -79,6 +90,7 @@ func _on_scheduler_initialized() -> void:
 	if PetState and PetState.alerts_enabled:
 		if _scheduler.has_post_notifications_permission():
 			_send_welcome_alert()
+			_schedule_background_alerts()
 		else:
 			_scheduler.request_post_notifications_permission()
 
@@ -86,6 +98,7 @@ func _on_scheduler_initialized() -> void:
 func _on_scheduler_perm_granted(_permission_name: String) -> void:
 	_ensure_scheduler_channel()
 	_send_welcome_alert()
+	_schedule_background_alerts()
 
 
 func _on_scheduler_perm_denied(_permission_name: String) -> void:
@@ -198,13 +211,20 @@ func _send_welcome_alert_now() -> void:
 
 	var ok := _post(
 		"Jimothy alerts on",
-		"You’ll get a shade alert when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
+		"You’ll get shade alerts for specific care — hungry, sick, acting up, waste, bored, or new forms (including leaving the bush)."
 	)
 	_welcome_sent = true
 	if ok:
 		last_error = ""
 		if PetState:
-			PetState.speech.emit("Phone alert sent — pull down the notification shade.")
+			if _scheduler_ready and _plugin() != null:
+				PetState.speech.emit(
+					"Phone alert sent — pull down the shade. Alerts also fire after you close the app."
+				)
+			else:
+				PetState.speech.emit(
+					"Phone alert sent. For alerts while the app is closed: re-export with Use Gradle Build = On (install Android Build Template first)."
+				)
 		_android_toast("Jimothy alert sent")
 	else:
 		last_error = last_error if last_error != "" else "notify failed"
@@ -212,6 +232,7 @@ func _send_welcome_alert_now() -> void:
 			PetState.speech.emit("Alert failed: %s" % last_error)
 		_android_toast("Alert failed: %s" % last_error.substr(0, 80))
 	check_now()
+	_schedule_background_alerts()
 
 
 func _on_permissions_result(permission: String, granted: bool) -> void:
@@ -230,10 +251,16 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT \
 			or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT \
 			or what == NOTIFICATION_APPLICATION_PAUSED:
+		# Critical: queue AlarmManager alerts before the process is frozen/killed.
 		check_now()
+		_schedule_background_alerts()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN \
+			or what == NOTIFICATION_APPLICATION_RESUMED:
+		_schedule_background_alerts()
 
 
 func _on_state() -> void:
+	# Foreground care alerts only — do not reschedule AlarmManager every tick.
 	check_now()
 
 
@@ -241,11 +268,14 @@ func _on_stage(stage: String) -> void:
 	if PetState == null or not PetState.alerts_enabled:
 		return
 	if stage in ["bush"]:
+		_schedule_background_alerts()
 		return
+	var title := "Jimothy found a new form"
 	var body := ""
 	match stage:
 		"baby":
-			body = "Baby kit Jimothy burst from the bush!"
+			title = "Jimothy popped out of the bush"
+			body = "Baby kit Jimothy burst from the leaves. Open the app!"
 		"young":
 			body = "Young kit form: %s. Check Form paths for his forks." % PetState.young_form.capitalize()
 		"teen":
@@ -255,13 +285,17 @@ func _on_stage(stage: String) -> void:
 			body = "%s Jimothy — fully grown short-spine cryptid." % PetState.adult_form_title()
 		_:
 			return
-	_try_send("form", "Jimothy found a new form", body, Time.get_unix_time_from_system(), true)
+	_try_send("form", title, body, Time.get_unix_time_from_system(), true)
+	_schedule_background_alerts()
 
 
 func check_now() -> void:
 	if PetState == null or not PetState.alerts_enabled:
 		return
-	if not PetState.alive or PetState.ascending or PetState.stage == "bush":
+	if not PetState.alive or PetState.ascending:
+		return
+	# Bush has no open-app care needs — hatch is handled by background schedule.
+	if PetState.stage == "bush":
 		return
 
 	var snap := _care_snapshot()
@@ -282,6 +316,70 @@ func check_now() -> void:
 		return
 	_last["care"] = now
 	_last_care_fp = fp
+
+
+func _schedule_background_alerts() -> void:
+	if PetState == null or not PetState.alerts_enabled:
+		_cancel_background_alerts()
+		return
+	if OS.get_name() != "Android":
+		return
+	if not _scheduler_ready or _plugin() == null:
+		return
+	if not _ensure_scheduler_channel():
+		return
+	if not bool(_plugin().has_post_notifications_permission()):
+		return
+
+	_cancel_background_alerts()
+	var events: Array = PetState.predict_care_alerts()
+	var scheduled := 0
+	for ev in events:
+		if typeof(ev) != TYPE_DICTIONARY:
+			continue
+		var key := str(ev.get("key", ""))
+		var delay := int(ev.get("delay", 0))
+		var title := str(ev.get("title", ""))
+		var body := str(ev.get("body", ""))
+		if key == "" or title == "" or delay < 1:
+			continue
+		if _schedule_android_event(key, title, body, delay):
+			scheduled += 1
+	if scheduled > 0:
+		print("JimothyNotify: scheduled ", scheduled, " closed-app alerts")
+
+
+func _cancel_background_alerts() -> void:
+	if OS.get_name() != "Android":
+		return
+	var plugin := _plugin()
+	if plugin == null:
+		return
+	for key in SCHED_IDS.keys():
+		plugin.cancel(int(SCHED_IDS[key]))
+
+
+func _schedule_android_event(key: String, title: String, body: String, delay_sec: int) -> bool:
+	var plugin := _plugin()
+	if plugin == null:
+		return false
+	var id := int(SCHED_IDS.get(key, 0))
+	if id == 0:
+		_notify_id += 1
+		id = _notify_id
+	var data := {
+		"notification_id": id,
+		"channel_id": ANDROID_CHANNEL_ID,
+		"title": title,
+		"content": body,
+		"small_icon_name": "ic_default_notification",
+		"delay": maxi(1, delay_sec),
+	}
+	var result: int = int(plugin.schedule(data))
+	if result != OK:
+		push_warning("JimothyNotify: schedule %s failed err=%s" % [key, result])
+		return false
+	return true
 
 
 func _care_snapshot() -> Dictionary:

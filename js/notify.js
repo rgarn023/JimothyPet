@@ -125,10 +125,11 @@ const JimothyNotify = (() => {
 
   function notifyForm(stage, formLabel) {
     const pretty = formLabel || capitalize(stage);
-    const title = "Jimothy found a new form";
+    let title = "Jimothy found a new form";
     let body = `He’s a ${pretty} now. Open the app to see him.`;
     if (stage === "baby") {
-      body = "Baby kit Jimothy burst from the bush!";
+      title = "Jimothy popped out of the bush";
+      body = "Baby kit Jimothy burst from the leaves. Open the app!";
     } else if (stage === "young") {
       body = `Young kit form: ${pretty}. Check Form paths for his forks.`;
     } else if (stage === "teen") {
@@ -214,10 +215,135 @@ const JimothyNotify = (() => {
     return `Jimothy needs care (${n} things)`;
   }
 
+  function predictEvents(state) {
+    const out = [];
+    if (!state || !state.alive || state.ascending) return out;
+    const HUNGER_RATE = 0.0028;
+    const HAPPY_RATE = 0.0022;
+    const MAX_DELAY = 7 * 24 * 3600;
+    const age = Number(state.ageSec || 0);
+    const clampDelay = (d) => Math.max(1, Math.min(MAX_DELAY, Math.ceil(d)));
+
+    if (state.stage === "bush") {
+      out.push({
+        key: "bush",
+        delay: clampDelay(60 - age),
+        title: "Jimothy popped out of the bush",
+        body: "Baby kit Jimothy burst from the leaves. Open the app!",
+      });
+      return out;
+    }
+
+    if (state.sick) {
+      out.push({
+        key: "sick",
+        delay: 1,
+        title: "Jimothy is sick",
+        body: "Upset stomach — open Action → Heal.",
+      });
+    }
+    if (state.stubborn) {
+      out.push({
+        key: "acting",
+        delay: state.sick ? 2 : 1,
+        title: "Jimothy is acting up",
+        body: state.stubbornReason
+          ? `He’s ${state.stubbornReason}. Open Action → Scold.`
+          : "Open Action → Scold.",
+      });
+    }
+    if (state.hunger < 25) {
+      out.push({
+        key: "hungry",
+        delay: 1,
+        title: "Jimothy is hungry",
+        body: "He’s hunting for a real meal. Time to feed him.",
+      });
+    } else if (state.hunger > 25) {
+      out.push({
+        key: "hungry",
+        delay: clampDelay((state.hunger - 25) / HUNGER_RATE),
+        title: "Jimothy is hungry",
+        body: "He’s hunting for a real meal. Time to feed him.",
+      });
+    }
+
+    const messCount = state.messCount || (state.hasMess ? 1 : 0);
+    if (messCount > 0 || state.hasMess) {
+      out.push({
+        key: "waste",
+        delay: 1,
+        title: "Jimothy left a mess",
+        body:
+          messCount > 1
+            ? `${messCount} waste piles in the nest — Clean them.`
+            : "One waste pile in the nest — Clean it.",
+      });
+    }
+
+    if (state.stage !== "baby") {
+      if (state.happy < 25 && state.energy >= 18) {
+        out.push({
+          key: "bored",
+          delay: 1,
+          title: "Jimothy is bored",
+          body: "Restless energy — open Play for a game.",
+        });
+      } else if (state.happy > 25) {
+        out.push({
+          key: "bored",
+          delay: clampDelay((state.happy - 25) / HAPPY_RATE),
+          title: "Jimothy is bored",
+          body: "Restless energy — open Play for a game.",
+        });
+      }
+    }
+    return out;
+  }
+
+  async function scheduleBackground(state) {
+    if (!isEnabled() || !state) return 0;
+    if (!("serviceWorker" in navigator) || typeof TimestampTrigger === "undefined") {
+      return 0;
+    }
+    let reg;
+    try {
+      reg = await navigator.serviceWorker.ready;
+    } catch {
+      return 0;
+    }
+    if (!reg || !reg.showNotification) return 0;
+
+    const events = predictEvents(state);
+    let n = 0;
+    for (const ev of events) {
+      try {
+        await reg.showNotification(ev.title, {
+          body: ev.body,
+          icon: "icons/icon-192.png",
+          badge: "icons/icon-192.png",
+          tag: `jimothy-sched-${ev.key}`,
+          renotify: true,
+          showTrigger: new TimestampTrigger(Date.now() + ev.delay * 1000),
+          data: { kind: ev.key, url: "./" },
+        });
+        n += 1;
+      } catch {
+        /* browser may block Notification Triggers */
+      }
+    }
+    return n;
+  }
+
   /** Inspect pet state and fire one combined care alert when needed. */
   function check(state) {
-    if (!state || !state.alive || state.ascending || state.stage === "bush") return;
+    if (!state || !state.alive || state.ascending) return;
     if (!isEnabled()) return;
+
+    // Always refresh closed-tab / background schedules when supported.
+    scheduleBackground(state);
+
+    if (state.stage === "bush") return;
 
     const snap = careSnapshot(state);
     if (!snap.flags.length) {
@@ -251,6 +377,7 @@ const JimothyNotify = (() => {
     check,
     show,
     notifyForm,
+    scheduleBackground,
   };
 })();
 

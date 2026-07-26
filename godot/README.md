@@ -8,7 +8,14 @@ Your **midnight cryptid** — a real-time Tamagotchi-style pet configured for **
 2. Import this folder (`project.godot`)
 3. Press **F5**
 
-## Export Android (phone shade alerts) — APK 1.0.10+
+## Export Android (alerts while app is closed) — APK 1.0.14+
+
+Closed-app shade alerts need the **NotificationScheduler** plugin inside the APK. That requires a **Gradle** export.
+
+### One-time setup
+1. **Project Settings → Plugins → NotificationScheduler → Enable** (already on in this project)
+2. **Project → Install Android Build Template…**
+3. **Project → Export → Android → Use Gradle Build = On** (preset default)
 
 ### Permissions (Export → Android → Permissions)
 Turn **ON**:
@@ -17,33 +24,18 @@ Turn **ON**:
 - **Receive Boot Completed**
 - **Set Alarm**
 
-Godot 4.7 has **no** “Schedule Exact Alarm” / “Use Exact Alarm” checkboxes.
+Custom permissions already include `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`.
 
-### If you build on a phone (Godot Android / GABE)
-
-The previous zip could crash Gradle looking for a missing `android/plugins/*.aar`. **1.0.10 removes that.**
-
-**Easiest path on phone:**
-1. Open this project in Godot 4.7.1
-2. **Project → Export → Android**
-3. Set **Use Gradle Build = Off** (one-click export)
-4. Permissions → **Post Notifications** On
-5. Export & install
-6. Tap **Allow** on the notification prompt
-
-One-click export uses the built-in Android notify path (no Gradle plugin needed).
-
-**Optional Gradle path (desktop or GABE):**
-1. **Project Settings → Plugins → NotificationScheduler → Enable**
-2. **Project → Install Android Build Template…**
-3. **Use Gradle Build = On**
-4. Do **not** enable a Plugins entry for `NotificationSchedulerPlugin` under `android/plugins` (that folder is unused now)
-5. Export
+Do **not** add a separate Plugins entry under `android/plugins` — the editor plugin pulls AARs from `addons/NotificationSchedulerPlugin/bin/`.
 
 ### After install
-- Toast **Jimothy alert sent** + shade notification **Jimothy alerts on**
-- If the button says **Alerts: Allow**, tap it
-- Or: phone **Settings → Apps → JimothyPet → Notifications → On**
+- Tap **Allow** on the notification prompt (or **Alerts: Allow**)
+- With the app open: specific care alerts (hungry / sick / acting up / waste / bored)
+- After you leave or close the app: AlarmManager fires those same specific alerts (and **Jimothy popped out of the bush** when the bush timer ends)
+- Phone **Settings → Apps → JimothyPet → Notifications → On** if blocked
+
+### If Gradle fails on phone (GABE)
+Install the Android Build Template again, confirm `addons/NotificationSchedulerPlugin/bin/release/*.aar` exists, then re-export with Gradle On.
 
 ## Download
 
@@ -68,5 +60,5 @@ Zips live in the repo [`dist/`](../dist/) folder:
 ## Care
 
 - **Feed / Play / Scold / Clean / Heal** via Action menu
-- **Alerts** default ON — phone shade notifications for hunger, play, acting up, waste, new forms
+- **Alerts** default ON — specific shade notifications for hungry, sick, acting up, waste, bored, bush hatch, new forms
 - **Sound** toggles in Settings
