@@ -1051,7 +1051,7 @@ func _on_alerts_pressed() -> void:
 			JimothyNotify.request_permission_web()
 		var where := "phone / browser notifications"
 		if OS.get_name() == "Android":
-			where = "Android notifications (allow the permission prompt)"
+			where = "Android notifications — allow the permission prompt if shown (or enable in system Settings)"
 		elif OS.has_feature("web"):
 			where = "browser notifications (allow the permission prompt)"
 		PetState.speech.emit("Care alerts on — %s for hunger, play, acting up, waste, and new forms." % where)

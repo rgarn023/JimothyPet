@@ -49,4 +49,5 @@ Zips live in the repo [`dist/`](../dist/) folder:
 2. Configure Android SDK  
 3. **Project → Export → Android** (`com.jimothy.pet`)  
 4. Export includes **POST_NOTIFICATIONS** — after install, open the app → **Settings → Alerts: On** and accept the Android permission prompt  
-5. Care alerts then appear in the phone notification shade (not only inside the game)
+5. You should see a confirmation notification (“Jimothy alerts on”). Care needs (hungry, play, acting up, waste, new form) then appear in the phone shade  
+6. If no prompt appears: phone **Settings → Apps → JimothyPet → Notifications → On**
