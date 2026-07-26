@@ -8,6 +8,51 @@ Your **midnight cryptid** — a real-time Tamagotchi-style pet configured for **
 2. Import this folder (`project.godot`)
 3. Press **F5**
 
+## Export Android (phone shade alerts) — APK 1.0.10+
+
+### Permissions (Export → Android → Permissions)
+Turn **ON**:
+- **Post Notifications** (required)
+- **Wake Lock**
+- **Receive Boot Completed**
+- **Set Alarm**
+
+Godot 4.7 has **no** “Schedule Exact Alarm” / “Use Exact Alarm” checkboxes.
+
+### If you build on a phone (Godot Android / GABE)
+
+The previous zip could crash Gradle looking for a missing `android/plugins/*.aar`. **1.0.10 removes that.**
+
+**Easiest path on phone:**
+1. Open this project in Godot 4.7.1
+2. **Project → Export → Android**
+3. Set **Use Gradle Build = Off** (one-click export)
+4. Permissions → **Post Notifications** On
+5. Export & install
+6. Tap **Allow** on the notification prompt
+
+One-click export uses the built-in Android notify path (no Gradle plugin needed).
+
+**Optional Gradle path (desktop or GABE):**
+1. **Project Settings → Plugins → NotificationScheduler → Enable**
+2. **Project → Install Android Build Template…**
+3. **Use Gradle Build = On**
+4. Do **not** enable a Plugins entry for `NotificationSchedulerPlugin` under `android/plugins` (that folder is unused now)
+5. Export
+
+### After install
+- Toast **Jimothy alert sent** + shade notification **Jimothy alerts on**
+- If the button says **Alerts: Allow**, tap it
+- Or: phone **Settings → Apps → JimothyPet → Notifications → On**
+
+## Download
+
+Zips live in the repo [`dist/`](../dist/) folder:
+
+- `Jimothy-godot-only-4.7.1.zip` — this Godot project
+- `JimothyPet-godot-4.7.1.zip` — full repo (web + Godot)
+- `Jimothy-web.zip` — browser-only build
+
 ## Life cycle (real time)
 
 | Stage | When |
@@ -20,48 +65,8 @@ Your **midnight cryptid** — a real-time Tamagotchi-style pet configured for **
 | **Lifespan** | Adult lasts ~10–20 days (neglect shortens this) |
 | **Finale** | Wings grow, he rises into the sky → **Raise another kit** |
 
-Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, scruff) influence the adult flair (Saint, Legend, Alley Ghost, Ballard Blip) while keeping the internet-famous short-spine silhouette.
-
 ## Care
 
-- **Feed:** Wild berries, night crickets, stream fish (proper forage) or pizza crust / dumpster fries (junk)
-- Satiety stops overfeeding; junk can upset his stomach
-- **Play:** Dumpster Dive night forage, or High or Low (spinning d20) — burns energy, builds mood/fitness
-- **Scold / Clean:** Discipline refusals; clear nest messes
-- **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
-- **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
-- **Sound:** raccoon chitters, rustles, crunch, chew, cry, ascend, etc. — toggle in **Settings → Sound → Jimothy: On**. Android APKs load imported WAV samples via `ResourceLoader` (re-export after pulling latest if an older build was silent).
-- **Care alerts:** real **OS / browser / Android** shade notifications when hungry, bored, acting up, nest waste, or a **new form**. **Alerts default ON**; the button shows **Alerts: Allow** until the phone grants permission. Phone APKs need the Gradle steps below.
-- Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
-- **Tap Jimothy** for smile / hop / nuzzle / spin reactions
-
-## Download
-
-Zips live in the repo [`dist/`](../dist/) folder:
-
-- `Jimothy-godot-only-4.7.1.zip` — this Godot project
-- `JimothyPet-godot-4.7.1.zip` — full repo (web + Godot)
-- `Jimothy-web.zip` — browser-only build
-
-## Export Android (phone shade alerts)
-
-1. Install Godot **4.7.1** export templates + Android SDK  
-2. **Project → Export → Android → Permissions** — turn **ON**:
-   - **Post Notifications** (this is the important one)
-   - **Wake Lock**
-   - **Receive Boot Completed**
-   - **Set Alarm** (Godot’s name; there is no “Schedule Exact Alarm” checkbox in 4.7)
-   - Optional: under **Custom Permissions** add  
-     `android.permission.SCHEDULE_EXACT_ALARM` and `android.permission.USE_EXACT_ALARM`  
-3. Recommended for best delivery:
-   - **Project Settings → Plugins → NotificationScheduler → Enable**
-   - **Project → Install Android Build Template…**
-   - **Use Gradle Build** = On  
-4. Export / install APK **1.0.9+**  
-   - **Use Gradle Build** = On  
-   - Under **Plugins**, enable **NotificationSchedulerPlugin** if listed  
-
-5. On the phone, tap **Allow** on the notification popup  
-6. You should see Toast **“Jimothy alert sent”** and a shade notification  
-7. If the button says **Alerts: Allow**, tap it. If still blocked:  
-   **Settings → Apps → JimothyPet → Notifications → On**
+- **Feed / Play / Scold / Clean / Heal** via Action menu
+- **Alerts** default ON — phone shade notifications for hunger, play, acting up, waste, new forms
+- **Sound** toggles in Settings

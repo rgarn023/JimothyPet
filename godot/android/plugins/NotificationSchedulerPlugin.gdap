@@ -1,9 +1,0 @@
-[config]
-
-name="NotificationSchedulerPlugin"
-binary_type="local"
-binary="NotificationSchedulerPlugin-release.aar"
-
-[dependencies]
-
-remote=["androidx.appcompat:appcompat:1.7.1"]
