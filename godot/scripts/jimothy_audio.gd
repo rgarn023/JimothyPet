@@ -31,11 +31,19 @@ var _cry_busy: bool = false
 
 
 func _ready() -> void:
+	# Ensure the mix bus isn't stuck silent after an Android export / focus change.
+	if AudioServer.get_bus_count() > 0:
+		AudioServer.set_bus_mute(0, false)
+		if AudioServer.get_bus_volume_db(0) < -40.0:
+			AudioServer.set_bus_volume_db(0, 0.0)
+
 	_load_streams()
 	for i in 5:
 		var p := AudioStreamPlayer.new()
 		p.name = "Sfx%d" % i
 		p.bus = "Master"
+		# Keep players active while the app is backgrounded so queued care SFX still mix.
+		p.process_mode = Node.PROCESS_MODE_ALWAYS
 		add_child(p)
 		_sfx_players.append(p)
 	_cry_player = _sfx_players[4]
@@ -50,6 +58,12 @@ func _ready() -> void:
 		PetState.speech.connect(_on_speech)
 		PetState.stage_changed.connect(_on_stage)
 		PetState.state_changed.connect(_on_state)
+
+	if _streams.is_empty():
+		push_error("JimothyAudio: no SFX streams loaded — Android/web export will be silent.")
+	elif sfx_on:
+		# Prove audio path on boot (also warms Android audio focus after install).
+		call_deferred("play", "chirp", -12.0)
 
 
 func _process(delta: float) -> void:
@@ -228,16 +242,27 @@ func _on_state() -> void:
 
 
 func _load_streams() -> void:
+	# Prefer ResourceLoader — required on Android/web exports where res:// WAVs are
+	# remapped to imported .sample data (manual RIFF parsing then finds no PCM).
 	for key in FILES.keys():
 		var path: String = AUDIO_DIR + str(FILES[key])
-		var stream := _load_wav(path, false)
+		var stream: AudioStream = null
+		if ResourceLoader.exists(path):
+			var res: Resource = ResourceLoader.load(path, "AudioStream", ResourceLoader.CACHE_MODE_REUSE)
+			if res is AudioStream:
+				stream = res as AudioStream
+		if stream == null:
+			stream = _load_wav(path, false)
 		if stream:
 			_streams[key] = stream
+		else:
+			push_warning("JimothyAudio: missing/unloadable SFX: %s" % path)
+	print("JimothyAudio: loaded %d/%d SFX streams" % [_streams.size(), FILES.size()])
 
 
 func _load_wav(path: String, loop: bool = false) -> AudioStreamWAV:
+	# Fallback for editor/dev if an import remap isn't ready yet.
 	if not FileAccess.file_exists(path):
-		push_warning("Missing audio: %s" % path)
 		return null
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -245,9 +270,7 @@ func _load_wav(path: String, loop: bool = false) -> AudioStreamWAV:
 	var bytes := file.get_buffer(file.get_length())
 	if bytes.size() < 44:
 		return null
-	if _ascii(bytes, 0, 4) != "RIFF":
-		return null
-	if _ascii(bytes, 8, 4) != "WAVE":
+	if _ascii(bytes, 0, 4) != "RIFF" or _ascii(bytes, 8, 4) != "WAVE":
 		return null
 
 	var offset := 12
@@ -272,7 +295,6 @@ func _load_wav(path: String, loop: bool = false) -> AudioStreamWAV:
 		offset = chunk_end + (chunk_size % 2)
 
 	if data.is_empty() or bits != 16:
-		push_warning("Unsupported WAV: %s" % path)
 		return null
 
 	var stream := AudioStreamWAV.new()

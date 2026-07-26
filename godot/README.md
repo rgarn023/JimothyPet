@@ -30,7 +30,7 @@ Young/teen forms (puff, looper, shadow, nub → dumpling, bounder, nightlane, sc
 - **Scold / Clean:** Discipline refusals; clear nest messes
 - **Form paths:** young → teen forks → adult (care vs neglect), with unlock highlighting
 - **Dev mode:** toggle on, then fast-forward to each stage (or the ascend finale)
-- **Sound:** looping night ambience (crickets / wind) + raccoon chitters, rustles, crunch, and ascend whoosh — toggle with **Sound: On/Off**
+- **Sound:** raccoon chitters, rustles, crunch, chew, cry, ascend, etc. — toggle in **Settings → Sound → Jimothy: On**. Android APKs load imported WAV samples via `ResourceLoader` (re-export after pulling latest if an older build was silent).
 - **Care alerts:** real **OS / browser / Android** notifications when hungry, bored, acting up, nest waste, or a **new form** — toggle **Settings → Alerts: On** (allow the permission prompt). In-editor desktop may use OS toasts; phone alerts need an Android APK or the web/PWA build.
 - Forest backdrop + clearing floor; Jimothy walks / runs / jumps / lopes
 - **Tap Jimothy** for smile / hop / nuzzle / spin reactions
