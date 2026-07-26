@@ -826,9 +826,9 @@ func _evolve_if_needed() -> void:
 		save_game()
 
 
-## Predicted OS alerts while the app is closed. Each entry:
-## { key, delay (sec), title, body }
-func predict_care_alerts() -> Array:
+## Closed-app OS alerts only. Each entry: { key, delay (sec), title, body, fp? }
+## Keeps the set small: one milestone + one current-care + one next future need.
+func predict_care_alerts(min_away_sec: int = 90) -> Array:
 	var out: Array = []
 	if not alive or ascending:
 		return out
@@ -836,112 +836,100 @@ func predict_care_alerts() -> Array:
 	const HUNGER_RATE := 0.0028
 	const HAPPY_RATE := 0.0022
 	const MAX_DELAY := 7 * 24 * 3600
+	var away := maxi(60, min_away_sec)
 
 	if stage == "bush":
-		var bush_delay := int(ceili(bush_end() - age_sec))
-		bush_delay = clampi(bush_delay, 1, MAX_DELAY)
+		# Hatch can be <1 min — allow a short delay so it can fire while closed.
+		var bush_delay := clampi(int(ceili(bush_end() - age_sec)), 15, MAX_DELAY)
 		out.append({
 			"key": "bush",
 			"delay": bush_delay,
 			"title": "Jimothy popped out of the bush",
 			"body": "Baby kit Jimothy burst from the leaves. Open the app!",
+			"fp": "bush",
 		})
 		return out
 
-	# Already-true needs — fire shortly after backgrounding.
+	# Current needs → one combined alert after the player has actually left.
+	var cur_flags: PackedStringArray = []
+	var cur_lines: PackedStringArray = []
 	if sick:
-		out.append({
-			"key": "sick",
-			"delay": 1,
-			"title": "Jimothy is sick",
-			"body": "Upset stomach — open Action → Heal.",
-		})
+		cur_flags.append("sick")
+		cur_lines.append("Sick — open Action → Heal.")
 	if stubborn:
-		var acting_body := "Open Action → Scold."
+		cur_flags.append("acting up")
 		if stubborn_reason != "":
-			acting_body = "He’s %s. Open Action → Scold." % stubborn_reason
-		out.append({
-			"key": "acting",
-			"delay": 1 if not sick else 2,
-			"title": "Jimothy is acting up",
-			"body": acting_body,
-		})
+			cur_lines.append("Acting up — he’s %s. Scold him." % stubborn_reason)
+		else:
+			cur_lines.append("Acting up — open Action → Scold.")
 	if hunger < 25.0:
-		out.append({
-			"key": "hungry",
-			"delay": 1,
-			"title": "Jimothy is hungry",
-			"body": "He’s hunting for a real meal. Time to feed him.",
-		})
-	elif hunger > 25.0:
-		var hungry_delay := int(ceili((hunger - 25.0) / HUNGER_RATE))
-		hungry_delay = clampi(hungry_delay, 1, MAX_DELAY)
-		out.append({
-			"key": "hungry",
-			"delay": hungry_delay,
-			"title": "Jimothy is hungry",
-			"body": "He’s hunting for a real meal. Time to feed him.",
-		})
+		cur_flags.append("hungry")
+		cur_lines.append("Hungry — feed him a real meal.")
 	if has_mess:
-		var waste_body := "One waste pile in the nest — Clean it."
+		cur_flags.append("waste")
 		if mess_count > 1:
-			waste_body = "%d waste piles in the nest — Clean them." % mess_count
+			cur_lines.append("Waste — %d piles. Clean them." % mess_count)
+		else:
+			cur_lines.append("Waste — clean the nest.")
+	if stage != "baby" and energy >= 18.0 and happy < 25.0:
+		cur_flags.append("bored")
+		cur_lines.append("Bored — open Play.")
+
+	if not cur_flags.is_empty():
+		var title := "Jimothy needs care"
+		if cur_flags.size() == 1:
+			match cur_flags[0]:
+				"sick":
+					title = "Jimothy is sick"
+				"acting up":
+					title = "Jimothy is acting up"
+				"hungry":
+					title = "Jimothy is hungry"
+				"waste":
+					title = "Jimothy left a mess"
+				"bored":
+					title = "Jimothy is bored"
+		elif cur_flags.size() == 2:
+			title = "Jimothy: %s & %s" % [cur_flags[0], cur_flags[1]]
+		else:
+			title = "Jimothy needs care (%d things)" % cur_flags.size()
 		out.append({
-			"key": "waste",
-			"delay": 1,
-			"title": "Jimothy left a mess",
-			"body": waste_body,
-		})
-	elif mess_count < MAX_MESS:
-		# Expected wait from waste spawn chance (~0.00022 / sec).
-		var waste_delay := clampi(int(ceili(1.0 / 0.00022)), 1800, MAX_DELAY)
-		out.append({
-			"key": "waste",
-			"delay": waste_delay,
-			"title": "Jimothy left a mess",
-			"body": "Nest waste showed up — open the app and Clean.",
+			"key": "care",
+			"delay": away,
+			"title": title,
+			"body": "\n".join(cur_lines),
+			"fp": "|".join(cur_flags),
 		})
 
-	if stage != "baby":
-		if happy < 25.0 and energy >= 18.0:
-			out.append({
+	# Soonest future deterministic need (not already current).
+	var future_delay := MAX_DELAY + 1
+	var future: Dictionary = {}
+	if hunger >= 25.0:
+		var hd := clampi(int(ceili((hunger - 25.0) / HUNGER_RATE)), away, MAX_DELAY)
+		if hd < future_delay:
+			future_delay = hd
+			future = {
+				"key": "hungry",
+				"delay": hd,
+				"title": "Jimothy is hungry",
+				"body": "He’s hunting for a real meal. Time to feed him.",
+				"fp": "hungry",
+			}
+	if stage != "baby" and happy >= 25.0:
+		var bd := clampi(int(ceili((happy - 25.0) / HAPPY_RATE)), away, MAX_DELAY)
+		if bd < future_delay:
+			future_delay = bd
+			future = {
 				"key": "bored",
-				"delay": 1,
+				"delay": bd,
 				"title": "Jimothy is bored",
 				"body": "Restless energy — open Play for a game.",
-			})
-		elif happy > 25.0:
-			var bored_delay := int(ceili((happy - 25.0) / HAPPY_RATE))
-			bored_delay = clampi(bored_delay, 1, MAX_DELAY)
-			out.append({
-				"key": "bored",
-				"delay": bored_delay,
-				"title": "Jimothy is bored",
-				"body": "Restless energy — open Play for a game.",
-			})
+				"fp": "bored",
+			}
+	if not future.is_empty():
+		out.append(future)
 
-	if not sick:
-		var illness_rate := _illness_daily_rate()
-		if illness_rate > 0.05:
-			var sick_delay := clampi(int(ceili(86400.0 / illness_rate)), 1800, MAX_DELAY)
-			out.append({
-				"key": "sick",
-				"delay": sick_delay,
-				"title": "Jimothy is sick",
-				"body": "He’s feeling queasy — open Action → Heal.",
-			})
-	if not stubborn and stage != "baby":
-		var tantrum_rate := _tantrum_daily_rate()
-		if tantrum_rate > 0.05:
-			var act_delay := clampi(int(ceili(86400.0 / tantrum_rate)), 1800, MAX_DELAY)
-			out.append({
-				"key": "acting",
-				"delay": act_delay,
-				"title": "Jimothy is acting up",
-				"body": "He’s being stubborn — open Action → Scold.",
-			})
-
-	# Next growth milestone.
+	# Next growth milestone only (no speculative sick/waste).
 	var next_delay := 0
 	var next_title := ""
 	var next_body := ""
@@ -961,12 +949,12 @@ func predict_care_alerts() -> Array:
 		_:
 			next_delay = 0
 	if next_delay > 0:
-		next_delay = clampi(next_delay, 1, MAX_DELAY)
 		out.append({
 			"key": "form",
-			"delay": next_delay,
+			"delay": clampi(next_delay, away, MAX_DELAY),
 			"title": next_title,
 			"body": next_body,
+			"fp": "form:%s" % stage,
 		})
 
 	return out

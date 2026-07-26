@@ -27,6 +27,8 @@ var _last := {
 	"form": -999999,
 }
 var _last_care_fp: String = ""
+var _last_scheduled_fp: String = ""
+var _last_scheduled_at: float = -999999.0
 var _android_channel_ready: bool = false
 var _notify_id: int = 1100
 var _perm_connected: bool = false
@@ -35,6 +37,10 @@ var _welcome_sent: bool = false
 var _scheduler: Node = null
 var _scheduler_ready: bool = false
 var _scheduler_channel_ready: bool = false
+## Care OS notifications are closed-app only (except the one-time Alerts test).
+var _is_foreground: bool = true
+const MIN_AWAY_SEC := 90
+const SAME_CARE_COOLDOWN_SEC := 30 * 60
 ## Last delivery diagnostic for UI / speech.
 var last_error: String = ""
 
@@ -90,7 +96,6 @@ func _on_scheduler_initialized() -> void:
 	if PetState and PetState.alerts_enabled:
 		if _scheduler.has_post_notifications_permission():
 			_send_welcome_alert()
-			_schedule_background_alerts()
 		else:
 			_scheduler.request_post_notifications_permission()
 
@@ -98,7 +103,6 @@ func _on_scheduler_initialized() -> void:
 func _on_scheduler_perm_granted(_permission_name: String) -> void:
 	_ensure_scheduler_channel()
 	_send_welcome_alert()
-	_schedule_background_alerts()
 
 
 func _on_scheduler_perm_denied(_permission_name: String) -> void:
@@ -209,9 +213,10 @@ func _send_welcome_alert_now() -> void:
 			)
 		return
 
+	# One-time permission test only — daily care alerts fire while the app is closed.
 	var ok := _post(
 		"Jimothy alerts on",
-		"You’ll get shade alerts for specific care — hungry, sick, acting up, waste, bored, or new forms (including leaving the bush)."
+		"Care alerts will show in the shade after you leave the app — hungry, sick, acting up, waste, bored, or new forms."
 	)
 	_welcome_sent = true
 	if ok:
@@ -219,11 +224,11 @@ func _send_welcome_alert_now() -> void:
 		if PetState:
 			if _scheduler_ready and _plugin() != null:
 				PetState.speech.emit(
-					"Phone alert sent — pull down the shade. Alerts also fire after you close the app."
+					"Test alert sent. Care alerts only appear after you close or leave the app."
 				)
 			else:
 				PetState.speech.emit(
-					"Phone alert sent. For alerts while the app is closed: re-export with Use Gradle Build = On (install Android Build Template first)."
+					"Test alert sent. For closed-app alerts: re-export with Use Gradle Build = On (install Android Build Template first)."
 				)
 		_android_toast("Jimothy alert sent")
 	else:
@@ -231,8 +236,6 @@ func _send_welcome_alert_now() -> void:
 		if PetState:
 			PetState.speech.emit("Alert failed: %s" % last_error)
 		_android_toast("Alert failed: %s" % last_error.substr(0, 80))
-	check_now()
-	_schedule_background_alerts()
 
 
 func _on_permissions_result(permission: String, granted: bool) -> void:
@@ -251,71 +254,45 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT \
 			or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT \
 			or what == NOTIFICATION_APPLICATION_PAUSED:
-		# Critical: queue AlarmManager alerts before the process is frozen/killed.
-		check_now()
+		_is_foreground = false
+		# Only schedule while leaving — never post immediate care alerts here.
 		_schedule_background_alerts()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN \
 			or what == NOTIFICATION_APPLICATION_RESUMED:
-		_schedule_background_alerts()
+		_is_foreground = true
+		# Cancel pending alarms so reopen doesn't dump a pile of shade notices.
+		_cancel_background_alerts()
 
 
 func _on_state() -> void:
-	# Foreground care alerts only — do not reschedule AlarmManager every tick.
-	check_now()
+	# No shade spam while playing — needs are visible in-app.
+	pass
 
 
-func _on_stage(stage: String) -> void:
-	if PetState == null or not PetState.alerts_enabled:
-		return
-	if stage in ["bush"]:
+func _on_stage(_stage: String) -> void:
+	# Growth is shown in-app while open. Closed-app milestones are scheduled on pause.
+	if not _is_foreground:
 		_schedule_background_alerts()
-		return
-	var title := "Jimothy found a new form"
-	var body := ""
-	match stage:
-		"baby":
-			title = "Jimothy popped out of the bush"
-			body = "Baby kit Jimothy burst from the leaves. Open the app!"
-		"young":
-			body = "Young kit form: %s. Check Form paths for his forks." % PetState.young_form.capitalize()
-		"teen":
-			var teen_label := PetState.teen_form.capitalize() if PetState.teen_form != "" else "Teen"
-			body = "Teen kit form: %s. Adult flair is taking shape." % teen_label
-		"adult":
-			body = "%s Jimothy — fully grown short-spine cryptid." % PetState.adult_form_title()
-		_:
-			return
-	_try_send("form", title, body, Time.get_unix_time_from_system(), true)
-	_schedule_background_alerts()
 
 
 func check_now() -> void:
+	# Kept for API compatibility / desktop. Android care alerts are closed-app only.
+	if OS.get_name() == "Android":
+		return
 	if PetState == null or not PetState.alerts_enabled:
 		return
-	if not PetState.alive or PetState.ascending:
+	if not PetState.alive or PetState.ascending or PetState.stage == "bush":
 		return
-	# Bush has no open-app care needs — hatch is handled by background schedule.
-	if PetState.stage == "bush":
-		return
-
 	var snap := _care_snapshot()
 	if snap["flags"].is_empty():
-		_last_care_fp = ""
 		return
-
 	var now := Time.get_unix_time_from_system()
 	var fp: String = str(snap["fp"])
-	var last_care: float = float(_last.get("care", -999999))
-	# Resend immediately when the set of needs changes; otherwise respect cooldown.
-	if fp == _last_care_fp and now - last_care < COOLDOWN_SEC:
+	if fp == _last_care_fp and now - float(_last.get("care", -999999)) < COOLDOWN_SEC:
 		return
-
-	var title := _care_title(snap["flags"])
-	var body := _care_body(snap["lines"])
-	if not _post(title, body):
-		return
-	_last["care"] = now
-	_last_care_fp = fp
+	if _post(_care_title(snap["flags"]), _care_body(snap["lines"])):
+		_last["care"] = now
+		_last_care_fp = fp
 
 
 func _schedule_background_alerts() -> void:
@@ -324,7 +301,11 @@ func _schedule_background_alerts() -> void:
 		return
 	if OS.get_name() != "Android":
 		return
+	# Never arm closed-app alarms while the player is actively in the app.
+	if _is_foreground:
+		return
 	if not _scheduler_ready or _plugin() == null:
+		last_error = "NotificationScheduler not in APK — Gradle export required for closed-app alerts"
 		return
 	if not _ensure_scheduler_channel():
 		return
@@ -332,7 +313,8 @@ func _schedule_background_alerts() -> void:
 		return
 
 	_cancel_background_alerts()
-	var events: Array = PetState.predict_care_alerts()
+	var events: Array = PetState.predict_care_alerts(MIN_AWAY_SEC)
+	var now := Time.get_unix_time_from_system()
 	var scheduled := 0
 	for ev in events:
 		if typeof(ev) != TYPE_DICTIONARY:
@@ -341,10 +323,18 @@ func _schedule_background_alerts() -> void:
 		var delay := int(ev.get("delay", 0))
 		var title := str(ev.get("title", ""))
 		var body := str(ev.get("body", ""))
+		var fp := str(ev.get("fp", key))
 		if key == "" or title == "" or delay < 1:
+			continue
+		# Don't re-queue the same care set for a while (stops reopen/close spam).
+		if key == "care" and fp == _last_scheduled_fp \
+				and now - _last_scheduled_at < SAME_CARE_COOLDOWN_SEC:
 			continue
 		if _schedule_android_event(key, title, body, delay):
 			scheduled += 1
+			if key == "care":
+				_last_scheduled_fp = fp
+				_last_scheduled_at = now
 	if scheduled > 0:
 		print("JimothyNotify: scheduled ", scheduled, " closed-app alerts")
 

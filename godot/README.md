@@ -29,9 +29,9 @@ Custom permissions already include `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`.
 Do **not** add a separate Plugins entry under `android/plugins` — the editor plugin pulls AARs from `addons/NotificationSchedulerPlugin/bin/`.
 
 ### After install
-- Tap **Allow** on the notification prompt (or **Alerts: Allow**)
-- With the app open: specific care alerts (hungry / sick / acting up / waste / bored)
-- After you leave or close the app: AlarmManager fires those same specific alerts (and **Jimothy popped out of the bush** when the bush timer ends)
+- Tap **Allow** on the notification prompt (or **Alerts: Allow**) — that sends a one-time test shade alert
+- Care alerts only fire **after you leave/close the app** (not while playing, not on reopen)
+- Examples: **Jimothy popped out of the bush**, hungry / sick / acting up / waste / bored
 - Phone **Settings → Apps → JimothyPet → Notifications → On** if blocked
 
 ### If Gradle fails on phone (GABE)
