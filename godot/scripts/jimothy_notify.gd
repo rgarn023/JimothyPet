@@ -40,7 +40,7 @@ var _scheduler_ready: bool = false
 var _scheduler_channel_ready: bool = false
 ## Care OS notifications are closed-app only (except the one-time Alerts test).
 var _is_foreground: bool = true
-const MIN_AWAY_SEC := 90
+const MIN_AWAY_SEC := 60
 const SAME_CARE_COOLDOWN_SEC := 30 * 60
 ## Last delivery diagnostic for UI / speech.
 var last_error: String = ""
@@ -98,7 +98,9 @@ func _on_scheduler_initialized() -> void:
 			and not _scheduler.has_schedule_exact_alarm_permission() \
 			and _scheduler.has_method("request_schedule_exact_alarm_permission"):
 		_scheduler.request_schedule_exact_alarm_permission()
-	# Do not auto-send the one-time test alert on every cold start.
+	# If the player already left the app before the plugin bound, arm alerts now.
+	if not _is_foreground:
+		_schedule_background_alerts()
 
 
 func closed_app_ready() -> bool:
@@ -267,9 +269,9 @@ func _send_welcome_alert_now() -> void:
 		"Jimothy alerts on",
 		"Care alerts will show in the shade after you leave the app — hungry, sick, acting up, waste, bored, or new forms."
 	)
-	_welcome_sent = true
-	_save_welcome_flag()
 	if ok:
+		_welcome_sent = true
+		_save_welcome_flag()
 		last_error = ""
 		if PetState:
 			if closed_app_ready():
@@ -279,7 +281,7 @@ func _send_welcome_alert_now() -> void:
 				)
 			else:
 				PetState.speech.emit(
-					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.18-gradle.apk from GitHub dist (not a phone Godot export)."
+					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.19-gradle.apk from GitHub dist (not a phone Godot export)."
 					% build_label()
 				)
 		_android_toast("Jimothy alert sent · %s" % scheduler_status_line())
@@ -307,13 +309,19 @@ func _notification(what: int) -> void:
 			or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT \
 			or what == NOTIFICATION_APPLICATION_PAUSED:
 		_is_foreground = false
-		# Only schedule while leaving — never post immediate care alerts here.
+		# Arm closed-app alarms when leaving. Retry shortly if the plugin is still binding.
 		_schedule_background_alerts()
-	elif what == NOTIFICATION_APPLICATION_FOCUS_IN \
-			or what == NOTIFICATION_APPLICATION_RESUMED:
+		var tree := get_tree()
+		if tree and (not _scheduler_ready or _plugin() == null):
+			tree.create_timer(1.0).timeout.connect(_schedule_background_alerts)
+			tree.create_timer(2.5).timeout.connect(_schedule_background_alerts)
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		# Cancel only on full resume — not on notification-shade FOCUS_IN flicker.
 		_is_foreground = true
-		# Cancel pending alarms so reopen doesn't dump a pile of shade notices.
 		_cancel_background_alerts()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN \
+			or what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
+		_is_foreground = true
 
 
 func _on_state() -> void:
@@ -357,11 +365,17 @@ func _schedule_background_alerts() -> void:
 	if _is_foreground:
 		return
 	if not _scheduler_ready or _plugin() == null:
-		last_error = "NotificationScheduler not in APK — Gradle export required for closed-app alerts"
+		last_error = "NotificationScheduler not ready — will retry"
+		_retry_scheduler_init()
 		return
 	if not _ensure_scheduler_channel():
 		return
-	if not bool(_plugin().has_post_notifications_permission()):
+	# Prefer plugin permission; fall back to OS permission check.
+	var allowed := bool(_plugin().has_post_notifications_permission()) \
+			or os_permission_granted() \
+			or _android_notifications_allowed()
+	if not allowed:
+		last_error = "Notification permission missing for closed-app alerts"
 		return
 
 	_cancel_background_alerts()
@@ -388,7 +402,10 @@ func _schedule_background_alerts() -> void:
 				_last_scheduled_fp = fp
 				_last_scheduled_at = now
 	if scheduled > 0:
+		last_error = ""
 		print("JimothyNotify: scheduled ", scheduled, " closed-app alerts")
+	elif events.is_empty():
+		print("JimothyNotify: no closed-app alerts to schedule right now")
 
 
 func _cancel_background_alerts() -> void:
@@ -402,13 +419,26 @@ func _cancel_background_alerts() -> void:
 
 
 func _schedule_android_event(key: String, title: String, body: String, delay_sec: int) -> bool:
-	var plugin := _plugin()
-	if plugin == null:
-		return false
 	var id := int(SCHED_IDS.get(key, 0))
 	if id == 0:
 		_notify_id += 1
 		id = _notify_id
+	# Prefer the typed GDScript wrapper (same Dictionary payload underneath).
+	if _scheduler != null and _scheduler_ready and _scheduler.has_method("schedule"):
+		var nd := NotificationData.new()
+		nd.set_id(id) \
+			.set_channel_id(ANDROID_CHANNEL_ID) \
+			.set_title(title) \
+			.set_content(body) \
+			.set_small_icon_name("ic_default_notification") \
+			.set_delay(maxi(1, delay_sec))
+		var wrapped: int = int(_scheduler.schedule(nd))
+		if wrapped == OK:
+			return true
+		push_warning("JimothyNotify: schedule %s via wrapper failed err=%s" % [key, wrapped])
+	var plugin := _plugin()
+	if plugin == null:
+		return false
 	var data := {
 		"notification_id": id,
 		"channel_id": ANDROID_CHANNEL_ID,

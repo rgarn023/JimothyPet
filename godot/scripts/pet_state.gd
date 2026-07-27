@@ -560,6 +560,8 @@ func apply_decay(seconds: float) -> void:
 	_maybe_illness(seconds)
 	_maybe_tantrum(seconds)
 	_evolve_if_needed()
+	# Catch sleep-window edges after growth / long offline ticks.
+	sync_sleep_transition()
 
 	# Natural / care-shortened lifespan end after adult window.
 	if stage == "adult" and age_sec >= life_end():
@@ -648,6 +650,13 @@ func _evolve_if_needed() -> void:
 
 	if prev != stage:
 		stage_changed.emit(stage)
+		# Emerging from the bush (or any growth) during sleep hours → nest nap now.
+		if prev == "bush" and stage == "baby" and is_in_sleep_window():
+			_was_sleeping = false
+			sync_sleep_transition()
+			speech.emit("It’s sleep time — baby Jimothy curls into the nest.")
+		else:
+			sync_sleep_transition()
 		save_game()
 
 
@@ -666,11 +675,26 @@ func predict_care_alerts(min_away_sec: int = 90) -> Array:
 	if stage == "bush":
 		# Hatch can be <1 min — allow a short delay so it can fire while closed.
 		var bush_delay := clampi(int(ceili(bush_end() - age_sec)), 15, MAX_DELAY)
+		var bush_body := "Baby kit Jimothy burst from the leaves. Open the app!"
+		# If hatch lands in sleep hours, he’ll already be nestled when they open.
+		var hatch_at := Time.get_unix_time_from_system() + float(bush_delay)
+		var dt := Time.get_datetime_dict_from_unix_time(int(hatch_at))
+		var h := float(dt.hour) + float(dt.minute) / 60.0
+		var wake := ((wake_hour % 24) + 24) % 24
+		var sleep := ((sleep_hour % 24) + 24) % 24
+		var sleep_then := false
+		if schedule_set and wake != sleep:
+			if sleep < wake:
+				sleep_then = h >= float(sleep) or h < float(wake)
+			else:
+				sleep_then = h >= float(sleep) and h < float(wake)
+		if sleep_then:
+			bush_body = "Baby kit Jimothy hatched and went straight to sleep. Check on him later!"
 		out.append({
 			"key": "bush",
 			"delay": bush_delay,
 			"title": "Jimothy popped out of the bush",
-			"body": "Baby kit Jimothy burst from the leaves. Open the app!",
+			"body": bush_body,
 			"fp": "bush",
 		})
 		return out
