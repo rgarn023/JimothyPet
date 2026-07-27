@@ -8,11 +8,21 @@ Your **midnight cryptid** — a real-time Tamagotchi-style pet configured for **
 2. Import this folder (`project.godot`)
 3. Press **F5**
 
-## Export Android (alerts while app is closed) — APK 1.0.14+
+## Export Android (alerts while app is closed) — 1.0.16+
 
 Closed-app shade alerts need the **NotificationScheduler** plugin inside the APK. That requires a **Gradle** export.
 
-### One-time setup
+### Phone-only (no desktop)
+Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle APK instead:
+
+1. Download [`dist/jimothy-android-1.0.16-gradle.apk`](../dist/jimothy-android-1.0.16-gradle.apk)
+2. Install it (allow “Install unknown apps” if asked)
+3. Open JimothyPet → **Alerts: Allow** → you should get: *“Care alerts only appear after you close or leave the app.”*
+4. Leave/close the app to test care alerts
+
+This build is **debug-signed** (fine for your phone). Play Console still needs your **release** keystore AAB.
+
+### Desktop / successful Gradle export
 1. **Project Settings → Plugins → NotificationScheduler → Enable** (already on in this project)
 2. **Project → Install Android Build Template…**
 3. **Project → Export → Android → Use Gradle Build = On** (preset default)
@@ -35,7 +45,7 @@ Do **not** add a separate Plugins entry under `android/plugins` — the editor p
 - Phone **Settings → Apps → JimothyPet → Notifications → On** if blocked
 
 ### If Gradle fails on phone (GABE)
-Install the Android Build Template again, confirm `addons/NotificationSchedulerPlugin/bin/release/*.aar` exists, then re-export with Gradle On.
+Use the prebuilt APK above. Phone Gradle exports usually cannot include NotificationScheduler.
 
 ## Download
 

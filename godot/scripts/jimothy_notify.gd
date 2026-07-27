@@ -228,7 +228,7 @@ func _send_welcome_alert_now() -> void:
 				)
 			else:
 				PetState.speech.emit(
-					"Test alert sent. For closed-app alerts: re-export with Use Gradle Build = On (install Android Build Template first)."
+					"Test alert sent. This build can’t schedule closed-app alerts — install the Gradle APK from the JimothyPet GitHub dist folder (jimothy-android.apk)."
 				)
 		_android_toast("Jimothy alert sent")
 	else:
