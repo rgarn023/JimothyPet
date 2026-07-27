@@ -20,10 +20,10 @@ func _boot() -> void:
 	if PetState == null:
 		push_error("PromoDemo: PetState missing")
 		return
-	# Quiet, scheduled, fully awake window for clear footage.
-	PetState.sfx_muted = true
+	# Enable in-game SFX for the promo soundtrack; keep alerts off.
+	PetState.sfx_muted = false
 	PetState.ambience_muted = true
-	PetState.sound_muted = true
+	PetState.sound_muted = false
 	PetState.alerts_enabled = false
 	PetState.set_schedule(7, 22)
 	PetState.schedule_set = true
@@ -34,8 +34,30 @@ func _boot() -> void:
 	PetState.schedule_set = true
 	_hide_blocking_ui()
 	if JimothyAudio and JimothyAudio.has_method("set_sfx_enabled"):
-		JimothyAudio.set_sfx_enabled(false)
+		JimothyAudio.set_sfx_enabled(true)
+	# Soft forest bed under SFX (promo-only; game ambience stays off normally).
+	_start_promo_ambience()
 	await _run_sequence()
+
+
+func _start_promo_ambience() -> void:
+	var path := "res://audio/night_ambience.wav"
+	if not ResourceLoader.exists(path):
+		return
+	var stream: AudioStream = load(path)
+	if stream == null:
+		return
+	var p := AudioStreamPlayer.new()
+	p.name = "PromoAmbience"
+	p.stream = stream
+	p.bus = "Master"
+	p.volume_db = -18.0
+	add_child(p)
+	p.finished.connect(func():
+		if is_instance_valid(p):
+			p.play()
+	)
+	p.play()
 
 
 func _hide_blocking_ui() -> void:

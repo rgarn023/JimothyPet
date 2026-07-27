@@ -2,7 +2,8 @@
 
 Form: https://forms.gle/Lo4vB3r4MM4hTvKSA
 
-Built from **real Godot gameplay** (`--write-movie` + `PromoDemo` when `JIMOTHY_PROMO=1`), then short Coming Soon / signup end cards.
+Built from **real Godot gameplay** (`--write-movie` + `PromoDemo` when `JIMOTHY_PROMO=1`), with **in-game raccoon SFX** + soft night ambience, then Coming Soon / signup end cards.
+
 
 | File | Use |
 | --- | --- |
