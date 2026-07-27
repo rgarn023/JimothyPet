@@ -15,7 +15,7 @@ Closed-app shade alerts need the **NotificationScheduler** plugin inside the APK
 ### Phone-only (no desktop)
 Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle APK instead:
 
-1. Download [`dist/jimothy-android-1.0.20-gradle.apk`](../dist/jimothy-android-1.0.20-gradle.apk)
+1. Download [`dist/jimothy-android-1.0.21-gradle.apk`](../dist/jimothy-android-1.0.21-gradle.apk)
 2. Install it (allow “Install unknown apps” if asked)
 3. Open JimothyPet → **Alerts: Allow** → you should get: *“Care alerts only appear after you close or leave the app.”*
 4. Leave/close the app to test care alerts
@@ -25,7 +25,7 @@ The `.apk` is **debug-signed** (fine for your phone). For Play Console use the *
 ### Play Console AAB (signed upload)
 Prebuilt Gradle AAB (includes closed-app alerts):
 
-- [`dist/jimothy-android-1.0.20-gradle.aab`](../dist/jimothy-android-1.0.20-gradle.aab)
+- [`dist/jimothy-android-1.0.21-gradle.aab`](../dist/jimothy-android-1.0.21-gradle.aab)
 
 **Important:** Play requires your **upload keystore**. Two cases:
 
@@ -42,7 +42,7 @@ pkg install openjdk-17 unzip
 # Download Android build-tools apksigner/jarsigner as needed, or use jarsigner from JDK:
 
 cd ~/storage/downloads   # or wherever the aab + keystore are
-cp jimothy-android-1.0.20-gradle.aab jimothy-play.aab
+cp jimothy-android-1.0.21-gradle.aab jimothy-play.aab
 # Remove old signature, then sign with YOUR keystore (alias jimothy):
 zip -d jimothy-play.aab 'META-INF/*'
 jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \

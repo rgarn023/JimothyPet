@@ -33,12 +33,11 @@ var _android_channel_ready: bool = false
 var _notify_id: int = 1100
 var _perm_connected: bool = false
 var _bootstrapped: bool = false
-var _welcome_sent: bool = false
-var _welcome_wait_tries: int = 0
+var _perm_prompted_session: bool = false
 var _scheduler: Node = null
 var _scheduler_ready: bool = false
 var _scheduler_channel_ready: bool = false
-## Care OS notifications are closed-app only (except the one-time Alerts test).
+## Care OS notifications are closed-app only (no test/welcome shade spam).
 var _is_foreground: bool = true
 const MIN_AWAY_SEC := 60
 const SAME_CARE_COOLDOWN_SEC := 30 * 60
@@ -98,6 +97,9 @@ func _on_scheduler_initialized() -> void:
 			and not _scheduler.has_schedule_exact_alarm_permission() \
 			and _scheduler.has_method("request_schedule_exact_alarm_permission"):
 		_scheduler.request_schedule_exact_alarm_permission()
+	# Prompt for shade permission when alerts are on (no test notification).
+	if PetState and PetState.alerts_enabled and not _scheduler.has_post_notifications_permission():
+		_scheduler.request_post_notifications_permission()
 	# If the player already left the app before the plugin bound, arm alerts now.
 	if not _is_foreground:
 		_schedule_background_alerts()
@@ -117,6 +119,8 @@ func scheduler_status_line() -> String:
 		return "%s · not Android" % build_label()
 	var has_plugin := Engine.has_singleton("NotificationSchedulerPlugin") \
 			or Engine.has_singleton("NotificationScheduler")
+	if not os_permission_granted():
+		return "%s · notifications blocked — tap Alerts: Allow" % build_label()
 	if closed_app_ready():
 		return "%s · closed-app alerts ready" % build_label()
 	if has_plugin and not _scheduler_ready:
@@ -126,14 +130,19 @@ func scheduler_status_line() -> String:
 
 func _on_scheduler_perm_granted(_permission_name: String) -> void:
 	_ensure_scheduler_channel()
-	_send_welcome_alert()
+	last_error = ""
+	if PetState:
+		PetState.speech.emit(
+			"Notifications allowed. Care alerts show after you leave the app."
+		)
+	_android_toast("Jimothy notifications on")
 
 
 func _on_scheduler_perm_denied(_permission_name: String) -> void:
 	last_error = "Notification permission denied"
 	if PetState:
 		PetState.speech.emit(
-			"Phone notifications blocked — open Settings → Apps → JimothyPet → Notifications → On."
+			"Notifications blocked — tap Alerts: Allow again, or enable them in phone Settings."
 		)
 	_android_toast("Enable Jimothy notifications in Settings")
 
@@ -176,29 +185,9 @@ func _bootstrap_alerts() -> void:
 		return
 	_bootstrapped = true
 	_connect_permission_signal()
-	_load_welcome_flag()
-	# Only the first-ever test alert may fire from bootstrap — never again on reopen.
-	if PetState and PetState.alerts_enabled and not _welcome_sent:
-		if OS.get_name() == "Android":
-			_ensure_android_channel()
-			if os_permission_granted() or _android_notifications_allowed():
-				_send_welcome_alert()
-		elif not OS.has_feature("web"):
-			_send_welcome_alert()
-
-
-func _load_welcome_flag() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load("user://jimothy_notify.cfg") != OK:
-		return
-	_welcome_sent = bool(cfg.get_value("alerts", "welcome_sent", false))
-
-
-func _save_welcome_flag() -> void:
-	var cfg := ConfigFile.new()
-	cfg.load("user://jimothy_notify.cfg")
-	cfg.set_value("alerts", "welcome_sent", _welcome_sent)
-	cfg.save("user://jimothy_notify.cfg")
+	# Ask for OS permission when alerts are on — never send a test shade alert.
+	if PetState and PetState.alerts_enabled:
+		call_deferred("request_permission")
 
 
 func _connect_permission_signal() -> void:
@@ -229,78 +218,29 @@ func _web_permission_granted() -> bool:
 	return str(status) == "granted"
 
 
-func _send_welcome_alert() -> void:
-	if _welcome_sent:
+func _open_notification_settings_if_possible() -> void:
+	if OS.get_name() != "Android":
 		return
-	if PetState == null or not PetState.alerts_enabled:
-		return
-	call_deferred("_send_welcome_alert_now")
-
-
-func _send_welcome_alert_now() -> void:
-	if _welcome_sent:
-		return
-	if PetState == null or not PetState.alerts_enabled:
-		return
-	# If OS permission isn’t granted yet, ask and allow a later retry.
-	if OS.get_name() == "Android" and not os_permission_granted():
-		if OS.has_method("request_permission"):
-			OS.request_permission(ANDROID_PERM)
-		if _scheduler != null and _scheduler_ready:
-			_scheduler.request_post_notifications_permission()
-		_android_toast("Tap Allow for Jimothy notifications")
-		if PetState:
-			PetState.speech.emit(
-				"Allow notifications on the popup. If you don’t see one: phone Settings → Apps → JimothyPet → Notifications → On, then tap Alerts."
-			)
-		return
-
-	# Don't conclude "plugin missing" until we've given the singleton time to bind.
-	if OS.get_name() == "Android" and not closed_app_ready() and _welcome_wait_tries < 5:
-		_welcome_wait_tries += 1
-		_retry_scheduler_init()
-		var tree := get_tree()
-		if tree:
-			tree.create_timer(0.8).timeout.connect(_send_welcome_alert_now)
-			return
-
-	# One-time permission test only — daily care alerts fire while the app is closed.
-	var ok := _post(
-		"Jimothy alerts on",
-		"Care alerts will show in the shade after you leave the app — hungry, sick, acting up, waste, bored, or new forms."
-	)
-	if ok:
-		_welcome_sent = true
-		_save_welcome_flag()
-		last_error = ""
-		if PetState:
-			if closed_app_ready():
-				PetState.speech.emit(
-					"Test alert sent (%s). Care alerts only appear after you close or leave the app."
-					% build_label()
-				)
-			else:
-				PetState.speech.emit(
-					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.20-gradle.apk from GitHub dist (not a phone Godot export)."
-					% build_label()
-				)
-		_android_toast("Jimothy alert sent · %s" % scheduler_status_line())
-	else:
-		last_error = last_error if last_error != "" else "notify failed"
-		if PetState:
-			PetState.speech.emit("Alert failed: %s" % last_error)
-		_android_toast("Alert failed: %s" % last_error.substr(0, 80))
+	if _scheduler != null and _scheduler_ready and _scheduler.has_method("open_app_info_settings"):
+		_scheduler.open_app_info_settings()
 
 
 func _on_permissions_result(permission: String, granted: bool) -> void:
 	if permission != ANDROID_PERM:
 		return
 	if granted:
-		_send_welcome_alert()
+		_ensure_android_channel()
+		_ensure_scheduler_channel()
+		last_error = ""
+		if PetState:
+			PetState.speech.emit(
+				"Notifications allowed. Care alerts show after you leave the app."
+			)
+		_android_toast("Jimothy notifications on")
 	elif PetState:
 		last_error = "Notification permission denied"
 		PetState.speech.emit(
-			"Notification permission denied — enable it in Android Settings → Apps → JimothyPet."
+			"Notification permission denied — tap Alerts: Allow, or enable in Settings → Apps → JimothyPet → Notifications."
 		)
 
 
@@ -541,50 +481,49 @@ func supports_os_notifications() -> bool:
 			return false
 
 
-## Allow UI to force a fresh welcome/test notification on the next grant.
+## Kept for older UI hooks — no test alert is sent anymore.
 func reset_welcome() -> void:
-	_welcome_sent = false
-	_welcome_wait_tries = 0
-	_save_welcome_flag()
+	pass
 
 
-## Call when the player turns Alerts on — requests OS / browser permission.
+## Call when the player turns Alerts on — requests OS / browser permission only.
 func request_permission() -> void:
 	_connect_permission_signal()
 	if OS.has_feature("web"):
 		request_permission_web()
 		return
 	if OS.get_name() != "Android":
-		if not _welcome_sent:
-			_welcome_sent = true
-			_save_welcome_flag()
-			_post(
-				"Jimothy alerts on",
-				"Desktop alerts when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
-			)
-			check_now()
 		return
 
-	# Always ask the OS directly — works with or without the Gradle plugin.
 	_ensure_android_channel()
+	# Already allowed — just make sure channels exist.
+	if os_permission_granted() or _android_notifications_allowed():
+		_ensure_scheduler_channel()
+		last_error = ""
+		return
+
+	# Second tap while still blocked → open app notification settings.
+	if _perm_prompted_session:
+		_open_notification_settings_if_possible()
+
+	_perm_prompted_session = true
 	if OS.has_method("request_permission"):
 		OS.request_permission(ANDROID_PERM)
 	elif OS.has_method("request_permissions"):
 		OS.request_permissions()
 
-	# Optional plugin path (only if NotificationScheduler is in the APK).
 	if _scheduler != null:
 		if not _scheduler_ready:
 			_scheduler.initialize()
 		if _scheduler_ready and not _scheduler.has_post_notifications_permission():
 			_scheduler.request_post_notifications_permission()
 
-	# One-time test shade alert only (persisted — not every app open).
-	if os_permission_granted() or _android_notifications_allowed():
-		_send_welcome_alert()
-	else:
-		last_error = "Waiting for notification permission"
-		_android_toast("Allow Jimothy notifications")
+	last_error = "Waiting for notification permission"
+	_android_toast("Allow Jimothy notifications")
+	if PetState:
+		PetState.speech.emit(
+			"Allow notifications on the popup. If it doesn’t appear: Settings → Apps → JimothyPet → Notifications → On."
+		)
 
 
 func _post(title: String, body: String) -> bool:

@@ -876,9 +876,6 @@ func _on_alerts_pressed() -> void:
 
 	PetState.alerts_enabled = not PetState.alerts_enabled
 	if PetState.alerts_enabled:
-		# Reset welcome so a fresh test notification is sent.
-		if JimothyNotify and JimothyNotify.has_method("reset_welcome"):
-			JimothyNotify.reset_welcome()
 		if JimothyNotify and JimothyNotify.has_method("request_permission"):
 			JimothyNotify.request_permission()
 		elif JimothyNotify and JimothyNotify.has_method("request_permission_web"):
@@ -894,8 +891,6 @@ func _on_alerts_pressed() -> void:
 			"Care alerts on — %s when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
 			% where
 		)
-		if JimothyNotify:
-			JimothyNotify.check_now()
 	else:
 		PetState.speech.emit("Care alerts off.")
 	PetState.save_game()
