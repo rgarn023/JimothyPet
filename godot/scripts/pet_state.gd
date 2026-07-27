@@ -247,9 +247,11 @@ func is_in_sleep_window() -> bool:
 		return false
 	var dt := Time.get_datetime_dict_from_system()
 	var h := float(dt.hour) + float(dt.minute) / 60.0
+	# sleep < wake → same-day window (e.g. 13→17 nap)
+	# sleep > wake → overnight window (e.g. 22→7)
 	if sleep < wake:
-		return h >= float(sleep) or h < float(wake)
-	return h >= float(sleep) and h < float(wake)
+		return h >= float(sleep) and h < float(wake)
+	return h >= float(sleep) or h < float(wake)
 
 
 func is_sleeping() -> bool:
@@ -610,8 +612,13 @@ func _evolve_if_needed() -> void:
 		stage = "baby"
 		weight = 1.2
 		happy = clamp01(happy + 10.0)
-		speech.emit("The bush explodes in leaves — baby kit Jimothy!")
-		anim_impulse.emit("stageUp")
+		if is_in_sleep_window():
+			speech.emit("The bush explodes in leaves — baby Jimothy curls straight into a nest nap.")
+			# Skip stage-up hops; he’s asleep the moment he hatches.
+			anim_impulse.emit("fallAsleep")
+		else:
+			speech.emit("The bush explodes in leaves — baby kit Jimothy!")
+			anim_impulse.emit("stageUp")
 	elif stage == "baby" and age_sec >= baby_end():
 		stage = "young"
 		young_form = _pick_young_form(genes)
@@ -650,11 +657,10 @@ func _evolve_if_needed() -> void:
 
 	if prev != stage:
 		stage_changed.emit(stage)
-		# Emerging from the bush (or any growth) during sleep hours → nest nap now.
+		# Emerging from the bush during sleep hours → nest nap now.
 		if prev == "bush" and stage == "baby" and is_in_sleep_window():
 			_was_sleeping = false
 			sync_sleep_transition()
-			speech.emit("It’s sleep time — baby Jimothy curls into the nest.")
 		else:
 			sync_sleep_transition()
 		save_game()
@@ -685,9 +691,9 @@ func predict_care_alerts(min_away_sec: int = 90) -> Array:
 		var sleep_then := false
 		if schedule_set and wake != sleep:
 			if sleep < wake:
-				sleep_then = h >= float(sleep) or h < float(wake)
-			else:
 				sleep_then = h >= float(sleep) and h < float(wake)
+			else:
+				sleep_then = h >= float(sleep) or h < float(wake)
 		if sleep_then:
 			bush_body = "Baby kit Jimothy hatched and went straight to sleep. Check on him later!"
 		out.append({

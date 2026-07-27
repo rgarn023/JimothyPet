@@ -647,10 +647,11 @@ func _refresh() -> void:
 	var mood := "idle"
 	if PetState.ascending:
 		mood = "ascend"
+	elif PetState.is_sleeping():
+		# Sleep wins over stage celebration — hatch-at-night stays a nest nap.
+		mood = "sleep"
 	elif _stage_celebrating:
 		mood = "stageUp"
-	elif PetState.is_sleeping():
-		mood = "sleep"
 	elif PetState.sick:
 		mood = "sick"
 	elif PetState.stubborn:
@@ -735,6 +736,15 @@ func _on_speech(text: String) -> void:
 
 
 func _on_stage_changed(stage: String) -> void:
+	# Hatch during sleep hours: no awake celebration choreography.
+	if stage == "baby" and PetState.is_sleeping():
+		_refresh()
+		_show_message(
+			"Baby Kit!",
+			"Jimothy burst from the bush during sleep hours and went straight to nest."
+		)
+		btn_message_ok.text = "OK"
+		return
 	var title := ""
 	var body := ""
 	match stage:

@@ -168,6 +168,11 @@ func _sync_from_state() -> void:
 		mood = "ascend"
 	elif PetState.is_sleeping():
 		mood = "sleep"
+		if _anim not in ["sleep", "fallAsleep", "ascend"]:
+			_anim = "sleep"
+			_anim_t = 0.0
+			_anim_dur = 4.0
+			_speed = 0.0
 	elif PetState.sick:
 		mood = "sick"
 	elif PetState.stubborn:
@@ -176,9 +181,14 @@ func _sync_from_state() -> void:
 		mood = "idle"
 	# Living kit after ascend/reset — never keep the post-fade invisible state.
 	if PetState != null and PetState.alive and not PetState.ascending:
-		if _anim in ["ascend", "gone"] or _fade < 0.99 or modulate.a < 0.99:
-			_anim = "idle"
-			_anim_t = 0.0
+		if _anim in ["ascend", "gone"] or (_fade < 0.99 and _anim != "stageUp") or modulate.a < 0.99:
+			if PetState.is_sleeping():
+				_anim = "sleep"
+				_anim_t = 0.0
+				_anim_dur = 4.0
+			elif _anim in ["ascend", "gone"]:
+				_anim = "idle"
+				_anim_t = 0.0
 			_pose_x = 0.0
 			_pose_y = 0.0
 			_wing_span = 0.0
@@ -193,8 +203,11 @@ func set_look(_stage: String, _variant: String = "", _mood: String = "idle") -> 
 
 
 func play_anim(kind: String) -> void:
-	# Don't let ambient walks cut off a slow eat / ascent / stage-up.
-	if _anim in ["eat", "ascend", "fallAsleep", "stageUp"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"]:
+	# Don't let ambient walks cut off a slow eat / ascent / stage-up / falling asleep.
+	# Sleep may interrupt stage-up when he hatches during sleep hours.
+	if kind in ["fallAsleep", "sleep"] and _anim == "stageUp":
+		pass  # allow interrupt below
+	elif _anim in ["eat", "ascend", "fallAsleep", "stageUp"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"]:
 		return
 	_anim = kind
 	_anim_t = 0.0

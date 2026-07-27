@@ -281,7 +281,7 @@ func _send_welcome_alert_now() -> void:
 				)
 			else:
 				PetState.speech.emit(
-					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.19-gradle.apk from GitHub dist (not a phone Godot export)."
+					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.20-gradle.apk from GitHub dist (not a phone Godot export)."
 					% build_label()
 				)
 		_android_toast("Jimothy alert sent · %s" % scheduler_status_line())
