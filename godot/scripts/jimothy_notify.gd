@@ -98,11 +98,7 @@ func _on_scheduler_initialized() -> void:
 			and not _scheduler.has_schedule_exact_alarm_permission() \
 			and _scheduler.has_method("request_schedule_exact_alarm_permission"):
 		_scheduler.request_schedule_exact_alarm_permission()
-	if PetState and PetState.alerts_enabled:
-		if _scheduler.has_post_notifications_permission():
-			_send_welcome_alert()
-		else:
-			_scheduler.request_post_notifications_permission()
+	# Do not auto-send the one-time test alert on every cold start.
 
 
 func closed_app_ready() -> bool:
@@ -178,10 +174,29 @@ func _bootstrap_alerts() -> void:
 		return
 	_bootstrapped = true
 	_connect_permission_signal()
-	if PetState == null:
+	_load_welcome_flag()
+	# Only the first-ever test alert may fire from bootstrap — never again on reopen.
+	if PetState and PetState.alerts_enabled and not _welcome_sent:
+		if OS.get_name() == "Android":
+			_ensure_android_channel()
+			if os_permission_granted() or _android_notifications_allowed():
+				_send_welcome_alert()
+		elif not OS.has_feature("web"):
+			_send_welcome_alert()
+
+
+func _load_welcome_flag() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load("user://jimothy_notify.cfg") != OK:
 		return
-	if PetState.alerts_enabled:
-		request_permission()
+	_welcome_sent = bool(cfg.get_value("alerts", "welcome_sent", false))
+
+
+func _save_welcome_flag() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load("user://jimothy_notify.cfg")
+	cfg.set_value("alerts", "welcome_sent", _welcome_sent)
+	cfg.save("user://jimothy_notify.cfg")
 
 
 func _connect_permission_signal() -> void:
@@ -253,6 +268,7 @@ func _send_welcome_alert_now() -> void:
 		"Care alerts will show in the shade after you leave the app — hungry, sick, acting up, waste, bored, or new forms."
 	)
 	_welcome_sent = true
+	_save_welcome_flag()
 	if ok:
 		last_error = ""
 		if PetState:
@@ -263,7 +279,7 @@ func _send_welcome_alert_now() -> void:
 				)
 			else:
 				PetState.speech.emit(
-					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.17-gradle.apk from GitHub dist (not a phone Godot export)."
+					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.18-gradle.apk from GitHub dist (not a phone Godot export)."
 					% build_label()
 				)
 		_android_toast("Jimothy alert sent · %s" % scheduler_status_line())
@@ -499,6 +515,7 @@ func supports_os_notifications() -> bool:
 func reset_welcome() -> void:
 	_welcome_sent = false
 	_welcome_wait_tries = 0
+	_save_welcome_flag()
 
 
 ## Call when the player turns Alerts on — requests OS / browser permission.
@@ -510,6 +527,7 @@ func request_permission() -> void:
 	if OS.get_name() != "Android":
 		if not _welcome_sent:
 			_welcome_sent = true
+			_save_welcome_flag()
 			_post(
 				"Jimothy alerts on",
 				"Desktop alerts when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
@@ -531,7 +549,7 @@ func request_permission() -> void:
 		if _scheduler_ready and not _scheduler.has_post_notifications_permission():
 			_scheduler.request_post_notifications_permission()
 
-	# If already allowed, send the test shade alert now.
+	# One-time test shade alert only (persisted — not every app open).
 	if os_permission_granted() or _android_notifications_allowed():
 		_send_welcome_alert()
 	else:

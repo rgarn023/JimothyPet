@@ -110,9 +110,6 @@ var forms_unlocked: Dictionary = {
 const DAY_MS := 86400000
 const MAX_ILLNESS_PER_DAY := 2
 const MAX_TANTRUM_PER_DAY := 3
-var dev_mode: bool = false
-## Secret gesture unlocks the Dev button (persists).
-var dev_unlocked: bool = false
 ## Legacy master mute (kept for migration). Prefer ambience_muted / sfx_muted.
 var sound_muted: bool = false
 ## Background ambience removed — always muted.
@@ -133,8 +130,6 @@ var sleep_hour: int = 22
 ## False until the player confirms wake/sleep for this kit.
 var schedule_set: bool = false
 var _was_sleeping: bool = false
-## Session-only Dev override: "" | "sleep" | "awake".
-var dev_sleep_override: String = ""
 
 var _tick_accum: float = 0.0
 var _save_accum: float = 0.0
@@ -227,12 +222,8 @@ func reset_pet() -> void:
 	var keep_alerts := alerts_enabled
 	var keep_wake := wake_hour
 	var keep_sleep := sleep_hour
-	# Dev unlock is session-only — do not carry cheats across a kit reset.
-	var keep_dev_unlocked := dev_unlocked
 	_reset_defaults()
 	forms_unlocked = keep_forms
-	dev_mode = false
-	dev_unlocked = keep_dev_unlocked
 	sound_muted = keep_mute
 	ambience_muted = true
 	sfx_muted = keep_sfx
@@ -240,7 +231,6 @@ func reset_pet() -> void:
 	wake_hour = keep_wake
 	sleep_hour = keep_sleep
 	schedule_set = false
-	dev_sleep_override = ""
 	_was_sleeping = false
 	save_game()
 	speech.emit("A roadside bush shivers… something’s in there.")
@@ -264,10 +254,6 @@ func is_in_sleep_window() -> bool:
 
 func is_sleeping() -> bool:
 	if not alive or ascending or stage == "bush":
-		return false
-	if dev_sleep_override == "sleep":
-		return true
-	if dev_sleep_override == "awake":
 		return false
 	return is_in_sleep_window()
 
@@ -328,167 +314,6 @@ func is_form_unlocked(bucket: String, form_id: String) -> bool:
 	if not forms_unlocked.has(bucket):
 		return false
 	return bool((forms_unlocked[bucket] as Dictionary).get(form_id, false))
-
-
-func unlock_dev_access() -> void:
-	dev_unlocked = true
-	save_game()
-	state_changed.emit()
-
-
-func set_dev_mode(on: bool) -> void:
-	if on:
-		dev_unlocked = true
-	dev_mode = on
-	state_changed.emit()
-	save_game()
-
-
-func dev_set_stat(stat: String, value: float) -> void:
-	if not dev_unlocked:
-		return
-	var v := clampf(value, 0.0, 100.0)
-	match stat:
-		"hunger":
-			hunger = v
-		"happy":
-			happy = v
-		"health":
-			health = v
-		"discipline":
-			discipline = v
-		"energy":
-			energy = v
-		"satiety":
-			satiety = v
-		_:
-			return
-	state_changed.emit()
-	save_game()
-
-
-func dev_set_mess(on: bool) -> void:
-	if not dev_unlocked:
-		return
-	if not on:
-		mess_count = 0
-	elif alive and stage != "bush":
-		mess_count = mini(MAX_MESS, mess_count + 1)
-	state_changed.emit()
-	save_game()
-
-
-func dev_set_sick(on: bool) -> void:
-	if not dev_unlocked:
-		return
-	sick = on and alive
-	state_changed.emit()
-	save_game()
-
-
-func dev_set_stubborn(on: bool) -> void:
-	if not dev_unlocked:
-		return
-	stubborn = on and alive
-	stubborn_reason = "dev override" if stubborn else ""
-	state_changed.emit()
-	save_game()
-
-
-func dev_set_sleep(on: bool) -> void:
-	if not dev_unlocked:
-		return
-	if on:
-		if stage == "bush" and dev_mode:
-			dev_skip_to("baby")
-		if not alive or ascending or stage == "bush":
-			speech.emit("Dev: need a living kit (not bush) to sleep.")
-			return
-		dev_sleep_override = "sleep"
-		speech.emit("Dev: put to sleep.")
-	else:
-		dev_sleep_override = "awake"
-		speech.emit("Dev: woke up.")
-	state_changed.emit()
-	save_game()
-	sync_sleep_transition()
-
-
-## Developer fast-forward — jumps wall-clock age to the start of a stage.
-func dev_skip_to(target: String) -> void:
-	if not dev_mode:
-		return
-	alive = true
-	ascending = false
-	death_reason = ""
-	stubborn = false
-	mess_count = 0
-	sick = false
-	hunger = 75.0
-	happy = 75.0
-	health = 95.0
-	energy = 80.0
-	satiety = 20.0
-
-	match target:
-		"bush":
-			stage = "bush"
-			age_sec = 5.0
-		"baby":
-			stage = "baby"
-			age_sec = bush_end() + 2.0
-			weight = 1.2
-		"young":
-			stage = "young"
-			age_sec = baby_end() + 2.0
-			young_form = _pick_young_form(genes)
-			weight = 3.5
-			unlock_current_form()
-		"teen":
-			stage = "teen"
-			age_sec = young_end() + 2.0
-			if young_form == "":
-				young_form = _pick_young_form(genes)
-			_unlock_form("young", young_form)
-			teen_form = _pick_teen_form(young_form, genes)
-			teen_duration = randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)
-			weight = 7.0
-			unlock_current_form()
-		"adult":
-			stage = "adult"
-			if young_form == "":
-				young_form = _pick_young_form(genes)
-			_unlock_form("young", young_form)
-			if teen_form == "":
-				teen_form = _pick_teen_form(young_form, genes)
-			_unlock_form("teen", teen_form)
-			adult_form = _pick_adult_form(teen_form)
-			var care_q := clampf(
-				(float(care_score) * 0.04 + float(healthy_meals) * 0.03 + fitness * 0.004)
-				- float(care_mistakes) * 0.05,
-				0.0,
-				1.0
-			)
-			adult_duration = lerpf(ADULT_SEC_MIN, ADULT_SEC_MAX, care_q)
-			age_sec = teen_end() + 2.0
-			genes.legginess = clampf(float(genes.legginess) * 0.5 + 0.55, 0.0, 1.0)
-			genes.roundness = clampf(float(genes.roundness) * 0.4 + 0.65, 0.0, 1.0)
-			weight = 11.0
-			unlock_current_form()
-		"ascend":
-			if stage != "adult":
-				dev_skip_to("adult")
-			end_life("lifespan")
-			return
-		_:
-			return
-
-	last_tick = _now()
-	speech.emit("Dev: jumped to %s." % target)
-	stage_changed.emit(stage)
-	anim_impulse.emit("pop" if target == "baby" else "stretch")
-	state_changed.emit()
-	save_game()
 
 
 func _now() -> int:
@@ -1362,7 +1187,6 @@ func to_dict() -> Dictionary:
 		"illness_events": illness_events,
 		"tantrum_events": tantrum_events,
 		"forms_unlocked": forms_unlocked,
-		"dev_mode": false,
 		"sound_muted": sound_muted,
 		"ambience_muted": true,
 		"sfx_muted": sfx_muted,
@@ -1425,9 +1249,6 @@ func from_dict(d: Dictionary) -> void:
 	var fu = d.get("forms_unlocked", {})
 	if typeof(fu) == TYPE_DICTIONARY:
 		forms_unlocked = fu
-	# Dev stays session-only — never restore a visible Dev button from disk.
-	dev_mode = false
-	dev_unlocked = false
 	sound_muted = bool(d.get("sound_muted", false))
 	ambience_muted = true
 	sfx_muted = bool(d.get("sfx_muted", sound_muted))

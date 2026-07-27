@@ -40,7 +40,6 @@ var btn_sfx: Button
 @onready var device_panel: PanelContainer = $Margin/VBox/Device
 @onready var screen_panel: PanelContainer = $Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen
 
-var btn_dev: Button
 var _speech_timer: SceneTreeTimer
 var _awaiting_new_kit: bool = false
 var _open_schedule_after_message: bool = false
@@ -50,9 +49,6 @@ var _pending_stage_body: String = ""
 var _was_daytime: int = -1
 var _forms_panel: ColorRect
 var _forms_list: VBoxContainer
-var _dev_panel: ColorRect
-var _dev_status: Label
-var _dev_stat_labels: Dictionary = {}
 var _play_pick_panel: ColorRect
 var _dice: ColorRect
 var _reset_panel: ColorRect
@@ -62,7 +58,6 @@ var _settings_panel: ColorRect
 var _schedule_panel: ColorRect
 var _wake_option: OptionButton
 var _sleep_option: OptionButton
-var _brand_tap_times: Array[float] = []
 
 
 func _ready() -> void:
@@ -79,7 +74,6 @@ func _ready() -> void:
 	_build_forms_panel()
 	if _forms_panel:
 		_forms_panel.visible = false
-	_build_dev_panel()
 	_build_play_pick_panel()
 	_build_dice_panel()
 	_build_reset_panel()
@@ -87,10 +81,10 @@ func _ready() -> void:
 	_build_sound_panel()
 	_build_settings_panel()
 	_build_schedule_panel()
-	_wire_brand_secret()
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
 	_apply_day_night_text_colors()
+	_add_version_label()
 	_refresh()
 	# Dead / leftover saves: wait for player to start a new session (no auto bush).
 	if PetState.ascending:
@@ -99,6 +93,24 @@ func _ready() -> void:
 		_prompt_new_session_after_ascend()
 	elif not PetState.schedule_set:
 		_open_schedule_panel()
+
+
+
+func _add_version_label() -> void:
+	var lab := Label.new()
+	lab.name = "VersionLabel"
+	lab.text = "v%s" % str(ProjectSettings.get_setting("application/config/version", "?"))
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	lab.add_theme_font_size_override("font_size", 11)
+	lab.add_theme_color_override("font_color", Color(0.75, 0.82, 0.72, 0.55))
+	lab.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	lab.offset_left = -120
+	lab.offset_top = -28
+	lab.offset_right = -10
+	lab.offset_bottom = -8
+	add_child(lab)
 
 
 func _is_daytime() -> bool:
@@ -242,153 +254,6 @@ func _build_forms_panel() -> void:
 	_forms_list = built.list
 
 
-func _build_dev_panel() -> void:
-	var built := _build_overlay_panel("Developer tools")
-	_dev_panel = built.dim
-	var list: VBoxContainer = built.list
-
-	_dev_status = Label.new()
-	_dev_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_dev_status.add_theme_color_override("font_color", Color("9aab9c"))
-	_dev_status.add_theme_font_size_override("font_size", 13)
-	list.add_child(_dev_status)
-
-	var toggle := Button.new()
-	toggle.text = "Toggle Dev Mode ON/OFF"
-	toggle.pressed.connect(func():
-		PetState.set_dev_mode(not PetState.dev_mode)
-		_refresh_dev_panel()
-	)
-	list.add_child(toggle)
-
-	var waste_on := Button.new()
-	waste_on.text = "Drop waste on screen"
-	waste_on.pressed.connect(func(): PetState.dev_set_mess(true); _refresh_dev_panel())
-	list.add_child(waste_on)
-	var waste_off := Button.new()
-	waste_off.text = "Clear waste"
-	waste_off.pressed.connect(func(): PetState.dev_set_mess(false); _refresh_dev_panel())
-	list.add_child(waste_off)
-
-	var sick_on := Button.new()
-	sick_on.text = "Make sick"
-	sick_on.pressed.connect(func(): PetState.dev_set_sick(true); _refresh_dev_panel())
-	list.add_child(sick_on)
-	var sick_off := Button.new()
-	sick_off.text = "Clear sick"
-	sick_off.pressed.connect(func(): PetState.dev_set_sick(false); _refresh_dev_panel())
-	list.add_child(sick_off)
-
-	var stub_on := Button.new()
-	stub_on.text = "Make stubborn"
-	stub_on.pressed.connect(func(): PetState.dev_set_stubborn(true); _refresh_dev_panel())
-	list.add_child(stub_on)
-	var stub_off := Button.new()
-	stub_off.text = "Clear stubborn"
-	stub_off.pressed.connect(func(): PetState.dev_set_stubborn(false); _refresh_dev_panel())
-	list.add_child(stub_off)
-
-	var sleep_on := Button.new()
-	sleep_on.text = "Put to sleep"
-	sleep_on.pressed.connect(func(): PetState.dev_set_sleep(true); _refresh_dev_panel())
-	list.add_child(sleep_on)
-	var sleep_off := Button.new()
-	sleep_off.text = "Wake up"
-	sleep_off.pressed.connect(func(): PetState.dev_set_sleep(false); _refresh_dev_panel())
-	list.add_child(sleep_off)
-
-	var meters_note := Label.new()
-	meters_note.text = "Meters — tap − / + (hold values for testing)."
-	meters_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	meters_note.add_theme_color_override("font_color", Color("9aab9c"))
-	meters_note.add_theme_font_size_override("font_size", 12)
-	list.add_child(meters_note)
-
-	for stat in ["hunger", "happy", "health", "discipline", "energy", "satiety"]:
-		list.add_child(_make_dev_stat_row(stat))
-
-	var note := Label.new()
-	note.text = "Stage skips (Dev Mode ON)."
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_color_override("font_color", Color("9aab9c"))
-	note.add_theme_font_size_override("font_size", 12)
-	list.add_child(note)
-
-	for pair in [
-		["bush", "Bush"],
-		["baby", "Baby kit"],
-		["young", "Young kit"],
-		["teen", "Teen kit"],
-		["adult", "Adult"],
-		["ascend", "Ascend finale"],
-	]:
-		var b := Button.new()
-		b.text = "Skip → %s" % pair[1]
-		var key := str(pair[0])
-		b.pressed.connect(func():
-			if not PetState.dev_mode:
-				PetState.speech.emit("Turn Dev Mode ON first.")
-				return
-			PetState.dev_skip_to(key)
-			_dev_panel.visible = false
-		)
-		list.add_child(b)
-
-
-func _make_dev_stat_row(stat: String) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var name := Label.new()
-	name.text = stat.capitalize()
-	name.custom_minimum_size = Vector2(90, 0)
-	name.add_theme_color_override("font_color", Color("9aab9c"))
-	name.add_theme_font_size_override("font_size", 13)
-	row.add_child(name)
-	var minus := Button.new()
-	minus.text = "−10"
-	minus.pressed.connect(func(): _dev_nudge_stat(stat, -10.0))
-	row.add_child(minus)
-	var val := Label.new()
-	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val.custom_minimum_size = Vector2(36, 0)
-	val.add_theme_color_override("font_color", Color("f0c57a"))
-	val.add_theme_font_size_override("font_size", 13)
-	row.add_child(val)
-	_dev_stat_labels[stat] = val
-	var plus := Button.new()
-	plus.text = "+10"
-	plus.pressed.connect(func(): _dev_nudge_stat(stat, 10.0))
-	row.add_child(plus)
-	var fill := Button.new()
-	fill.text = "100"
-	fill.pressed.connect(func(): PetState.dev_set_stat(stat, 100.0); _refresh_dev_panel())
-	row.add_child(fill)
-	var zero := Button.new()
-	zero.text = "0"
-	zero.pressed.connect(func(): PetState.dev_set_stat(stat, 0.0); _refresh_dev_panel())
-	row.add_child(zero)
-	return row
-
-
-func _dev_nudge_stat(stat: String, delta: float) -> void:
-	var cur := 0.0
-	match stat:
-		"hunger":
-			cur = PetState.hunger
-		"happy":
-			cur = PetState.happy
-		"health":
-			cur = PetState.health
-		"discipline":
-			cur = PetState.discipline
-		"energy":
-			cur = PetState.energy
-		"satiety":
-			cur = PetState.satiety
-	PetState.dev_set_stat(stat, cur + delta)
-	_refresh_dev_panel()
-
-
 func _refresh_forms_panel() -> void:
 	for c in _forms_list.get_children():
 		c.queue_free()
@@ -500,88 +365,6 @@ func _form_mark(bucket: String, form_id: String) -> String:
 	elif not unlocked:
 		mark = "·%s·" % pretty
 	return mark
-
-
-func _refresh_dev_panel() -> void:
-	if _dev_status:
-		_dev_status.text = "Dev Mode: %s · Waste: %s · Sick: %s · Stubborn: %s · Sleep: %s\nStage: %s · %s" % [
-			"ON" if PetState.dev_mode else "OFF",
-			"%d/%d" % [PetState.mess_count, PetState.MAX_MESS],
-			"yes" if PetState.sick else "no",
-			"yes" if PetState.stubborn else "no",
-			"yes" if PetState.is_sleeping() else "no",
-			PetState.stage_label(),
-			_format_age(PetState.age_sec),
-		]
-	for stat in _dev_stat_labels.keys():
-		var lbl: Label = _dev_stat_labels[stat]
-		var cur := 0.0
-		match str(stat):
-			"hunger":
-				cur = PetState.hunger
-			"happy":
-				cur = PetState.happy
-			"health":
-				cur = PetState.health
-			"discipline":
-				cur = PetState.discipline
-			"energy":
-				cur = PetState.energy
-			"satiety":
-				cur = PetState.satiety
-		lbl.text = str(int(round(cur)))
-	_refresh_dev_button()
-
-
-func _ensure_dev_button() -> void:
-	if btn_dev != null and is_instance_valid(btn_dev):
-		return
-	if utility_row == null:
-		return
-	btn_dev = Button.new()
-	btn_dev.text = "Dev"
-	btn_dev.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn_dev.pressed.connect(_on_dev_pressed)
-	utility_row.add_child(btn_dev)
-
-
-func _refresh_dev_button() -> void:
-	# Only inject the Dev button after the secret unlock (never in the base layout).
-	if not PetState.dev_unlocked:
-		if btn_dev != null and is_instance_valid(btn_dev):
-			btn_dev.visible = false
-		return
-	_ensure_dev_button()
-	btn_dev.visible = true
-	btn_dev.text = "Dev mode ✓" if PetState.dev_mode else "Dev"
-
-
-func _wire_brand_secret() -> void:
-	if brand_label == null:
-		return
-	brand_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	brand_label.gui_input.connect(_on_brand_gui_input)
-
-
-func _on_brand_gui_input(event: InputEvent) -> void:
-	var tapped := false
-	if event is InputEventScreenTouch and event.pressed:
-		tapped = true
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		tapped = true
-	if not tapped:
-		return
-	var now := Time.get_ticks_msec() / 1000.0
-	_brand_tap_times = _brand_tap_times.filter(func(t: float): return now - t < 2.5)
-	_brand_tap_times.append(now)
-	if _brand_tap_times.size() < 5:
-		return
-	_brand_tap_times.clear()
-	PetState.unlock_dev_access()
-	_refresh_dev_button()
-	PetState.speech.emit("Dev tools unlocked.")
-	_refresh_dev_panel()
-	_dev_panel.visible = true
 
 
 func _build_reset_panel() -> void:
@@ -904,7 +687,6 @@ func _refresh() -> void:
 	if btn_heal:
 		btn_heal.disabled = not can_heal
 	_refresh_sound_buttons()
-	_refresh_dev_panel()
 
 	if PetState.ascending:
 		hint_label.text = "Watch… Jimothy grows wings and rises into the sky."
@@ -1153,16 +935,6 @@ func _confirm_reset() -> void:
 		raccoon.reveal()
 	_refresh()
 	_open_schedule_panel()
-
-
-func _on_dev_pressed() -> void:
-	if not PetState.dev_unlocked:
-		return
-	# Opening tools implies access; enable cheats if toggle was off.
-	if not PetState.dev_mode:
-		PetState.set_dev_mode(true)
-	_refresh_dev_panel()
-	_dev_panel.visible = true
 
 
 func _on_feed_pressed() -> void:
