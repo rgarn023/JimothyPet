@@ -35,6 +35,7 @@ Fresh packs in [`dist/`](dist/):
 | [`Jimothy-godot-only-4.7.1.zip`](dist/Jimothy-godot-only-4.7.1.zip) | Godot 4.7.1 project only |
 | [`JimothyPet-godot-4.7.1.zip`](dist/JimothyPet-godot-4.7.1.zip) | Full repo (web + Godot) |
 | [`jimothy-android-1.0.16-gradle.apk`](dist/jimothy-android-1.0.16-gradle.apk) | Phone install with **closed-app alerts** (Gradle + NotificationScheduler) |
+| [`jimothy-android-1.0.16-gradle.aab`](dist/jimothy-android-1.0.16-gradle.aab) | Play Console bundle (Gradle + closed-app alerts). Sign/verify with your upload keystore — see godot/README.md |
 
 ## Life cycle (real time)
 

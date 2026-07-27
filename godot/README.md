@@ -20,7 +20,37 @@ Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle AP
 3. Open JimothyPet → **Alerts: Allow** → you should get: *“Care alerts only appear after you close or leave the app.”*
 4. Leave/close the app to test care alerts
 
-This build is **debug-signed** (fine for your phone). Play Console still needs your **release** keystore AAB.
+The `.apk` is **debug-signed** (fine for your phone). For Play Console use the **`.aab`** below.
+
+### Play Console AAB (signed upload)
+Prebuilt Gradle AAB (includes closed-app alerts):
+
+- [`dist/jimothy-android-1.0.16-gradle.aab`](../dist/jimothy-android-1.0.16-gradle.aab)
+
+**Important:** Play requires your **upload keystore**. Two cases:
+
+1. **You already registered an upload key** (e.g. phone keystore alias `jimothy`)  
+   Re-sign the AAB in Termux with *that* keystore before uploading (see below).
+
+2. **First upload / no upload key yet**  
+   You can upload this AAB only if you also keep the matching upload keystore that signed it. Prefer signing with your own `jimothy` keystore so you stay in control.
+
+#### Termux: sign AAB with your keystore
+```bash
+# Install tools once
+pkg install openjdk-17 unzip
+# Download Android build-tools apksigner/jarsigner as needed, or use jarsigner from JDK:
+
+cd ~/storage/downloads   # or wherever the aab + keystore are
+cp jimothy-android-1.0.16-gradle.aab jimothy-play.aab
+# Remove old signature, then sign with YOUR keystore (alias jimothy):
+zip -d jimothy-play.aab 'META-INF/*'
+jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+  -keystore /path/to/your/release.keystore \
+  jimothy-play.aab jimothy
+jarsigner -verify jimothy-play.aab
+```
+Upload `jimothy-play.aab` in Play Console (Desktop Chrome if phone upload fails).
 
 ### Desktop / successful Gradle export
 1. **Project Settings → Plugins → NotificationScheduler → Enable** (already on in this project)
