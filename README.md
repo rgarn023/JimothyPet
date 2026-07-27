@@ -18,11 +18,15 @@ See [`godot/README.md`](godot/README.md) for Android APK export and details.
 
 ## Privacy policy (Play Store)
 
-Public policy page (use this URL in Google Play Console):
-
-https://cdn.jsdelivr.net/gh/rgarn023/JimothyPet@cursor/jimothy-raccoon-pet-f814/privacy.html
-
 Source file: [`privacy.html`](privacy.html)
+
+**Important:** this GitHub repo is **private**, so raw GitHub / jsDelivr links are **not** reachable by Google Play. Host `privacy.html` somewhere public, then paste that URL into Play Console.
+
+Easy options:
+1. Google Docs → paste the policy text → **File → Share → Publish to web** → use the published link  
+2. Make a **public** GitHub Gist with `privacy.html` → use the raw or githack URL  
+3. Make this repository public, then use:  
+   `https://cdn.jsdelivr.net/gh/rgarn023/JimothyPet@cursor/jimothy-raccoon-pet-f814/privacy.html`
 
 ## Play in browser (optional web build)
 
