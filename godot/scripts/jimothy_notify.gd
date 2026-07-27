@@ -34,6 +34,7 @@ var _notify_id: int = 1100
 var _perm_connected: bool = false
 var _bootstrapped: bool = false
 var _welcome_sent: bool = false
+var _welcome_wait_tries: int = 0
 var _scheduler: Node = null
 var _scheduler_ready: bool = false
 var _scheduler_channel_ready: bool = false
@@ -73,14 +74,18 @@ func _schedule_scheduler_retries() -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	tree.create_timer(0.5).timeout.connect(_retry_scheduler_init)
-	tree.create_timer(1.5).timeout.connect(_retry_scheduler_init)
+	# Plugin bind can lag a few seconds on cold start.
+	for sec in [0.3, 0.8, 1.5, 2.5, 4.0]:
+		tree.create_timer(sec).timeout.connect(_retry_scheduler_init)
 
 
 func _retry_scheduler_init() -> void:
 	if _scheduler_ready or _scheduler == null:
 		return
 	if Engine.has_singleton("NotificationSchedulerPlugin"):
+		_scheduler.initialize()
+	elif Engine.has_singleton("NotificationScheduler"):
+		# Older / alternate singleton name.
 		_scheduler.initialize()
 
 
@@ -98,6 +103,27 @@ func _on_scheduler_initialized() -> void:
 			_send_welcome_alert()
 		else:
 			_scheduler.request_post_notifications_permission()
+
+
+func closed_app_ready() -> bool:
+	return OS.get_name() == "Android" and _scheduler_ready and _plugin() != null
+
+
+func build_label() -> String:
+	var ver := str(ProjectSettings.get_setting("application/config/version", "?"))
+	return "v%s" % ver
+
+
+func scheduler_status_line() -> String:
+	if OS.get_name() != "Android":
+		return "%s · not Android" % build_label()
+	var has_plugin := Engine.has_singleton("NotificationSchedulerPlugin") \
+			or Engine.has_singleton("NotificationScheduler")
+	if closed_app_ready():
+		return "%s · closed-app alerts ready" % build_label()
+	if has_plugin and not _scheduler_ready:
+		return "%s · plugin starting…" % build_label()
+	return "%s · closed-app plugin missing" % build_label()
 
 
 func _on_scheduler_perm_granted(_permission_name: String) -> void:
@@ -191,7 +217,6 @@ func _send_welcome_alert() -> void:
 		return
 	if PetState == null or not PetState.alerts_enabled:
 		return
-	# Defer so permission grants settle; only mark sent after a real attempt.
 	call_deferred("_send_welcome_alert_now")
 
 
@@ -213,6 +238,15 @@ func _send_welcome_alert_now() -> void:
 			)
 		return
 
+	# Don't conclude "plugin missing" until we've given the singleton time to bind.
+	if OS.get_name() == "Android" and not closed_app_ready() and _welcome_wait_tries < 5:
+		_welcome_wait_tries += 1
+		_retry_scheduler_init()
+		var tree := get_tree()
+		if tree:
+			tree.create_timer(0.8).timeout.connect(_send_welcome_alert_now)
+			return
+
 	# One-time permission test only — daily care alerts fire while the app is closed.
 	var ok := _post(
 		"Jimothy alerts on",
@@ -222,15 +256,17 @@ func _send_welcome_alert_now() -> void:
 	if ok:
 		last_error = ""
 		if PetState:
-			if _scheduler_ready and _plugin() != null:
+			if closed_app_ready():
 				PetState.speech.emit(
-					"Test alert sent. Care alerts only appear after you close or leave the app."
+					"Test alert sent (%s). Care alerts only appear after you close or leave the app."
+					% build_label()
 				)
 			else:
 				PetState.speech.emit(
-					"Test alert sent. This build can’t schedule closed-app alerts — install the Gradle APK from the JimothyPet GitHub dist folder (jimothy-android.apk)."
+					"Test alert sent (%s), but closed-app plugin is missing. Uninstall JimothyPet, then install jimothy-android-1.0.17-gradle.apk from GitHub dist (not a phone Godot export)."
+					% build_label()
 				)
-		_android_toast("Jimothy alert sent")
+		_android_toast("Jimothy alert sent · %s" % scheduler_status_line())
 	else:
 		last_error = last_error if last_error != "" else "notify failed"
 		if PetState:
@@ -462,6 +498,7 @@ func supports_os_notifications() -> bool:
 ## Allow UI to force a fresh welcome/test notification on the next grant.
 func reset_welcome() -> void:
 	_welcome_sent = false
+	_welcome_wait_tries = 0
 
 
 ## Call when the player turns Alerts on — requests OS / browser permission.
