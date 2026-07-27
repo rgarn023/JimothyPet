@@ -16,6 +16,14 @@ godot/project.godot
 
 See [`godot/README.md`](godot/README.md) for Android APK export and details.
 
+## Privacy policy (Play Store)
+
+Public policy page (use this URL in Google Play Console):
+
+https://cdn.jsdelivr.net/gh/rgarn023/JimothyPet@cursor/jimothy-raccoon-pet-f814/privacy.html
+
+Source file: [`privacy.html`](privacy.html)
+
 ## Play in browser (optional web build)
 
 A standalone HTML version also lives at the repo root:
