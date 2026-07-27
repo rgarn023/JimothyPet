@@ -34,8 +34,8 @@ Fresh packs in [`dist/`](dist/):
 | [`Jimothy-web.zip`](dist/Jimothy-web.zip) | Browser build — unzip and open `index.html`, or host the folder |
 | [`Jimothy-godot-only-4.7.1.zip`](dist/Jimothy-godot-only-4.7.1.zip) | Godot 4.7.1 project only |
 | [`JimothyPet-godot-4.7.1.zip`](dist/JimothyPet-godot-4.7.1.zip) | Full repo (web + Godot) |
-| [`jimothy-android-1.0.27-gradle.apk`](dist/jimothy-android-1.0.27-gradle.apk) | Phone install with **closed-app alerts** (Gradle + NotificationScheduler) |
-| [`jimothy-android-1.0.27-gradle.aab`](dist/jimothy-android-1.0.27-gradle.aab) | Play Console bundle (`com.jimothypet.app`, versionCode 27, **no `USE_EXACT_ALARM`**). Re-sign with your upload keystore — see godot/README.md |
+| [`jimothy-android-1.0.28-gradle.apk`](dist/jimothy-android-1.0.28-gradle.apk) | Phone install with **closed-app alerts** (Gradle + NotificationScheduler) |
+| [`jimothy-android-1.0.28-gradle.aab`](dist/jimothy-android-1.0.28-gradle.aab) | Play Console bundle (`com.jimothypet.app`, versionCode 28, **no `USE_EXACT_ALARM`**). Re-sign with your upload keystore — see godot/README.md |
 
 ## Life cycle (real time)
 
@@ -45,8 +45,8 @@ Fresh packs in [`dist/`](dist/):
 | **Baby kit** | ~1 minute |
 | **Young kit** | +1 hour (form variance begins) |
 | **Teen kit** | +24 hours (form steers adult) |
-| **Adult Jimothy** | +24–72 hours more (short-spine viral look, variant flair) |
-| **Lifespan** | Adult lasts ~10–20 days — neglect / poor care shortens it |
+| **Adult Jimothy** | +24–72 hours more, then 14–28 adult days |
+| **Lifespan** | Adult lasts ~14–28 days (at least 7 days) — neglect / poor care shortens it |
 | **Finale** | Wings + sky ascension, then **Raise another kit** |
 
 Young/teen forms (`puff` / `looper` / `shadow` / `nub` → `dumpling` / `bounder` / `nightlane` / `scruff`) influence adult flair (**Saint**, **Legend**, **Alley Ghost**, **Ballard Blip**) while keeping the short-spine silhouette.
@@ -75,7 +75,7 @@ Open **Settings → Sound** for separate **BG** (night ambience / owl) and **Jim
 
 **Alerts default ON** on first launch. The button shows **Alerts: Allow** until the phone/browser actually grants permission — tap it to prompt. You’ll get shade notifications when Jimothy is hungry, wants to play, is acting up, left nest waste, or evolves into a **new form**.
 
-**Phone + closed-app alerts:** install the prebuilt [`dist/jimothy-android-1.0.27-gradle.apk`](dist/jimothy-android-1.0.27-gradle.apk) (Godot-on-phone exports usually miss the scheduler plugin). See [`godot/README.md`](godot/README.md). Web needs a user tap to allow notifications on phones. Preference is saved.
+**Phone + closed-app alerts:** install the prebuilt [`dist/jimothy-android-1.0.28-gradle.apk`](dist/jimothy-android-1.0.28-gradle.apk) (Godot-on-phone exports usually miss the scheduler plugin). See [`godot/README.md`](godot/README.md). Web needs a user tap to allow notifications on phones. Preference is saved.
 
 Open **Forms** to browse every young / teen / adult silhouette (gallery + evolution paths).
 

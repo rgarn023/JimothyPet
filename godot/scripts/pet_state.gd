@@ -16,9 +16,9 @@ const BABY_SEC := 3600.0          # 1 hour
 const YOUNG_SEC := 86400.0        # 24 hours
 const TEEN_SEC_MIN := 86400.0     # 24 hours
 const TEEN_SEC_MAX := 259200.0    # 72 hours
-const ADULT_SEC_MIN := 864000.0   # 10 days
-const ADULT_SEC_MAX := 1728000.0  # 20 days
-const ADULT_SEC_FLOOR := 86400.0  # neglect can shorten life, but not below 1 day as adult
+const ADULT_SEC_MIN := 1209600.0  # 14 days
+const ADULT_SEC_MAX := 2419200.0  # 28 days
+const ADULT_SEC_FLOOR := 604800.0 # neglect can shorten life, but not below 7 days as adult
 
 const FOOD := {
 	"berries": {
@@ -116,9 +116,11 @@ var sound_muted: bool = false
 var ambience_muted: bool = true
 ## When true, Jimothy raccoon SFX are muted (persists).
 var sfx_muted: bool = false
-## When true, care notifications (hungry / play / acting up / waste) are allowed.
+## When true, care notifications (form / waste / bored / acting up) are allowed.
 ## Defaults ON so first launch can prompt for phone / browser permission.
 var alerts_enabled: bool = true
+## UI language (Play Store locale code). Empty = follow device.
+var locale_code: String = ""
 ## One-time migration marker so upgrading installs turn alerts on once.
 var care_alerts_default_v1: bool = false
 ## Last successful food key — used by eat animation prop.
@@ -220,6 +222,7 @@ func reset_pet() -> void:
 	var keep_mute := sound_muted
 	var keep_sfx := sfx_muted
 	var keep_alerts := alerts_enabled
+	var keep_locale := locale_code
 	var keep_wake := wake_hour
 	var keep_sleep := sleep_hour
 	_reset_defaults()
@@ -228,6 +231,7 @@ func reset_pet() -> void:
 	ambience_muted = true
 	sfx_muted = keep_sfx
 	alerts_enabled = keep_alerts
+	locale_code = keep_locale
 	wake_hour = keep_wake
 	sleep_hour = keep_sleep
 	schedule_set = false
@@ -521,46 +525,92 @@ func try_become_stubborn(reason: String, announce: bool = true, penalty: float =
 	return true
 
 
+func _is_sleeping_at_unix(unix_ts: float) -> bool:
+	if not schedule_set or stage == "bush":
+		return false
+	var dt := Time.get_datetime_dict_from_unix_time(int(unix_ts))
+	var h := float(dt.hour) + float(dt.minute) / 60.0 + float(dt.second) / 3600.0
+	var wake := ((wake_hour % 24) + 24) % 24
+	var sleep := ((sleep_hour % 24) + 24) % 24
+	if wake == sleep:
+		return false
+	if sleep < wake:
+		return h >= float(sleep) and h < float(wake)
+	return h >= float(sleep) or h < float(wake)
+
+
+## Seconds of `seconds` ending at now that fall outside the sleep window.
+func _awake_seconds(seconds: float) -> float:
+	if seconds <= 0.0:
+		return 0.0
+	if not schedule_set or stage == "bush":
+		return seconds
+	if seconds <= 1.5:
+		return 0.0 if is_sleeping() else seconds
+	var now := Time.get_unix_time_from_system()
+	var start := now - seconds
+	var awake := 0.0
+	var step := 60.0
+	var t := start
+	while t < now:
+		var chunk := minf(step, now - t)
+		if not _is_sleeping_at_unix(t + chunk * 0.5):
+			awake += chunk
+		t += chunk
+	return awake
+
+
 func apply_decay(seconds: float) -> void:
 	if not alive:
 		state_changed.emit()
 		return
 
-	# Slower, more pet-like drain over real hours/days.
+	# Growth / age always advances. Care meters & health only while awake.
+	age_sec += seconds
+	var awake := _awake_seconds(seconds)
+	if awake <= 0.0:
+		_evolve_if_needed()
+		sync_sleep_transition()
+		if stage == "adult" and age_sec >= life_end():
+			var shortened := lifespan_penalty > adult_duration * 0.15
+			end_life("neglect" if shortened else "lifespan")
+		state_changed.emit()
+		return
+
+	# Slower, more pet-like drain over real awake hours/days.
 	var hunger_rate := 0.0028 if stage != "bush" else 0.0
 	var happy_rate := 0.0022 if stage != "bush" else 0.0
 	var energy_rate := 0.0015 if stage != "bush" else 0.0
 	var discipline_rate := 0.00016 if stage not in ["bush", "baby"] else 0.0
 
-	hunger = clamp01(hunger - hunger_rate * seconds)
-	happy = clamp01(happy - happy_rate * seconds)
-	energy = clamp01(energy - energy_rate * seconds)
-	discipline = clamp01(discipline - discipline_rate * seconds)
-	satiety = maxf(0.0, satiety - 0.02 * seconds)
-	age_sec += seconds
+	hunger = clamp01(hunger - hunger_rate * awake)
+	happy = clamp01(happy - happy_rate * awake)
+	energy = clamp01(energy - energy_rate * awake)
+	discipline = clamp01(discipline - discipline_rate * awake)
+	satiety = maxf(0.0, satiety - 0.02 * awake)
 
-	# Health drains mainly from waste, hunger, and junk streak — kept slow.
+	# Health drains mainly from waste, hunger, and junk streak — never while sleeping.
 	if mess_count > 0:
 		var piles := float(mini(mess_count, MAX_MESS))
-		health = clamp01(health - 0.00035 * piles * seconds)
-		happy = clamp01(happy - 0.0004 * piles * seconds)
+		health = clamp01(health - 0.00035 * piles * awake)
+		happy = clamp01(happy - 0.0004 * piles * awake)
 	if hunger < 20.0 and stage != "bush":
-		health = clamp01(health - 0.00095 * seconds)
-		happy = clamp01(happy - 0.001 * seconds)
+		health = clamp01(health - 0.00095 * awake)
+		happy = clamp01(happy - 0.001 * awake)
 	if treat_streak > 3:
-		health = clamp01(health - 0.0004 * seconds)
+		health = clamp01(health - 0.0004 * awake)
 	if sick:
-		health = clamp01(health - 0.00025 * seconds)
+		health = clamp01(health - 0.00025 * awake)
 	if energy < 15.0:
-		happy = clamp01(happy - 0.0005 * seconds)
+		happy = clamp01(happy - 0.0005 * awake)
 
-	_apply_neglect_penalty(seconds)
+	_apply_neglect_penalty(awake)
 
-	if stage != "bush" and mess_count < MAX_MESS and randf() < seconds * 0.00022:
+	if stage != "bush" and mess_count < MAX_MESS and randf() < awake * 0.00022:
 		mess_count += 1
 
-	_maybe_illness(seconds)
-	_maybe_tantrum(seconds)
+	_maybe_illness(awake)
+	_maybe_tantrum(awake)
 	_evolve_if_needed()
 	# Catch sleep-window edges after growth / long offline ticks.
 	sync_sleep_transition()
@@ -638,7 +688,7 @@ func _evolve_if_needed() -> void:
 	elif stage == "teen" and age_sec >= teen_end():
 		stage = "adult"
 		adult_form = _pick_adult_form(teen_form if teen_form != "" else _pick_teen_form(young_form, genes))
-		# Better care → longer adult life; neglect already in lifespan_penalty.
+		# Better care → longer adult life. lifespan_penalty applied once in effective_adult_span().
 		var care_q := clampf(
 			(float(care_score) * 0.04 + float(healthy_meals) * 0.03 + fitness * 0.004)
 			- float(care_mistakes) * 0.05,
@@ -646,7 +696,6 @@ func _evolve_if_needed() -> void:
 			1.0
 		)
 		adult_duration = lerpf(ADULT_SEC_MIN, ADULT_SEC_MAX, care_q)
-		adult_duration = maxf(ADULT_SEC_FLOOR, adult_duration - lifespan_penalty * 0.35)
 		weight = 11.0 + fitness * 0.03
 		# Nudge genes toward short-spine Jimothy silhouette
 		genes.legginess = clampf(float(genes.legginess) * 0.5 + 0.55, 0.0, 1.0)
@@ -667,13 +716,17 @@ func _evolve_if_needed() -> void:
 
 
 ## Closed-app OS alerts only. Each entry: { key, delay (sec), title, body, fp? }
-## Keeps the set small: one milestone + one current-care + one next future need.
+## No hunger / health / sick / ascended notifications — form, bush, waste, bored, acting up only.
 func predict_care_alerts(min_away_sec: int = 90) -> Array:
 	var out: Array = []
 	if not alive or ascending:
 		return out
+	# Quiet while he's sleeping — no care spam overnight.
+	if is_sleeping():
+		# Still allow bush hatch + form milestones (handled below for bush; forms skip too while asleep).
+		if stage != "bush":
+			return out
 
-	const HUNGER_RATE := 0.0028
 	const HAPPY_RATE := 0.0022
 	const MAX_DELAY := 7 * 24 * 3600
 	var away := maxi(60, min_away_sec)
@@ -705,21 +758,15 @@ func predict_care_alerts(min_away_sec: int = 90) -> Array:
 		})
 		return out
 
-	# Current needs → one combined alert after the player has actually left.
+	# Current needs → no hungry / sick / health / ascended.
 	var cur_flags: PackedStringArray = []
 	var cur_lines: PackedStringArray = []
-	if sick:
-		cur_flags.append("sick")
-		cur_lines.append("Sick — open Action → Heal.")
 	if stubborn:
 		cur_flags.append("acting up")
 		if stubborn_reason != "":
 			cur_lines.append("Acting up — he’s %s. Scold him." % stubborn_reason)
 		else:
 			cur_lines.append("Acting up — open Action → Scold.")
-	if hunger < 25.0:
-		cur_flags.append("hungry")
-		cur_lines.append("Hungry — feed him a real meal.")
 	if has_mess:
 		cur_flags.append("waste")
 		if mess_count > 1:
@@ -734,12 +781,8 @@ func predict_care_alerts(min_away_sec: int = 90) -> Array:
 		var title := "Jimothy needs care"
 		if cur_flags.size() == 1:
 			match cur_flags[0]:
-				"sick":
-					title = "Jimothy is sick"
 				"acting up":
 					title = "Jimothy is acting up"
-				"hungry":
-					title = "Jimothy is hungry"
 				"waste":
 					title = "Jimothy left a mess"
 				"bored":
@@ -756,35 +799,18 @@ func predict_care_alerts(min_away_sec: int = 90) -> Array:
 			"fp": "|".join(cur_flags),
 		})
 
-	# Soonest future deterministic need (not already current).
-	var future_delay := MAX_DELAY + 1
-	var future: Dictionary = {}
-	if hunger >= 25.0:
-		var hd := clampi(int(ceili((hunger - 25.0) / HUNGER_RATE)), away, MAX_DELAY)
-		if hd < future_delay:
-			future_delay = hd
-			future = {
-				"key": "hungry",
-				"delay": hd,
-				"title": "Jimothy is hungry",
-				"body": "He’s hunting for a real meal. Time to feed him.",
-				"fp": "hungry",
-			}
-	if stage != "baby" and happy >= 25.0:
+	# Future bored only (no future hunger / health alerts).
+	if stage != "baby" and happy >= 25.0 and not cur_flags.has("bored"):
 		var bd := clampi(int(ceili((happy - 25.0) / HAPPY_RATE)), away, MAX_DELAY)
-		if bd < future_delay:
-			future_delay = bd
-			future = {
-				"key": "bored",
-				"delay": bd,
-				"title": "Jimothy is bored",
-				"body": "Restless energy — open Play for a game.",
-				"fp": "bored",
-			}
-	if not future.is_empty():
-		out.append(future)
+		out.append({
+			"key": "bored",
+			"delay": bd,
+			"title": "Jimothy is bored",
+			"body": "Restless energy — open Play for a game.",
+			"fp": "bored",
+		})
 
-	# Next growth milestone only (no speculative sick/waste).
+	# Next growth milestone only (no speculative sick/waste/hunger).
 	var next_delay := 0
 	var next_title := ""
 	var next_body := ""
@@ -1221,6 +1247,7 @@ func to_dict() -> Dictionary:
 		"ambience_muted": true,
 		"sfx_muted": sfx_muted,
 		"alerts_enabled": alerts_enabled,
+		"locale_code": locale_code,
 		"care_alerts_default_v1": care_alerts_default_v1,
 		"wake_hour": wake_hour,
 		"sleep_hour": sleep_hour,
@@ -1245,6 +1272,8 @@ func from_dict(d: Dictionary) -> void:
 		adult_form = "legend"
 	teen_duration = float(d.get("teen_duration", randf_range(TEEN_SEC_MIN, TEEN_SEC_MAX)))
 	adult_duration = float(d.get("adult_duration", randf_range(ADULT_SEC_MIN, ADULT_SEC_MAX)))
+	# Migrate older saves that used a 1-day adult floor.
+	adult_duration = maxf(adult_duration, ADULT_SEC_FLOOR)
 	lifespan_penalty = float(d.get("lifespan_penalty", 0.0))
 	death_reason = str(d.get("death_reason", ""))
 	var g = d.get("genes", {})
@@ -1283,6 +1312,7 @@ func from_dict(d: Dictionary) -> void:
 	ambience_muted = true
 	sfx_muted = bool(d.get("sfx_muted", sound_muted))
 	alerts_enabled = bool(d.get("alerts_enabled", true))
+	locale_code = str(d.get("locale_code", ""))
 	care_alerts_default_v1 = bool(d.get("care_alerts_default_v1", false))
 	# Upgrading installs: force alerts ON once so phone permission can be requested.
 	if not care_alerts_default_v1:

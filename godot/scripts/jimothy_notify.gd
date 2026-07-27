@@ -398,18 +398,13 @@ func _care_snapshot() -> Dictionary:
 	var flags: PackedStringArray = []
 	var lines: PackedStringArray = []
 
-	if PetState.sick:
-		flags.append("sick")
-		lines.append("Sick — open Action → Heal (upset stomach).")
 	if PetState.stubborn:
 		flags.append("acting up")
 		if PetState.stubborn_reason != "":
 			lines.append("Acting up — he’s %s. Scold him." % PetState.stubborn_reason)
 		else:
 			lines.append("Acting up — open Action → Scold.")
-	if PetState.hunger < 25.0:
-		flags.append("hungry")
-		lines.append("Hungry — feed him a real meal.")
+	# No hungry / sick / health / run-down / ascended shade alerts.
 	if PetState.has_mess:
 		flags.append("waste")
 		if PetState.mess_count <= 1:
@@ -419,9 +414,6 @@ func _care_snapshot() -> Dictionary:
 	if PetState.stage != "baby" and PetState.energy >= 18.0 and PetState.happy < 25.0:
 		flags.append("bored")
 		lines.append("Bored — open Play for a game.")
-	elif PetState.health < 30.0 and not PetState.sick:
-		flags.append("run-down")
-		lines.append("Run-down — skip treats; offer fish or berries.")
 
 	return {
 		"flags": flags,

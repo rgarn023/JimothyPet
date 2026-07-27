@@ -56,8 +56,18 @@ var _action_panel: ColorRect
 var _sound_panel: ColorRect
 var _settings_panel: ColorRect
 var _schedule_panel: ColorRect
+var _language_panel: ColorRect
+var _lang_option: OptionButton
 var _wake_option: OptionButton
 var _sleep_option: OptionButton
+var _settings_title: Label
+var _settings_close: Button
+var _action_title: Label
+var _action_close: Button
+var _sound_title: Label
+var _sound_copy: Label
+var _sound_close: Button
+var _btn_language: Button
 
 
 func _ready() -> void:
@@ -81,8 +91,12 @@ func _ready() -> void:
 	_build_sound_panel()
 	_build_settings_panel()
 	_build_schedule_panel()
+	_build_language_panel()
+	if JimothyI18n:
+		JimothyI18n.locale_changed.connect(func(_code: String): _refresh_localized_ui())
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
+	_refresh_localized_ui()
 	_apply_day_night_text_colors()
 	_add_version_label()
 	_refresh()
@@ -467,6 +481,7 @@ func _build_menu_panel(title_text: String) -> Dictionary:
 func _build_action_panel() -> void:
 	var built := _build_menu_panel("Actions")
 	_action_panel = built.dim
+	_action_title = built.vbox.get_child(0) as Label
 	var vbox: VBoxContainer = built.vbox
 
 	btn_feed = Button.new()
@@ -500,15 +515,16 @@ func _build_action_panel() -> void:
 	btn_clean.pressed.connect(_on_clean_pressed)
 	vbox.add_child(btn_clean)
 
-	var close := Button.new()
-	close.text = "Close"
-	close.pressed.connect(func(): _action_panel.visible = false)
-	vbox.add_child(close)
+	_action_close = Button.new()
+	_action_close.text = "Close"
+	_action_close.pressed.connect(func(): _action_panel.visible = false)
+	vbox.add_child(_action_close)
 
 
 func _build_settings_panel() -> void:
 	var built := _build_menu_panel("Settings")
 	_settings_panel = built.dim
+	_settings_title = built.vbox.get_child(0) as Label
 	var vbox: VBoxContainer = built.vbox
 
 	btn_sound = Button.new()
@@ -516,6 +532,11 @@ func _build_settings_panel() -> void:
 	btn_sound.tooltip_text = "Jimothy sounds"
 	btn_sound.pressed.connect(_on_sound_pressed)
 	vbox.add_child(btn_sound)
+
+	_btn_language = Button.new()
+	_btn_language.text = "Language"
+	_btn_language.pressed.connect(_on_language_pressed)
+	vbox.add_child(_btn_language)
 
 	btn_alerts = Button.new()
 	btn_alerts.text = "Alerts: Off"
@@ -528,24 +549,25 @@ func _build_settings_panel() -> void:
 	btn_reset.pressed.connect(_on_reset_pressed)
 	vbox.add_child(btn_reset)
 
-	var close := Button.new()
-	close.text = "Close"
-	close.pressed.connect(func(): _settings_panel.visible = false)
-	vbox.add_child(close)
+	_settings_close = Button.new()
+	_settings_close.text = "Close"
+	_settings_close.pressed.connect(func(): _settings_panel.visible = false)
+	vbox.add_child(_settings_close)
 
 
 func _build_sound_panel() -> void:
 	var built := _build_menu_panel("Sound")
 	_sound_panel = built.dim
+	_sound_title = built.vbox.get_child(0) as Label
 	var vbox: VBoxContainer = built.vbox
 
-	var copy := Label.new()
-	copy.text = "Toggle Jimothy’s raccoon sounds."
-	copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	copy.add_theme_color_override("font_color", Color("9aab9c"))
-	copy.add_theme_font_size_override("font_size", 13)
-	vbox.add_child(copy)
+	_sound_copy = Label.new()
+	_sound_copy.text = "Toggle Jimothy’s raccoon sounds."
+	_sound_copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sound_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_sound_copy.add_theme_color_override("font_color", Color("9aab9c"))
+	_sound_copy.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(_sound_copy)
 
 	btn_sfx = Button.new()
 	btn_sfx.text = "Jimothy: On"
@@ -553,10 +575,150 @@ func _build_sound_panel() -> void:
 	btn_sfx.pressed.connect(_on_sfx_pressed)
 	vbox.add_child(btn_sfx)
 
+	_sound_close = Button.new()
+	_sound_close.text = "Close"
+	_sound_close.pressed.connect(func(): _sound_panel.visible = false)
+	vbox.add_child(_sound_close)
+
+
+func _build_language_panel() -> void:
+	var built := _build_menu_panel("Language")
+	_language_panel = built.dim
+	var vbox: VBoxContainer = built.vbox
+
+	var copy := Label.new()
+	copy.name = "LangCopy"
+	copy.text = "Choose the app language. Matches Google Play storefront languages."
+	copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_theme_color_override("font_color", Color("9aab9c"))
+	copy.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(copy)
+
+	_lang_option = OptionButton.new()
+	_lang_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if JimothyI18n:
+		for entry in JimothyI18n.locales():
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var code := str(entry.get("code", ""))
+			var name := str(entry.get("name", code))
+			_lang_option.add_item(name)
+			_lang_option.set_item_metadata(_lang_option.item_count - 1, code)
+	vbox.add_child(_lang_option)
+	_sync_language_option()
+
+	var apply_btn := Button.new()
+	apply_btn.name = "LangApply"
+	apply_btn.text = "Save"
+	apply_btn.pressed.connect(_on_language_apply)
+	vbox.add_child(apply_btn)
+
 	var close := Button.new()
+	close.name = "LangClose"
 	close.text = "Close"
-	close.pressed.connect(func(): _sound_panel.visible = false)
+	close.pressed.connect(func(): _language_panel.visible = false)
 	vbox.add_child(close)
+
+
+func _sync_language_option() -> void:
+	if _lang_option == null:
+		return
+	var want := ""
+	if PetState:
+		want = str(PetState.locale_code)
+	for i in _lang_option.item_count:
+		if str(_lang_option.get_item_metadata(i)) == want:
+			_lang_option.select(i)
+			return
+	if _lang_option.item_count > 0:
+		_lang_option.select(0)
+
+
+func _on_language_pressed() -> void:
+	_sync_language_option()
+	if _language_panel:
+		_language_panel.visible = true
+
+
+func _on_language_apply() -> void:
+	if _lang_option == null or JimothyI18n == null:
+		return
+	var idx := _lang_option.selected
+	var code := str(_lang_option.get_item_metadata(idx))
+	JimothyI18n.apply_locale(code, true)
+	if _language_panel:
+		_language_panel.visible = false
+	PetState.speech.emit(JimothyI18n.t("LANGUAGE", "Language"))
+
+
+func _t(key: String, fallback: String) -> String:
+	if JimothyI18n:
+		return JimothyI18n.t(key, fallback)
+	return fallback
+
+
+func _refresh_localized_ui() -> void:
+	if btn_action:
+		btn_action.text = _t("ACTION", "Action")
+	if btn_settings:
+		btn_settings.text = _t("SETTINGS", "Settings")
+	if _settings_title:
+		_settings_title.text = _t("SETTINGS", "Settings")
+	if btn_sound:
+		btn_sound.text = _t("SOUND", "Sound")
+	if _btn_language:
+		_btn_language.text = _t("LANGUAGE", "Language")
+	if btn_reset:
+		btn_reset.text = _t("RESET", "Reset")
+	if _settings_close:
+		_settings_close.text = _t("CLOSE", "Close")
+	if _action_title:
+		_action_title.text = _t("ACTION", "Action")
+	if btn_feed:
+		btn_feed.text = _t("FEED", "Feed")
+	if btn_play:
+		btn_play.text = _t("PLAY", "Play")
+	if btn_scold:
+		btn_scold.text = _t("SCOLD", "Scold")
+	if btn_heal:
+		btn_heal.text = _t("HEAL", "Heal")
+	if btn_clean and PetState:
+		if PetState.mess_count > 1:
+			btn_clean.text = "%s (%d)" % [_t("CLEAN", "Clean"), PetState.mess_count]
+		else:
+			btn_clean.text = _t("CLEAN", "Clean")
+	elif btn_clean:
+		btn_clean.text = _t("CLEAN", "Clean")
+	if _action_close:
+		_action_close.text = _t("CLOSE", "Close")
+	if _sound_title:
+		_sound_title.text = _t("SOUND", "Sound")
+	if _sound_copy:
+		_sound_copy.text = _t("SOUND_COPY", "Toggle Jimothy’s raccoon sounds.")
+	if _sound_close:
+		_sound_close.text = _t("CLOSE", "Close")
+	if _language_panel:
+		var lang_title_lbl: Label = null
+		# Title is the first Label inside the card vbox.
+		for child in _language_panel.find_children("*", "Label", true, false):
+			if child.name == "LangCopy":
+				child.text = _t(
+					"LANGUAGE_COPY",
+					"Choose the app language. Matches Google Play storefront languages."
+				)
+			elif lang_title_lbl == null:
+				lang_title_lbl = child
+				lang_title_lbl.text = _t("LANGUAGE", "Language")
+		var apply_btn := _language_panel.find_child("LangApply", true, false)
+		if apply_btn:
+			apply_btn.text = "OK"
+		var close_btn := _language_panel.find_child("LangClose", true, false)
+		if close_btn:
+			close_btn.text = _t("CLOSE", "Close")
+	_refresh_sound_buttons()
+	_refresh_alerts_button()
+	_refresh()
 
 
 func _hour_label(h: int) -> String:
@@ -684,7 +846,9 @@ func _refresh() -> void:
 		btn_scold.disabled = not can_scold
 	if btn_clean:
 		btn_clean.disabled = not can_clean
-		btn_clean.text = "Clean (%d)" % PetState.mess_count if PetState.mess_count > 1 else "Clean"
+		btn_clean.text = _t("CLEAN", "Clean")
+	if PetState.mess_count > 1:
+		btn_clean.text = "%s (%d)" % [_t("CLEAN", "Clean"), PetState.mess_count]
 	if btn_heal:
 		btn_heal.disabled = not can_heal
 	_refresh_sound_buttons()
@@ -693,13 +857,19 @@ func _refresh() -> void:
 		hint_label.text = "Watch… Jimothy grows wings and rises into the sky."
 	elif PetState.stage == "bush":
 		hint_label.text = "Tap the bush — it rustles. Something’s waking…"
+	elif _awaiting_new_kit:
+		stage_name.text = "Ascended"
+		hint_label.text = _t(
+			"HINT_ASCENDED",
+			"Jimothy has ascended. Start a new session when you’re ready."
+		)
 	elif not PetState.alive:
 		hint_label.text = "His cryptid life is complete. You can raise another kit."
-	elif _awaiting_new_kit or (not PetState.alive and not PetState.ascending):
-		stage_name.text = "Ascended"
-		hint_label.text = "Jimothy has ascended. Start a new session when you’re ready."
 	elif PetState.is_sleeping():
-		hint_label.text = "Sleep hours — Jimothy is dozing in his nest. He’ll wake at his wake time."
+		hint_label.text = _t(
+			"HINT_SLEEP",
+			"Shh — Jimothy is sleeping. He’ll wake on his schedule."
+		)
 	elif PetState.sick:
 		hint_label.text = "He’s under the weather — open Action → Heal."
 	elif PetState.stubborn:
@@ -836,7 +1006,7 @@ func _refresh_sound_buttons() -> void:
 	elif PetState:
 		sfx_on = not PetState.sfx_muted
 	if btn_sfx:
-		btn_sfx.text = "Jimothy: On" if sfx_on else "Jimothy: Off"
+		btn_sfx.text = _t("JIMOTHY_ON", "Jimothy: On") if sfx_on else _t("JIMOTHY_OFF", "Jimothy: Off")
 
 
 func _on_sfx_pressed() -> void:
@@ -853,13 +1023,13 @@ func _refresh_alerts_button() -> void:
 	if btn_alerts == null:
 		return
 	if not PetState.alerts_enabled:
-		btn_alerts.text = "Alerts: Off"
+		btn_alerts.text = _t("ALERTS_OFF", "Alerts: Off")
 		return
 	if JimothyNotify and JimothyNotify.has_method("os_permission_granted") \
 			and not JimothyNotify.os_permission_granted():
-		btn_alerts.text = "Alerts: Allow"
+		btn_alerts.text = _t("ALERTS_ALLOW", "Alerts: Allow")
 	else:
-		btn_alerts.text = "Alerts: On"
+		btn_alerts.text = _t("ALERTS_ON", "Alerts: On")
 
 
 func _on_alerts_pressed() -> void:
@@ -880,16 +1050,8 @@ func _on_alerts_pressed() -> void:
 			JimothyNotify.request_permission()
 		elif JimothyNotify and JimothyNotify.has_method("request_permission_web"):
 			JimothyNotify.request_permission_web()
-		var where := "phone / browser notifications"
-		if OS.get_name() == "Android":
-			where = "Android notifications — allow the permission prompt if shown (or enable in system Settings)"
-			if JimothyNotify and JimothyNotify.has_method("scheduler_status_line"):
-				where += " · " + JimothyNotify.scheduler_status_line()
-		elif OS.has_feature("web"):
-			where = "browser notifications (allow the permission prompt)"
 		PetState.speech.emit(
-			"Care alerts on — %s when he’s hungry, sick, acting up, left waste, bored, or finds a new form."
-			% where
+			"Care alerts on — form changes, mess, boredom, and acting up (not hunger, health, or ascending)."
 		)
 	else:
 		PetState.speech.emit("Care alerts off.")
