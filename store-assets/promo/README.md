@@ -14,6 +14,8 @@ Built from **real Godot gameplay** (`--write-movie` + `PromoDemo` when `JIMOTHY_
 
 Also under `dist/` for easy download.
 
+Encoded for phone/TikTok: **H.264 Constrained Baseline**, **yuv420p**, **AAC-LC 44.1kHz**, `+faststart`.
+
 ## Re-record
 ```bash
 export DISPLAY=:1 JIMOTHY_PROMO=1
