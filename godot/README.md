@@ -15,7 +15,7 @@ Closed-app shade alerts need the **NotificationScheduler** plugin inside the APK
 ### Phone-only (no desktop)
 Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle APK instead:
 
-1. Download [`dist/jimothy-android-1.0.22-gradle.apk`](../dist/jimothy-android-1.0.22-gradle.apk)
+1. Download [`dist/jimothy-android-1.0.23-gradle.apk`](../dist/jimothy-android-1.0.23-gradle.apk)
 2. Install it (allow “Install unknown apps” if asked)
 3. Open JimothyPet → **Alerts: Allow** → you should get: *“Care alerts only appear after you close or leave the app.”*
 4. Leave/close the app to test care alerts
@@ -23,9 +23,9 @@ Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle AP
 The `.apk` is fine for sideload. For Play Console use the **`.aab`** below.
 
 ### Play Console AAB (signed upload)
-Prebuilt Gradle AAB (package **`com.jimothypet.app`**, versionCode **22**, closed-app alerts):
+Prebuilt Gradle AAB (package **`com.jimothypet.app`**, versionCode **23**, closed-app alerts):
 
-- [`dist/jimothy-android-1.0.22-gradle.aab`](../dist/jimothy-android-1.0.22-gradle.aab)
+- [`dist/jimothy-android-1.0.23-gradle.aab`](../dist/jimothy-android-1.0.23-gradle.aab)
 
 **Important:** Play expects package `com.jimothypet.app` and your registered **upload key**  
 (SHA1 `F9:7F:31:C7:7A:05:E5:88:CF:55:9C:B9:0D:23:89:83:65:85:B6:40`).  
@@ -46,7 +46,7 @@ The GitHub AAB is **not** signed with that key — re-sign before upload.
 pkg install openjdk-17 unzip zip
 
 cd /storage/emulated/0/Download
-cp jimothy-android-1.0.22-gradle.aab jimothy-play.aab
+cp jimothy-android-1.0.23-gradle.aab jimothy-play.aab
 # Remove old signature, then sign with YOUR keystore (alias jimothy):
 zip -d jimothy-play.aab 'META-INF/*'
 jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
@@ -69,7 +69,7 @@ Turn **ON**:
 - **Receive Boot Completed**
 - **Set Alarm**
 
-Custom permissions already include `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`.
+Custom permissions include `SCHEDULE_EXACT_ALARM` only (not `USE_EXACT_ALARM` — Play rejects that for non-calendar/alarm apps).
 
 Do **not** add a separate Plugins entry under `android/plugins` — the editor plugin pulls AARs from `addons/NotificationSchedulerPlugin/bin/`.
 
