@@ -15,7 +15,7 @@ Closed-app shade alerts need the **NotificationScheduler** plugin inside the APK
 ### Phone-only (no desktop)
 Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle APK instead:
 
-1. Download [`dist/jimothy-android-1.0.26-gradle.apk`](../dist/jimothy-android-1.0.26-gradle.apk)
+1. Download [`dist/jimothy-android-1.0.27-gradle.apk`](../dist/jimothy-android-1.0.27-gradle.apk)
 2. Install it (allow “Install unknown apps” if asked)
 3. Open JimothyPet → **Alerts: Allow** → you should get: *“Care alerts only appear after you close or leave the app.”*
 4. Leave/close the app to test care alerts
@@ -23,19 +23,19 @@ Gradle exports often fail in Godot-on-Android / GABE. Use the prebuilt Gradle AP
 The `.apk` is fine for sideload. For Play Console use the **`.aab`** below.
 
 ### Play Console AAB (signed upload)
-Prebuilt Gradle AAB (package **`com.jimothypet.app`**, versionCode **26**, closed-app alerts):
+Prebuilt Gradle AAB (package **`com.jimothypet.app`**, versionCode **27**, closed-app alerts):
 
-- [`dist/jimothy-android-1.0.26-gradle.aab`](../dist/jimothy-android-1.0.26-gradle.aab)
+- [`dist/jimothy-android-1.0.27-gradle.aab`](../dist/jimothy-android-1.0.27-gradle.aab)
 
 **Permissions:** uses `SCHEDULE_EXACT_ALARM` only. **`USE_EXACT_ALARM` is not declared** (Play rejects that for non-calendar/alarm apps).
 
 #### If Play still says “USE_EXACT_ALARM … across all tracks”
 That usually means an **older** AAB (≤1.0.22) is still active on another track. Do this:
 
-1. Upload **only** `jimothy-android-1.0.26-gradle.aab` (re-signed — see below). Do **not** upload 1.0.16–1.0.22.
+1. Upload **only** `jimothy-android-1.0.27-gradle.aab` (re-signed — see below). Do **not** upload 1.0.16–1.0.22.
 2. In Play Console, open **every** track: Internal testing, Closed testing, Open testing, Production.
-3. On each track that still has a version **≤1.0.22** / that still declares `USE_EXACT_ALARM`, **deactivate** it or **replace** it with 1.0.26.
-4. Retry the review / policy check after all active artifacts are 1.0.26+.
+3. On each track that still has a version **≤1.0.22** / that still declares `USE_EXACT_ALARM`, **deactivate** it or **replace** it with 1.0.27.
+4. Retry the review / policy check after all active artifacts are 1.0.27+.
 
 **Important:** Play expects package `com.jimothypet.app` and your registered **upload key**  
 (SHA1 `F9:7F:31:C7:7A:05:E5:88:CF:55:9C:B9:0D:23:89:83:65:85:B6:40`).  
@@ -56,7 +56,7 @@ The GitHub AAB is **not** signed with that key — re-sign before upload.
 pkg install openjdk-17 unzip zip
 
 cd /storage/emulated/0/Download
-cp jimothy-android-1.0.26-gradle.aab jimothy-play.aab
+cp jimothy-android-1.0.27-gradle.aab jimothy-play.aab
 # Remove old signature, then sign with YOUR keystore (alias jimothy):
 zip -d jimothy-play.aab 'META-INF/*'
 jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
