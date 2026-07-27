@@ -18,6 +18,7 @@ PetState="*res://scripts/pet_state.gd"
 JimothyAudio="*res://scripts/jimothy_audio.gd"
 JimothyNotify="*res://scripts/jimothy_notify.gd"
 JimothyI18n="*res://scripts/jimothy_i18n.gd"
+PromoDemo="*res://scripts/promo_demo.gd"
 
 [editor_plugins]
 
