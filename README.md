@@ -34,8 +34,8 @@ Fresh packs in [`dist/`](dist/):
 | [`Jimothy-web.zip`](dist/Jimothy-web.zip) | Browser build — unzip and open `index.html`, or host the folder |
 | [`Jimothy-godot-only-4.7.1.zip`](dist/Jimothy-godot-only-4.7.1.zip) | Godot 4.7.1 project only |
 | [`JimothyPet-godot-4.7.1.zip`](dist/JimothyPet-godot-4.7.1.zip) | Full repo (web + Godot) |
-| [`jimothy-android-1.0.23-gradle.apk`](dist/jimothy-android-1.0.23-gradle.apk) | Phone install with **closed-app alerts** (Gradle + NotificationScheduler) |
-| [`jimothy-android-1.0.23-gradle.aab`](dist/jimothy-android-1.0.23-gradle.aab) | Play Console bundle (`com.jimothypet.app`, versionCode 23). Re-sign with your upload keystore — see godot/README.md |
+| [`jimothy-android-1.0.24-gradle.apk`](dist/jimothy-android-1.0.24-gradle.apk) | Phone install with **closed-app alerts** (Gradle + NotificationScheduler) |
+| [`jimothy-android-1.0.24-gradle.aab`](dist/jimothy-android-1.0.24-gradle.aab) | Play Console bundle (`com.jimothypet.app`, versionCode 24, **no `USE_EXACT_ALARM`**). Re-sign with your upload keystore — see godot/README.md |
 
 ## Life cycle (real time)
 
@@ -75,7 +75,7 @@ Open **Settings → Sound** for separate **BG** (night ambience / owl) and **Jim
 
 **Alerts default ON** on first launch. The button shows **Alerts: Allow** until the phone/browser actually grants permission — tap it to prompt. You’ll get shade notifications when Jimothy is hungry, wants to play, is acting up, left nest waste, or evolves into a **new form**.
 
-**Phone + closed-app alerts:** install the prebuilt [`dist/jimothy-android-1.0.23-gradle.apk`](dist/jimothy-android-1.0.23-gradle.apk) (Godot-on-phone exports usually miss the scheduler plugin). See [`godot/README.md`](godot/README.md). Web needs a user tap to allow notifications on phones. Preference is saved.
+**Phone + closed-app alerts:** install the prebuilt [`dist/jimothy-android-1.0.24-gradle.apk`](dist/jimothy-android-1.0.24-gradle.apk) (Godot-on-phone exports usually miss the scheduler plugin). See [`godot/README.md`](godot/README.md). Web needs a user tap to allow notifications on phones. Preference is saved.
 
 Open **Forms** to browse every young / teen / adult silhouette (gallery + evolution paths).
 
