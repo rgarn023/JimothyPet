@@ -11,6 +11,8 @@ godot/android/.gradle/
 godot/android/local.properties
 build/
 *.apk
+!dist/jimothy-android-*-gradle.apk
 *.aab
+!dist/jimothy-android-*-gradle.aab
 *.pck
 scripts/__pycache__/
