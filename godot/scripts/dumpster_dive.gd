@@ -275,15 +275,24 @@ func _on_playfield_draw() -> void:
 		alley = GraphicStyle.posterize(alley, 3.0)
 		ground = GraphicStyle.posterize(ground, 3.0)
 	elif GraphicStyle and GraphicStyle.is_realistic():
-		alley = alley.lerp(Color(0.08, 0.12, 0.14), 0.25)
-		ground = ground.lerp(Color(0.16, 0.2, 0.18), 0.2)
+		# Same alley layout — warmer sodium light + deeper floor AO.
+		alley = alley.lerp(Color(0.1, 0.12, 0.11), 0.3)
+		ground = ground.lerp(Color(0.18, 0.2, 0.16), 0.28)
 	pf.draw_rect(Rect2(Vector2.ZERO, pf.size), alley)
 	# Brick hints
 	for y in range(100, int(h - 70), 26):
-		pf.draw_line(Vector2(0, y), Vector2(w, y), Color(0.6, 0.67, 0.61, 0.1), 1.0)
+		var brick := Color(0.6, 0.67, 0.61, 0.1)
+		if GraphicStyle and GraphicStyle.is_realistic():
+			brick = Color(0.55, 0.48, 0.38, 0.12)
+		pf.draw_line(Vector2(0, y), Vector2(w, y), brick, 1.0)
+		if GraphicStyle and GraphicStyle.is_realistic() and y % 52 == 0:
+			for bx in range(0, int(w), 34):
+				pf.draw_line(Vector2(bx + (y / 26) % 2 * 17, y), Vector2(bx + (y / 26) % 2 * 17, mini(h - 70, y + 26)), Color(0.5, 0.42, 0.34, 0.08), 1.0)
 	# Ground
 	pf.draw_rect(Rect2(0, h - 48, w, 48), ground)
 	pf.draw_rect(Rect2(0, h - 48, w, 3), Color(0.88, 0.63, 0.29, 0.12))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		_draw_ellipse(pf, Vector2(w * 0.5, h - 20), Vector2(w * 0.45, 16), Color(0.05, 0.04, 0.03, 0.22))
 	for i in 8:
 		_draw_ellipse(pf, Vector2(30 + i * 42, h - 38 + (i % 3)), Vector2(10, 4), Color(0.24, 0.19, 0.12, 0.35))
 
