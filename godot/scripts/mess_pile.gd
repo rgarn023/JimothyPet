@@ -17,6 +17,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	queue_redraw()
+	if GraphicStyle:
+		GraphicStyle.mode_changed.connect(func(_m): queue_redraw())
 
 
 func set_pile_count(n: int) -> void:
@@ -52,11 +54,29 @@ func _draw_pile(c: Vector2) -> void:
 	_blob(c + Vector2(-4, -2), Vector2(3, 2), Color(0.45, 0.32, 0.18, 0.45))
 	# Tiny flies
 	var t := Time.get_ticks_msec() * 0.004 + c.x * 0.01
-	draw_circle(c + Vector2(sin(t) * 10.0, -12.0 + cos(t * 1.3) * 3.0), 1.2, Color(0.1, 0.1, 0.1, 0.55))
-	draw_circle(c + Vector2(cos(t * 1.1) * 8.0, -10.0 + sin(t) * 2.0), 1.0, Color(0.1, 0.1, 0.1, 0.4))
+	if GraphicStyle:
+		GraphicStyle.draw_circle_styled(
+			self,
+			c + Vector2(sin(t) * 10.0, -12.0 + cos(t * 1.3) * 3.0),
+			1.2,
+			Color(0.1, 0.1, 0.1, 0.55)
+		)
+		GraphicStyle.draw_circle_styled(
+			self,
+			c + Vector2(cos(t * 1.1) * 8.0, -10.0 + sin(t) * 2.0),
+			1.0,
+			Color(0.1, 0.1, 0.1, 0.4)
+		)
+	else:
+		draw_circle(c + Vector2(sin(t) * 10.0, -12.0 + cos(t * 1.3) * 3.0), 1.2, Color(0.1, 0.1, 0.1, 0.55))
+		draw_circle(c + Vector2(cos(t * 1.1) * 8.0, -10.0 + sin(t) * 2.0), 1.0, Color(0.1, 0.1, 0.1, 0.4))
 
 
 func _blob(center: Vector2, radii: Vector2, color: Color) -> void:
+	if GraphicStyle:
+		# Wobbly blob via styled ellipse approximations + one irregular poly.
+		GraphicStyle.draw_ellipse(self, center, radii, color, 16)
+		return
 	var pts := PackedVector2Array()
 	var n := 14
 	for i in n:

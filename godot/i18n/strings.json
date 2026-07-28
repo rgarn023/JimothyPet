@@ -361,7 +361,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "en_GB": {
    "SETTINGS": "Settings",
@@ -398,7 +404,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "en_AU": {
    "SETTINGS": "Settings",
@@ -435,7 +447,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "af": {
    "SETTINGS": "Settings",
@@ -472,7 +490,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "am": {
    "SETTINGS": "Settings",
@@ -509,7 +533,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ar": {
    "SETTINGS": "الإعدادات",
@@ -546,7 +576,13 @@
    "HINT_SLEEP": "شش — Jimothy نائم. سيستيقظ حسب جدوله.",
    "HINT_ASCENDED": "صعد Jimothy. ابدأ جلسة جديدة عندما تريد.",
    "MOOD_SLEEP": "نائم",
-   "MOOD_ASCEND": "صعود"
+   "MOOD_ASCEND": "صعود",
+   "GRAPHIC_MODE": "وضع الرسوم",
+   "GRAPHIC_MODE_COPY": "غيّر مظهر جيموثي والطعام والنفايات والغابة والألعاب المصغرة.",
+   "GRAPHIC_NORMAL": "عادي",
+   "GRAPHIC_CELL": "تظليل خلوي",
+   "GRAPHIC_REALISTIC": "واقعي",
+   "SAVE": "حفظ"
   },
   "az": {
    "SETTINGS": "Settings",
@@ -583,7 +619,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "be": {
    "SETTINGS": "Settings",
@@ -620,7 +662,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "bg": {
    "SETTINGS": "Settings",
@@ -657,7 +705,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "bn": {
    "SETTINGS": "Settings",
@@ -694,7 +748,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ca": {
    "SETTINGS": "Settings",
@@ -731,7 +791,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "cs": {
    "SETTINGS": "Settings",
@@ -768,7 +834,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "da": {
    "SETTINGS": "Settings",
@@ -805,7 +877,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "de": {
    "SETTINGS": "Einstellungen",
@@ -842,7 +920,13 @@
    "HINT_SLEEP": "Pst — Jimothy schläft. Er wacht nach Plan auf.",
    "HINT_ASCENDED": "Jimothy ist aufgestiegen. Starte eine neue Session, wenn du magst.",
    "MOOD_SLEEP": "schläft",
-   "MOOD_ASCEND": "Aufstieg"
+   "MOOD_ASCEND": "Aufstieg",
+   "GRAPHIC_MODE": "Grafikmodus",
+   "GRAPHIC_MODE_COPY": "Ändere das Aussehen von Jimothy, Essen, Abfall, Wald und Minispielen.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cel-Shading",
+   "GRAPHIC_REALISTIC": "Realistisch",
+   "SAVE": "Speichern"
   },
   "el": {
    "SETTINGS": "Settings",
@@ -879,7 +963,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "es": {
    "SETTINGS": "Ajustes",
@@ -916,7 +1006,13 @@
    "HINT_SLEEP": "Shh — Jimothy duerme. Se despertará según su horario.",
    "HINT_ASCENDED": "Jimothy ascendió. Empieza una nueva sesión cuando quieras.",
    "MOOD_SLEEP": "dormido",
-   "MOOD_ASCEND": "ascenso"
+   "MOOD_ASCEND": "ascenso",
+   "GRAPHIC_MODE": "Modo gráfico",
+   "GRAPHIC_MODE_COPY": "Cambia el aspecto de Jimothy, la comida, los desechos, el bosque y los minijuegos.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cel-shaded",
+   "GRAPHIC_REALISTIC": "Realista",
+   "SAVE": "Guardar"
   },
   "es_ES": {
    "SETTINGS": "Ajustes",
@@ -953,7 +1049,13 @@
    "HINT_SLEEP": "Shh — Jimothy duerme. Se despertará según su horario.",
    "HINT_ASCENDED": "Jimothy ascendió. Empieza una nueva sesión cuando quieras.",
    "MOOD_SLEEP": "dormido",
-   "MOOD_ASCEND": "ascenso"
+   "MOOD_ASCEND": "ascenso",
+   "GRAPHIC_MODE": "Modo gráfico",
+   "GRAPHIC_MODE_COPY": "Cambia el aspecto de Jimothy, la comida, los desechos, el bosque y los minijuegos.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cel-shaded",
+   "GRAPHIC_REALISTIC": "Realista",
+   "SAVE": "Guardar"
   },
   "es_419": {
    "SETTINGS": "Ajustes",
@@ -990,7 +1092,13 @@
    "HINT_SLEEP": "Shh — Jimothy duerme. Se despertará según su horario.",
    "HINT_ASCENDED": "Jimothy ascendió. Empieza una nueva sesión cuando quieras.",
    "MOOD_SLEEP": "dormido",
-   "MOOD_ASCEND": "ascenso"
+   "MOOD_ASCEND": "ascenso",
+   "GRAPHIC_MODE": "Modo gráfico",
+   "GRAPHIC_MODE_COPY": "Cambia el aspecto de Jimothy, la comida, los desechos, el bosque y los minijuegos.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cel-shaded",
+   "GRAPHIC_REALISTIC": "Realista",
+   "SAVE": "Guardar"
   },
   "et": {
    "SETTINGS": "Settings",
@@ -1027,7 +1135,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "eu": {
    "SETTINGS": "Settings",
@@ -1064,7 +1178,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "fa": {
    "SETTINGS": "Settings",
@@ -1101,7 +1221,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "fi": {
    "SETTINGS": "Settings",
@@ -1138,7 +1264,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "fil": {
    "SETTINGS": "Settings",
@@ -1175,7 +1307,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "fr": {
    "SETTINGS": "Réglages",
@@ -1212,7 +1350,13 @@
    "HINT_SLEEP": "Chut — Jimothy dort. Il se réveillera à l’heure prévue.",
    "HINT_ASCENDED": "Jimothy est monté. Commence une nouvelle session quand tu veux.",
    "MOOD_SLEEP": "endormi",
-   "MOOD_ASCEND": "ascension"
+   "MOOD_ASCEND": "ascension",
+   "GRAPHIC_MODE": "Mode graphique",
+   "GRAPHIC_MODE_COPY": "Changez l’apparence de Jimothy, la nourriture, les déchets, la forêt et les mini-jeux.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cel-shading",
+   "GRAPHIC_REALISTIC": "Réaliste",
+   "SAVE": "Enregistrer"
   },
   "fr_CA": {
    "SETTINGS": "Réglages",
@@ -1249,7 +1393,13 @@
    "HINT_SLEEP": "Chut — Jimothy dort. Il se réveillera à l’heure prévue.",
    "HINT_ASCENDED": "Jimothy est monté. Commence une nouvelle session quand tu veux.",
    "MOOD_SLEEP": "endormi",
-   "MOOD_ASCEND": "ascension"
+   "MOOD_ASCEND": "ascension",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "gl": {
    "SETTINGS": "Settings",
@@ -1286,7 +1436,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "gu": {
    "SETTINGS": "Settings",
@@ -1323,7 +1479,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "he": {
    "SETTINGS": "Settings",
@@ -1360,7 +1522,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "hi": {
    "SETTINGS": "सेटिंग्स",
@@ -1397,7 +1565,13 @@
    "HINT_SLEEP": "शhh — Jimothy सो रहा है। शेड्यूल पर जागेगा।",
    "HINT_ASCENDED": "Jimothy ऊपर उठ गया। तैयार हों तो नया सत्र शुरू करें।",
    "MOOD_SLEEP": "सोया",
-   "MOOD_ASCEND": "आरोहण"
+   "MOOD_ASCEND": "आरोहण",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "hr": {
    "SETTINGS": "Settings",
@@ -1434,7 +1608,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "hu": {
    "SETTINGS": "Settings",
@@ -1471,7 +1651,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "hy": {
    "SETTINGS": "Settings",
@@ -1508,7 +1694,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "id": {
    "SETTINGS": "Pengaturan",
@@ -1545,7 +1737,13 @@
    "HINT_SLEEP": "Sst — Jimothy sedang tidur. Dia bangun sesuai jadwal.",
    "HINT_ASCENDED": "Jimothy telah naik. Mulai sesi baru saat siap.",
    "MOOD_SLEEP": "tidur",
-   "MOOD_ASCEND": "naik"
+   "MOOD_ASCEND": "naik",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "is": {
    "SETTINGS": "Settings",
@@ -1582,7 +1780,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "it": {
    "SETTINGS": "Impostazioni",
@@ -1619,7 +1823,13 @@
    "HINT_SLEEP": "Shh — Jimothy dorme. Si sveglierà secondo l’orario.",
    "HINT_ASCENDED": "Jimothy è asceso. Inizia una nuova sessione quando vuoi.",
    "MOOD_SLEEP": "addormentato",
-   "MOOD_ASCEND": "ascesa"
+   "MOOD_ASCEND": "ascesa",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ja": {
    "SETTINGS": "設定",
@@ -1656,7 +1866,13 @@
    "HINT_SLEEP": "しーっ — Jimothyは眠っています。予定どおりに起きます。",
    "HINT_ASCENDED": "Jimothyは昇天しました。準備ができたら新しいセッションを。",
    "MOOD_SLEEP": "ねむり",
-   "MOOD_ASCEND": "昇天"
+   "MOOD_ASCEND": "昇天",
+   "GRAPHIC_MODE": "グラフィックモード",
+   "GRAPHIC_MODE_COPY": "ジモシーや食べ物、ごみ、森、ミニゲームの見た目を変更します。",
+   "GRAPHIC_NORMAL": "ノーマル",
+   "GRAPHIC_CELL": "セルシェード",
+   "GRAPHIC_REALISTIC": "リアル",
+   "SAVE": "保存"
   },
   "ka": {
    "SETTINGS": "Settings",
@@ -1693,7 +1909,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "kk": {
    "SETTINGS": "Settings",
@@ -1730,7 +1952,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "km": {
    "SETTINGS": "Settings",
@@ -1767,7 +1995,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "kn": {
    "SETTINGS": "Settings",
@@ -1804,7 +2038,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ko": {
    "SETTINGS": "설정",
@@ -1841,7 +2081,13 @@
    "HINT_SLEEP": "쉿 — Jimothy가 자고 있어요. 일정대로 깨요.",
    "HINT_ASCENDED": "Jimothy가 승천했습니다. 준비되면 새 세션을 시작하세요.",
    "MOOD_SLEEP": "수면",
-   "MOOD_ASCEND": "승천"
+   "MOOD_ASCEND": "승천",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ky": {
    "SETTINGS": "Settings",
@@ -1878,7 +2124,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "lo": {
    "SETTINGS": "Settings",
@@ -1915,7 +2167,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "lt": {
    "SETTINGS": "Settings",
@@ -1952,7 +2210,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "lv": {
    "SETTINGS": "Settings",
@@ -1989,7 +2253,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "mk": {
    "SETTINGS": "Settings",
@@ -2026,7 +2296,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ml": {
    "SETTINGS": "Settings",
@@ -2063,7 +2339,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "mn": {
    "SETTINGS": "Settings",
@@ -2100,7 +2382,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "mr": {
    "SETTINGS": "Settings",
@@ -2137,7 +2425,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ms": {
    "SETTINGS": "Settings",
@@ -2174,7 +2468,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "my": {
    "SETTINGS": "Settings",
@@ -2211,7 +2511,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ne": {
    "SETTINGS": "Settings",
@@ -2248,7 +2554,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "nl": {
    "SETTINGS": "Instellingen",
@@ -2285,7 +2597,13 @@
    "HINT_SLEEP": "Sst — Jimothy slaapt. Hij wordt wakker volgens schema.",
    "HINT_ASCENDED": "Jimothy is opgestegen. Start een nieuwe sessie als je wilt.",
    "MOOD_SLEEP": "slaapt",
-   "MOOD_ASCEND": "opstijging"
+   "MOOD_ASCEND": "opstijging",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "no": {
    "SETTINGS": "Settings",
@@ -2322,7 +2640,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "pa": {
    "SETTINGS": "Settings",
@@ -2359,7 +2683,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "pl": {
    "SETTINGS": "Ustawienia",
@@ -2396,7 +2726,13 @@
    "HINT_SLEEP": "Ćśś — Jimothy śpi. Obudzi się według harmonogramu.",
    "HINT_ASCENDED": "Jimothy wzniósł się. Zacznij nową sesję, gdy będziesz gotów.",
    "MOOD_SLEEP": "śpi",
-   "MOOD_ASCEND": "wniebowstąpienie"
+   "MOOD_ASCEND": "wniebowstąpienie",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "pt": {
    "SETTINGS": "Definições",
@@ -2433,7 +2769,13 @@
    "HINT_SLEEP": "Shh — Jimothy está a dormir. Acorda no horário.",
    "HINT_ASCENDED": "Jimothy ascendeu. Começa uma nova sessão quando quiseres.",
    "MOOD_SLEEP": "a dormir",
-   "MOOD_ASCEND": "ascensão"
+   "MOOD_ASCEND": "ascensão",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "pt_BR": {
    "SETTINGS": "Configurações",
@@ -2470,7 +2812,13 @@
    "HINT_SLEEP": "Shh — Jimothy está dormindo. Ele acorda no horário.",
    "HINT_ASCENDED": "Jimothy ascendeu. Comece uma nova sessão quando quiser.",
    "MOOD_SLEEP": "dormindo",
-   "MOOD_ASCEND": "ascensão"
+   "MOOD_ASCEND": "ascensão",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "pt_PT": {
    "SETTINGS": "Configurações",
@@ -2507,7 +2855,13 @@
    "HINT_SLEEP": "Shh — Jimothy está dormindo. Ele acorda no horário.",
    "HINT_ASCENDED": "Jimothy ascendeu. Comece uma nova sessão quando quiser.",
    "MOOD_SLEEP": "dormindo",
-   "MOOD_ASCEND": "ascensão"
+   "MOOD_ASCEND": "ascensão",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ro": {
    "SETTINGS": "Settings",
@@ -2544,7 +2898,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ru": {
    "SETTINGS": "Настройки",
@@ -2581,7 +2941,13 @@
    "HINT_SLEEP": "Тсс — Jimothy спит. Он проснётся по расписанию.",
    "HINT_ASCENDED": "Jimothy вознёсся. Начните новую сессию, когда будете готовы.",
    "MOOD_SLEEP": "спит",
-   "MOOD_ASCEND": "вознесение"
+   "MOOD_ASCEND": "вознесение",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "si": {
    "SETTINGS": "Settings",
@@ -2618,7 +2984,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "sk": {
    "SETTINGS": "Settings",
@@ -2655,7 +3027,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "sl": {
    "SETTINGS": "Settings",
@@ -2692,7 +3070,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "sq": {
    "SETTINGS": "Settings",
@@ -2729,7 +3113,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "sr": {
    "SETTINGS": "Settings",
@@ -2766,7 +3156,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "sv": {
    "SETTINGS": "Inställningar",
@@ -2803,7 +3199,13 @@
    "HINT_SLEEP": "Schh — Jimothy sover. Han vaknar enligt schemat.",
    "HINT_ASCENDED": "Jimothy har stigit upp. Starta en ny session när du vill.",
    "MOOD_SLEEP": "sover",
-   "MOOD_ASCEND": "uppstigning"
+   "MOOD_ASCEND": "uppstigning",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "sw": {
    "SETTINGS": "Settings",
@@ -2840,7 +3242,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ta": {
    "SETTINGS": "Settings",
@@ -2877,7 +3285,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "te": {
    "SETTINGS": "Settings",
@@ -2914,7 +3328,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "th": {
    "SETTINGS": "การตั้งค่า",
@@ -2951,7 +3371,13 @@
    "HINT_SLEEP": "ชู่ — Jimothy กำลังนอน จะตื่นตามตาราง",
    "HINT_ASCENDED": "Jimothy ขึ้นสู่ฟ้าแล้ว เริ่มเซสชันใหม่เมื่อพร้อม",
    "MOOD_SLEEP": "นอน",
-   "MOOD_ASCEND": "ขึ้นฟ้า"
+   "MOOD_ASCEND": "ขึ้นฟ้า",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "tr": {
    "SETTINGS": "Ayarlar",
@@ -2988,7 +3414,13 @@
    "HINT_SLEEP": "Şşş — Jimothy uyuyor. Programına göre uyanır.",
    "HINT_ASCENDED": "Jimothy yükseldi. Hazır olunca yeni oturum başlat.",
    "MOOD_SLEEP": "uyuyor",
-   "MOOD_ASCEND": "yükseliş"
+   "MOOD_ASCEND": "yükseliş",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "uk": {
    "SETTINGS": "Налаштування",
@@ -3025,7 +3457,13 @@
    "HINT_SLEEP": "Тс-с — Jimothy спить. Він прокинеться за розкладом.",
    "HINT_ASCENDED": "Jimothy вознісся. Почніть нову сесію, коли будете готові.",
    "MOOD_SLEEP": "спить",
-   "MOOD_ASCEND": "вознесіння"
+   "MOOD_ASCEND": "вознесіння",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "ur": {
    "SETTINGS": "Settings",
@@ -3062,7 +3500,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "uz": {
    "SETTINGS": "Settings",
@@ -3099,7 +3543,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "vi": {
    "SETTINGS": "Cài đặt",
@@ -3136,7 +3586,13 @@
    "HINT_SLEEP": "Suỵt — Jimothy đang ngủ. Bé sẽ dậy đúng lịch.",
    "HINT_ASCENDED": "Jimothy đã thăng thiên. Bắt đầu phiên mới khi sẵn sàng.",
    "MOOD_SLEEP": "ngủ",
-   "MOOD_ASCEND": "thăng thiên"
+   "MOOD_ASCEND": "thăng thiên",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "zh_CN": {
    "SETTINGS": "设置",
@@ -3173,7 +3629,13 @@
    "HINT_SLEEP": "嘘——Jimothy 在睡觉。会按作息醒来。",
    "HINT_ASCENDED": "Jimothy 已升天。准备好时开始新的一局。",
    "MOOD_SLEEP": "睡着",
-   "MOOD_ASCEND": "升天"
+   "MOOD_ASCEND": "升天",
+   "GRAPHIC_MODE": "画面模式",
+   "GRAPHIC_MODE_COPY": "更改 Jimothy、食物、废物、森林和迷你游戏的外观。",
+   "GRAPHIC_NORMAL": "普通",
+   "GRAPHIC_CELL": "赛璐珞",
+   "GRAPHIC_REALISTIC": "写实",
+   "SAVE": "保存"
   },
   "zh_TW": {
    "SETTINGS": "設定",
@@ -3210,7 +3672,13 @@
    "HINT_SLEEP": "噓——Jimothy 在睡覺。會依作息醒來。",
    "HINT_ASCENDED": "Jimothy 已昇天。準備好時開始新的一局。",
    "MOOD_SLEEP": "睡著",
-   "MOOD_ASCEND": "昇天"
+   "MOOD_ASCEND": "昇天",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "zh_HK": {
    "SETTINGS": "設定",
@@ -3247,7 +3715,13 @@
    "HINT_SLEEP": "噓——Jimothy 在睡覺。會依作息醒來。",
    "HINT_ASCENDED": "Jimothy 已昇天。準備好時開始新的一局。",
    "MOOD_SLEEP": "睡著",
-   "MOOD_ASCEND": "昇天"
+   "MOOD_ASCEND": "昇天",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   },
   "zu": {
    "SETTINGS": "Settings",
@@ -3284,7 +3758,13 @@
    "HINT_SLEEP": "Shh — Jimothy is sleeping. He’ll wake on his schedule.",
    "HINT_ASCENDED": "Jimothy has ascended. Start a new session when you’re ready.",
    "MOOD_SLEEP": "asleep",
-   "MOOD_ASCEND": "ascend"
+   "MOOD_ASCEND": "ascend",
+   "GRAPHIC_MODE": "Graphic Mode",
+   "GRAPHIC_MODE_COPY": "Change the look of Jimothy, food, waste, the forest, and mini-games.",
+   "GRAPHIC_NORMAL": "Normal",
+   "GRAPHIC_CELL": "Cell-shaded",
+   "GRAPHIC_REALISTIC": "Realistic",
+   "SAVE": "Save"
   }
  }
 }

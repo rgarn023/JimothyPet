@@ -57,7 +57,9 @@ var _sound_panel: ColorRect
 var _settings_panel: ColorRect
 var _schedule_panel: ColorRect
 var _language_panel: ColorRect
+var _graphic_panel: ColorRect
 var _lang_option: OptionButton
+var _graphic_option: OptionButton
 var _wake_option: OptionButton
 var _sleep_option: OptionButton
 var _settings_title: Label
@@ -68,6 +70,7 @@ var _sound_title: Label
 var _sound_copy: Label
 var _sound_close: Button
 var _btn_language: Button
+var _btn_graphic: Button
 
 
 func _ready() -> void:
@@ -92,6 +95,7 @@ func _ready() -> void:
 	_build_settings_panel()
 	_build_schedule_panel()
 	_build_language_panel()
+	_build_graphic_panel()
 	if JimothyI18n:
 		JimothyI18n.locale_changed.connect(func(_code: String): _refresh_localized_ui())
 	_refresh_sound_buttons()
@@ -538,6 +542,11 @@ func _build_settings_panel() -> void:
 	_btn_language.pressed.connect(_on_language_pressed)
 	vbox.add_child(_btn_language)
 
+	_btn_graphic = Button.new()
+	_btn_graphic.text = "Graphic Mode"
+	_btn_graphic.pressed.connect(_on_graphic_pressed)
+	vbox.add_child(_btn_graphic)
+
 	btn_alerts = Button.new()
 	btn_alerts.text = "Alerts: Off"
 	btn_alerts.pressed.connect(_on_alerts_pressed)
@@ -652,6 +661,80 @@ func _on_language_apply() -> void:
 	PetState.speech.emit(JimothyI18n.t("LANGUAGE", "Language"))
 
 
+func _build_graphic_panel() -> void:
+	var built := _build_menu_panel("Graphic Mode")
+	_graphic_panel = built.dim
+	var vbox: VBoxContainer = built.vbox
+
+	var copy := Label.new()
+	copy.name = "GraphicCopy"
+	copy.text = "Change the look of Jimothy, food, waste, the forest, and mini-games."
+	copy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_theme_color_override("font_color", Color("9aab9c"))
+	copy.add_theme_font_size_override("font_size", 13)
+	vbox.add_child(copy)
+
+	_graphic_option = OptionButton.new()
+	_graphic_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_graphic_option.add_item("Normal")
+	_graphic_option.set_item_metadata(0, "normal")
+	_graphic_option.add_item("Cell-shaded")
+	_graphic_option.set_item_metadata(1, "cell_shaded")
+	_graphic_option.add_item("Realistic")
+	_graphic_option.set_item_metadata(2, "realistic")
+	vbox.add_child(_graphic_option)
+	_sync_graphic_option()
+
+	var apply_btn := Button.new()
+	apply_btn.name = "GraphicApply"
+	apply_btn.text = "Save"
+	apply_btn.pressed.connect(_on_graphic_apply)
+	vbox.add_child(apply_btn)
+
+	var close := Button.new()
+	close.name = "GraphicClose"
+	close.text = "Close"
+	close.pressed.connect(func(): _graphic_panel.visible = false)
+	vbox.add_child(close)
+
+
+func _sync_graphic_option() -> void:
+	if _graphic_option == null:
+		return
+	var want := "normal"
+	if PetState:
+		want = str(PetState.graphic_mode)
+	for i in _graphic_option.item_count:
+		if str(_graphic_option.get_item_metadata(i)) == want:
+			_graphic_option.select(i)
+			return
+	if _graphic_option.item_count > 0:
+		_graphic_option.select(0)
+
+
+func _on_graphic_pressed() -> void:
+	_sync_graphic_option()
+	if _graphic_panel:
+		_graphic_panel.visible = true
+
+
+func _on_graphic_apply() -> void:
+	if _graphic_option == null:
+		return
+	var idx := _graphic_option.selected
+	var mode := str(_graphic_option.get_item_metadata(idx))
+	if GraphicStyle:
+		GraphicStyle.set_mode(mode, true)
+	elif PetState:
+		PetState.graphic_mode = mode
+		PetState.save_game()
+		PetState.state_changed.emit()
+	if _graphic_panel:
+		_graphic_panel.visible = false
+	PetState.speech.emit(_t("GRAPHIC_MODE", "Graphic Mode"))
+
+
 func _t(key: String, fallback: String) -> String:
 	if JimothyI18n:
 		return JimothyI18n.t(key, fallback)
@@ -669,6 +752,8 @@ func _refresh_localized_ui() -> void:
 		btn_sound.text = _t("SOUND", "Sound")
 	if _btn_language:
 		_btn_language.text = _t("LANGUAGE", "Language")
+	if _btn_graphic:
+		_btn_graphic.text = _t("GRAPHIC_MODE", "Graphic Mode")
 	if btn_reset:
 		btn_reset.text = _t("RESET", "Reset")
 	if _settings_close:
@@ -716,6 +801,27 @@ func _refresh_localized_ui() -> void:
 		var close_btn := _language_panel.find_child("LangClose", true, false)
 		if close_btn:
 			close_btn.text = _t("CLOSE", "Close")
+	if _graphic_panel:
+		var graphic_title_lbl: Label = null
+		for child in _graphic_panel.find_children("*", "Label", true, false):
+			if child.name == "GraphicCopy":
+				child.text = _t(
+					"GRAPHIC_MODE_COPY",
+					"Change the look of Jimothy, food, waste, the forest, and mini-games."
+				)
+			elif graphic_title_lbl == null:
+				graphic_title_lbl = child
+				graphic_title_lbl.text = _t("GRAPHIC_MODE", "Graphic Mode")
+		if _graphic_option and _graphic_option.item_count >= 3:
+			_graphic_option.set_item_text(0, _t("GRAPHIC_NORMAL", "Normal"))
+			_graphic_option.set_item_text(1, _t("GRAPHIC_CELL", "Cell-shaded"))
+			_graphic_option.set_item_text(2, _t("GRAPHIC_REALISTIC", "Realistic"))
+		var g_apply := _graphic_panel.find_child("GraphicApply", true, false)
+		if g_apply:
+			g_apply.text = _t("SAVE", "Save")
+		var g_close := _graphic_panel.find_child("GraphicClose", true, false)
+		if g_close:
+			g_close.text = _t("CLOSE", "Close")
 	_refresh_sound_buttons()
 	_refresh_alerts_button()
 	_refresh()

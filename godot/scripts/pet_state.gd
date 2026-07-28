@@ -121,6 +121,8 @@ var sfx_muted: bool = false
 var alerts_enabled: bool = true
 ## UI language (Play Store locale code). Empty = follow device.
 var locale_code: String = ""
+## Visual style: normal | cell_shaded | realistic
+var graphic_mode: String = "normal"
 ## One-time migration marker so upgrading installs turn alerts on once.
 var care_alerts_default_v1: bool = false
 ## Last successful food key — used by eat animation prop.
@@ -223,6 +225,7 @@ func reset_pet() -> void:
 	var keep_sfx := sfx_muted
 	var keep_alerts := alerts_enabled
 	var keep_locale := locale_code
+	var keep_graphic := graphic_mode
 	var keep_wake := wake_hour
 	var keep_sleep := sleep_hour
 	_reset_defaults()
@@ -232,6 +235,7 @@ func reset_pet() -> void:
 	sfx_muted = keep_sfx
 	alerts_enabled = keep_alerts
 	locale_code = keep_locale
+	graphic_mode = keep_graphic
 	wake_hour = keep_wake
 	sleep_hour = keep_sleep
 	schedule_set = false
@@ -1248,6 +1252,7 @@ func to_dict() -> Dictionary:
 		"sfx_muted": sfx_muted,
 		"alerts_enabled": alerts_enabled,
 		"locale_code": locale_code,
+		"graphic_mode": graphic_mode,
 		"care_alerts_default_v1": care_alerts_default_v1,
 		"wake_hour": wake_hour,
 		"sleep_hour": sleep_hour,
@@ -1313,6 +1318,8 @@ func from_dict(d: Dictionary) -> void:
 	sfx_muted = bool(d.get("sfx_muted", sound_muted))
 	alerts_enabled = bool(d.get("alerts_enabled", true))
 	locale_code = str(d.get("locale_code", ""))
+	var gm := str(d.get("graphic_mode", "normal"))
+	graphic_mode = gm if gm in ["normal", "cell_shaded", "realistic"] else "normal"
 	care_alerts_default_v1 = bool(d.get("care_alerts_default_v1", false))
 	# Upgrading installs: force alerts ON once so phone permission can be requested.
 	if not care_alerts_default_v1:

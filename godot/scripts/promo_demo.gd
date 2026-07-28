@@ -64,7 +64,7 @@ func _hide_blocking_ui() -> void:
 	if _main == null:
 		return
 	for name in ["_schedule_panel", "_settings_panel", "_action_panel", "_message_panel",
-			"_forms_panel", "_play_pick_panel", "_reset_panel", "_sound_panel", "_language_panel",
+			"_forms_panel", "_play_pick_panel", "_reset_panel", "_sound_panel", "_language_panel", "_graphic_panel",
 			"_dice", "_stage_celebrating"]:
 		if name == "_stage_celebrating":
 			if name in _main:

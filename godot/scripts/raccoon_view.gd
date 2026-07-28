@@ -42,6 +42,13 @@ var _tap_cooldown: float = 0.0
 
 const SIDE_ANIMS := ["walk", "run", "lope", "jump", "hop", "sniff"]
 
+const Jimothy3DScript = preload("res://scripts/jimothy_3d.gd")
+
+var _svp_container: SubViewportContainer
+var _svp: SubViewport
+var _jimothy_3d: Node3D
+var _use_3d: bool = false
+
 
 func _ready() -> void:
 	if avatar_mode:
@@ -49,9 +56,12 @@ func _ready() -> void:
 		if PetState:
 			PetState.state_changed.connect(_sync_from_state)
 			_sync_from_state()
+		if GraphicStyle:
+			GraphicStyle.mode_changed.connect(func(_m): queue_redraw())
 		return
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(_on_gui_input)
+	_ensure_realistic_viewport()
 	if PetState:
 		PetState.anim_impulse.connect(play_anim)
 		PetState.state_changed.connect(_sync_from_state)
@@ -59,7 +69,8 @@ func _ready() -> void:
 		# Only resume an in-progress ascension — never replay for a dead save.
 		if PetState.ascending and not PetState.alive:
 			play_anim("ascend")
-
+	if GraphicStyle:
+		GraphicStyle.mode_changed.connect(_on_graphic_mode_changed)
 
 func configure_as_avatar(scale: float = 0.62) -> void:
 	avatar_mode = true
@@ -617,15 +628,130 @@ func _process(delta: float) -> void:
 
 	_pose_x = clampf(_pose_x, -78.0, 78.0)
 	_commit_facing(delta)
+	_refresh_3d_visibility()
+	if _use_3d:
+		_sync_3d()
 	queue_redraw()
 
 
 func _ellipse(center: Vector2, radii: Vector2, color: Color, points: int = 26) -> void:
+	if GraphicStyle:
+		GraphicStyle.draw_ellipse(self, center, radii, color, points)
+		return
 	var pts := PackedVector2Array()
 	for i in points:
 		var a := TAU * float(i) / float(points)
 		pts.append(center + Vector2(cos(a) * radii.x, sin(a) * radii.y))
 	draw_colored_polygon(pts, color)
+
+
+func _dot(center: Vector2, radius: float, color: Color) -> void:
+	if GraphicStyle:
+		GraphicStyle.draw_circle_styled(self, center, radius, color)
+	else:
+		draw_circle(center, radius, color)
+
+
+func _on_graphic_mode_changed(_mode: String) -> void:
+	_refresh_3d_visibility()
+	queue_redraw()
+
+
+func _ensure_realistic_viewport() -> void:
+	if _svp_container != null:
+		return
+	_svp_container = SubViewportContainer.new()
+	_svp_container.name = "RealisticViewport"
+	_svp_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_svp_container.stretch = true
+	_svp_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_svp_container.visible = false
+	add_child(_svp_container)
+
+	_svp = SubViewport.new()
+	_svp.transparent_bg = true
+	_svp.handle_input_locally = false
+	_svp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_svp.size = Vector2i(512, 512)
+	_svp_container.add_child(_svp)
+
+	var world_root := Node3D.new()
+	world_root.name = "World"
+	_svp.add_child(world_root)
+
+	var env := WorldEnvironment.new()
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_COLOR
+	environment.background_color = Color(0, 0, 0, 0)
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.55, 0.6, 0.65)
+	environment.ambient_light_energy = 0.55
+	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.environment = environment
+	world_root.add_child(env)
+
+	var sun := DirectionalLight3D.new()
+	sun.light_energy = 1.15
+	sun.shadow_enabled = false
+	sun.rotation_degrees = Vector3(-42, -35, 0)
+	world_root.add_child(sun)
+
+	var fill := OmniLight3D.new()
+	fill.light_color = Color(0.55, 0.7, 0.85)
+	fill.light_energy = 0.55
+	fill.omni_range = 8.0
+	fill.position = Vector3(-1.4, 1.2, 2.2)
+	world_root.add_child(fill)
+
+	var cam := Camera3D.new()
+	cam.current = true
+	cam.fov = 32.0
+	cam.look_at_from_position(Vector3(0.0, 0.95, 3.4), Vector3(0.0, 0.7, 0.0), Vector3.UP)
+	world_root.add_child(cam)
+
+	_jimothy_3d = Jimothy3DScript.new()
+	world_root.add_child(_jimothy_3d)
+	_refresh_3d_visibility()
+
+
+func _refresh_3d_visibility() -> void:
+	_use_3d = GraphicStyle != null and GraphicStyle.is_realistic() and not avatar_mode
+	if _svp_container:
+		var show_mesh := _use_3d and stage != "bush"
+		_svp_container.visible = show_mesh
+	if _use_3d:
+		_sync_3d()
+
+
+func _sync_3d() -> void:
+	if _jimothy_3d == null or not _use_3d:
+		return
+	if _svp and size.x > 2.0 and size.y > 2.0:
+		_svp.size = Vector2i(maxi(128, int(size.x)), maxi(128, int(size.y)))
+	var sleeping := PetState != null and PetState.is_sleeping()
+	_jimothy_3d.configure({
+		"stage": stage,
+		"young_form": young_form,
+		"teen_form": teen_form,
+		"adult_form": adult_form,
+		"genes": genes,
+		"mood": mood,
+		"anim": _anim,
+		"anim_t": _anim_t / maxf(0.001, _anim_dur),
+		"facing": _facing,
+		"pose_y": _pose_y,
+		"head_dip": _head_dip,
+		"body_squash": _body_squash,
+		"smile": _smile,
+		"walk_phase": _walk_phase,
+		"wing_span": _wing_span,
+		"fade": _fade,
+		"sleeping": sleeping,
+		"eat_food": _eat_food,
+	})
+	# Keep 3D centered with 2D pose offset.
+	if _jimothy_3d.get_parent():
+		_jimothy_3d.position.x = _pose_x * 0.0045
 
 
 func _g(key: String, fallback: float = 0.5) -> float:
@@ -689,6 +815,11 @@ func _draw() -> void:
 	_draw_clearing()
 	# Empty nest after ascend until the player starts a new session.
 	if PetState != null and not PetState.alive and not PetState.ascending and _anim not in ["ascend"]:
+		return
+	# Realistic mode renders Jimothy via procedural 3D meshes.
+	if _use_3d:
+		if stage == "bush" and _anim not in ["ascend", "gone"]:
+			_draw_bush(size * 0.5)
 		return
 	var c := size * 0.5 + Vector2(_pose_x, _pose_y)
 	if stage == "bush" and _anim not in ["ascend", "gone"]:

@@ -269,12 +269,20 @@ func _on_playfield_draw() -> void:
 	var pf := playfield
 	var w := pf.size.x
 	var h := pf.size.y
-	pf.draw_rect(Rect2(Vector2.ZERO, pf.size), Color("101a14"))
+	var alley := Color("101a14")
+	var ground := Color("1a281e")
+	if GraphicStyle and GraphicStyle.is_cell():
+		alley = GraphicStyle.posterize(alley, 3.0)
+		ground = GraphicStyle.posterize(ground, 3.0)
+	elif GraphicStyle and GraphicStyle.is_realistic():
+		alley = alley.lerp(Color(0.08, 0.12, 0.14), 0.25)
+		ground = ground.lerp(Color(0.16, 0.2, 0.18), 0.2)
+	pf.draw_rect(Rect2(Vector2.ZERO, pf.size), alley)
 	# Brick hints
 	for y in range(100, int(h - 70), 26):
 		pf.draw_line(Vector2(0, y), Vector2(w, y), Color(0.6, 0.67, 0.61, 0.1), 1.0)
 	# Ground
-	pf.draw_rect(Rect2(0, h - 48, w, 48), Color("1a281e"))
+	pf.draw_rect(Rect2(0, h - 48, w, 48), ground)
 	pf.draw_rect(Rect2(0, h - 48, w, 3), Color(0.88, 0.63, 0.29, 0.12))
 	for i in 8:
 		_draw_ellipse(pf, Vector2(30 + i * 42, h - 38 + (i % 3)), Vector2(10, 4), Color(0.24, 0.19, 0.12, 0.35))
@@ -351,23 +359,30 @@ func _draw_item(pf: Control, item: Dictionary) -> void:
 			_draw_ellipse(pf, Vector2.ZERO, Vector2(13, 6.2), Color("8eb4c4"))
 			_draw_ellipse(pf, Vector2(-3, -2), Vector2(6, 2.4), Color(1, 1, 1, 0.28))
 			var fin := PackedVector2Array([Vector2(10, 0), Vector2(18, -6), Vector2(16, 0), Vector2(18, 6)])
-			pf.draw_colored_polygon(fin, Color("5a9eb0"))
+			_poly(pf, fin, Color("5a9eb0"))
 			var dorsal := PackedVector2Array([Vector2(-1, -6), Vector2(3, -11), Vector2(6, -5)])
-			pf.draw_colored_polygon(dorsal, Color("7ec8d4"))
+			_poly(pf, dorsal, Color("7ec8d4"))
 			pf.draw_circle(Vector2(-6, -1), 1.4, Color("1b2a22"))
 			pf.draw_polyline(PackedVector2Array([Vector2(-2, 1), Vector2(4, 3), Vector2(8, 0)]), Color(0.93, 0.96, 0.92, 0.55), 1.0, true)
 		_:
 			var crust := PackedVector2Array([Vector2(1, -13), Vector2(14, 12), Vector2(-12, 12)])
-			pf.draw_colored_polygon(crust, Color("8a4a28"))
+			_poly(pf, crust, Color("8a4a28"))
 			var cheese := PackedVector2Array([Vector2(0, -12), Vector2(12, 10), Vector2(-12, 10)])
-			pf.draw_colored_polygon(cheese, Color("e0a04a"))
+			_poly(pf, cheese, Color("e0a04a"))
 			pf.draw_line(Vector2(-10, -3), Vector2(10, -3), Color("c45c4a"), 3.2)
 			pf.draw_circle(Vector2(-3, 3), 2.3, Color("8a2f2f"))
 			pf.draw_circle(Vector2(4, 5), 1.8, Color("8a2f2f"))
 			pf.draw_circle(Vector2(1, 0), 1.5, Color("8a2f2f"))
 			var shine := PackedVector2Array([Vector2(-2, -8), Vector2(4, -2), Vector2(-1, -1)])
-			pf.draw_colored_polygon(shine, Color(1, 1, 1, 0.28))
+			_poly(pf, shine, Color(1, 1, 1, 0.28), false)
 	pf.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _poly(pf: Control, pts: PackedVector2Array, color: Color, outline: bool = true) -> void:
+	if GraphicStyle:
+		GraphicStyle.draw_poly(pf, pts, color, outline)
+	else:
+		pf.draw_colored_polygon(pts, color)
 
 
 func _draw_berry(pf: Control, c: Vector2, r: float, col: Color) -> void:
@@ -406,6 +421,9 @@ func _draw_fx(pf: Control, f: Dictionary) -> void:
 
 
 func _draw_ellipse(pf: Control, center: Vector2, radii: Vector2, color: Color) -> void:
+	if GraphicStyle:
+		GraphicStyle.draw_ellipse(pf, center, radii, color, 24)
+		return
 	var pts := PackedVector2Array()
 	for i in 24:
 		var a := TAU * float(i) / 24.0

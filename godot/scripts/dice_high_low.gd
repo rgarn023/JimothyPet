@@ -337,6 +337,8 @@ func _on_die_draw() -> void:
 			else:
 				base = Color("466450") if _correct else Color("5a464e")
 		var col := Color(base.r * lit, base.g * lit, base.b * lit, 1.0)
+		if GraphicStyle:
+			col = GraphicStyle.face_lit(base, float(f.n.z))
 		var poly := PackedVector2Array([
 			Vector2(f.pts[0].x, f.pts[0].y),
 			Vector2(f.pts[1].x, f.pts[1].y),
@@ -345,6 +347,10 @@ func _on_die_draw() -> void:
 		_die.draw_colored_polygon(poly, col)
 		var edge := Color("f0c57a")
 		edge.a = 0.5 if not (_landed and int(f.num) == _result) else 0.9
+		if GraphicStyle:
+			edge = GraphicStyle.edge_color(edge)
+			if _landed and int(f.num) == _result:
+				edge.a = 0.95
 		_die.draw_polyline(poly + PackedVector2Array([poly[0]]), edge, 1.4 if int(f.num) != _result else 2.2, true)
 
 		var mx: float = (float(f.pts[0].x) + float(f.pts[1].x) + float(f.pts[2].x)) / 3.0
