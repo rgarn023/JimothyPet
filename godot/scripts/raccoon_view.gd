@@ -903,14 +903,24 @@ func _draw_front(c: Vector2) -> void:
 	var lx := c.x - leg_spread
 	var rx := c.x + leg_spread
 	var hip_y := c.y + body_y + 12.0
-	draw_line(Vector2(lx, hip_y), Vector2(lx - 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
-	draw_line(Vector2(rx, hip_y), Vector2(rx + 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_limb(self, Vector2(lx, hip_y), Vector2(lx - 2, hip_y + leg_h), stroke_w, Color("4f4f58"))
+		GraphicStyle.draw_limb(self, Vector2(rx, hip_y), Vector2(rx + 2, hip_y + leg_h), stroke_w, Color("4f4f58"))
+		GraphicStyle.draw_joint_blend(self, Vector2(lx, hip_y), Vector2(stroke_w * 1.1, stroke_w * 0.7), fur)
+		GraphicStyle.draw_joint_blend(self, Vector2(rx, hip_y), Vector2(stroke_w * 1.1, stroke_w * 0.7), fur)
+	else:
+		draw_line(Vector2(lx, hip_y), Vector2(lx - 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
+		draw_line(Vector2(rx, hip_y), Vector2(rx + 2, hip_y + leg_h), Color("4f4f58"), stroke_w)
 	if extra_legs:
 		var mlx := c.x - leg_spread * 0.35
 		var mrx := c.x + leg_spread * 0.35
 		var mid_h := leg_h * 0.9
-		draw_line(Vector2(mlx, hip_y + 1.0), Vector2(mlx - 1.0, hip_y + mid_h), Color("4f4f58"), stroke_w * 0.8)
-		draw_line(Vector2(mrx, hip_y + 1.0), Vector2(mrx + 1.0, hip_y + mid_h), Color("4f4f58"), stroke_w * 0.8)
+		if GraphicStyle and GraphicStyle.is_realistic():
+			GraphicStyle.draw_limb(self, Vector2(mlx, hip_y + 1.0), Vector2(mlx - 1.0, hip_y + mid_h), stroke_w * 0.85, Color("4f4f58"))
+			GraphicStyle.draw_limb(self, Vector2(mrx, hip_y + 1.0), Vector2(mrx + 1.0, hip_y + mid_h), stroke_w * 0.85, Color("4f4f58"))
+		else:
+			draw_line(Vector2(mlx, hip_y + 1.0), Vector2(mlx - 1.0, hip_y + mid_h), Color("4f4f58"), stroke_w * 0.8)
+			draw_line(Vector2(mrx, hip_y + 1.0), Vector2(mrx + 1.0, hip_y + mid_h), Color("4f4f58"), stroke_w * 0.8)
 		_ellipse(Vector2(mlx - 1.0, hip_y + mid_h), Vector2(4.5, 2.6), Color("3a3a44"))
 		_ellipse(Vector2(mrx + 1.0, hip_y + mid_h), Vector2(4.5, 2.6), Color("3a3a44"))
 	_ellipse(Vector2(lx - 2, hip_y + leg_h), Vector2(6, 3.2), Color("3a3a44"))
@@ -922,19 +932,34 @@ func _draw_front(c: Vector2) -> void:
 	if stage == "adult" and adult_form == "saint":
 		_ellipse(c + Vector2(0, body_y + 6), Vector2(14, 10), Color(belly.r, belly.g, belly.b, 0.35))
 	elif stage == "adult" and adult_form == "legend":
-		draw_colored_polygon(PackedVector2Array([
+		var blaze := PackedVector2Array([
 			c + Vector2(-8, -4), c + Vector2(10, 2), c + Vector2(-6, 8)
-		]), Color("e0a04a"))
+		])
+		if GraphicStyle:
+			GraphicStyle.draw_poly(self, blaze, Color("e0a04a"))
+		else:
+			draw_colored_polygon(blaze, Color("e0a04a"))
 	elif stage == "adult" and adult_form == "ballard_blip":
-		draw_line(c + Vector2(-12, 18), c + Vector2(12, 18), Color("c45c4a"), 3.5)
+		if GraphicStyle and GraphicStyle.is_realistic():
+			GraphicStyle.draw_limb(self, c + Vector2(-12, 18), c + Vector2(12, 18), 3.8, Color("c45c4a"))
+		else:
+			draw_line(c + Vector2(-12, 18), c + Vector2(12, 18), Color("c45c4a"), 3.5)
 	elif stage == "young" and young_form == "puff":
 		_ellipse(c + Vector2(0, body_y + 6), Vector2(14, 10), Color(belly.r, belly.g, belly.b, 0.5))
 
 	_ellipse(c + Vector2(0, head_y), Vector2(head_r, head_r * 0.95), fur.lightened(0.04))
+	# Fuse head into body so Realistic doesn't read as stacked circles.
+	if GraphicStyle and GraphicStyle.is_realistic():
+		var neck := Vector2(0, (body_y + head_y) * 0.5 + 2.0)
+		GraphicStyle.draw_joint_blend(self, c + neck, Vector2(head_r * 0.85, head_r * 0.55), fur)
+		GraphicStyle.draw_joint_blend(self, c + Vector2(0, body_y - body_ry * 0.35), Vector2(body_rx * 0.55, body_ry * 0.4), fur)
 	_ellipse(c + Vector2(-10, ear_y), Vector2(ear_rx, ear_ry), Color("4a4a54"))
 	_ellipse(c + Vector2(-10, ear_y), Vector2(ear_rx * 0.45, ear_ry * 0.55), Color("e2cdb2"))
 	_ellipse(c + Vector2(10, ear_y), Vector2(ear_rx, ear_ry), Color("4a4a54"))
 	_ellipse(c + Vector2(10, ear_y), Vector2(ear_rx * 0.45, ear_ry * 0.55), Color("e2cdb2"))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_joint_blend(self, c + Vector2(-10, ear_y + ear_ry * 0.45), Vector2(ear_rx * 0.9, ear_ry * 0.55), fur.lightened(0.02))
+		GraphicStyle.draw_joint_blend(self, c + Vector2(10, ear_y + ear_ry * 0.45), Vector2(ear_rx * 0.9, ear_ry * 0.55), fur.lightened(0.02))
 	if crown_kind != "":
 		_trash_crown(crown_kind, c + Vector2(0, head_y - head_r + 2), 1.0)
 	_ellipse(c + Vector2(0, head_y + 2), Vector2(head_r * 0.72, head_r * 0.42), Color(mask.r, mask.g, mask.b, 0.9))
@@ -993,17 +1018,17 @@ func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
 			var crust := PackedVector2Array([
 				p + Vector2(0, -14), p + Vector2(16, 12), p + Vector2(-16, 12)
 			])
-			draw_colored_polygon(crust, Color(0.54, 0.29, 0.16, a))
+			_poly_prop(crust, Color(0.54, 0.29, 0.16, a))
 			var cheese := PackedVector2Array([
 				p + Vector2(0, -12), p + Vector2(13, 10), p + Vector2(-13, 10)
 			])
-			draw_colored_polygon(cheese, Color(0.88, 0.63, 0.29, a))
+			_poly_prop(cheese, Color(0.88, 0.63, 0.29, a))
 			draw_line(p + Vector2(-11, -2), p + Vector2(11, -2), Color(0.77, 0.36, 0.29, a), 3.5)
-			draw_circle(p + Vector2(-4, 3), 2.6, Color(0.54, 0.18, 0.18, a))
-			draw_circle(p + Vector2(5, 5), 2.2, Color(0.54, 0.18, 0.18, a))
+			_dot(p + Vector2(-4, 3), 2.6, Color(0.54, 0.18, 0.18, a))
+			_dot(p + Vector2(5, 5), 2.2, Color(0.54, 0.18, 0.18, a))
 		"fries":
 			# Red carton + upright fry sticks (reads clearly vs pizza)
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				p + Vector2(-12, 2), p + Vector2(12, 2), p + Vector2(9, 16), p + Vector2(-9, 16)
 			]), Color(0.77, 0.36, 0.29, a))
 			draw_rect(Rect2(p + Vector2(-11, 0), Vector2(22, 4)), Color(0.83, 0.42, 0.34, a))
@@ -1013,18 +1038,31 @@ func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
 			draw_line(p + Vector2(7, -13), p + Vector2(7, 4), Color(0.83, 0.57, 0.23, a), 2.8)
 		"fish":
 			_ellipse(p, Vector2(18, 8), Color(0.66, 0.77, 0.83, a))
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				p + Vector2(16, 0), p + Vector2(24, -7), p + Vector2(24, 7)
 			]), Color(0.45, 0.62, 0.7, a))
-			draw_circle(p + Vector2(-8, -1), 2.2, Color(0.1, 0.12, 0.14, a))
+			_dot(p + Vector2(-8, -1), 2.2, Color(0.1, 0.12, 0.14, a))
 		"crickets":
 			_ellipse(p, Vector2(12, 7), Color(0.42, 0.48, 0.28, a))
-			draw_line(p + Vector2(-5, -3), p + Vector2(-13, -10), Color(0.3, 0.35, 0.18, a), 2.0)
-			draw_line(p + Vector2(4, 2), p + Vector2(12, 9), Color(0.3, 0.35, 0.18, a), 2.0)
+			if GraphicStyle and GraphicStyle.is_realistic():
+				GraphicStyle.draw_limb(self, p + Vector2(-5, -3), p + Vector2(-13, -10), 2.2, Color(0.3, 0.35, 0.18, a))
+				GraphicStyle.draw_limb(self, p + Vector2(4, 2), p + Vector2(12, 9), 2.2, Color(0.3, 0.35, 0.18, a))
+			else:
+				draw_line(p + Vector2(-5, -3), p + Vector2(-13, -10), Color(0.3, 0.35, 0.18, a), 2.0)
+				draw_line(p + Vector2(4, 2), p + Vector2(12, 9), Color(0.3, 0.35, 0.18, a), 2.0)
 		_:
 			_ellipse(p + Vector2(-7, 1), Vector2(10, 10), Color(0.42, 0.35, 0.63, a))
 			_ellipse(p + Vector2(7, -3), Vector2(9, 9), Color(0.48, 0.38, 0.68, a))
 			_ellipse(p + Vector2(0, 7), Vector2(8, 8), Color(0.35, 0.28, 0.52, a))
+			if GraphicStyle and GraphicStyle.is_realistic():
+				GraphicStyle.draw_joint_blend(self, p, Vector2(10, 8), Color(0.42, 0.35, 0.63, a))
+
+
+func _poly_prop(pts: PackedVector2Array, color: Color) -> void:
+	if GraphicStyle:
+		GraphicStyle.draw_poly(self, pts, color, false)
+	else:
+		draw_colored_polygon(pts, color)
 
 
 func _draw_wings(c: Vector2, face: float, span: float) -> void:
@@ -1040,7 +1078,7 @@ func _draw_wings(c: Vector2, face: float, span: float) -> void:
 		c + Vector2(-spread * 0.6, 14),
 		c + Vector2(-10, 6),
 	])
-	draw_colored_polygon(l, wing_col)
+	_poly_prop(l, wing_col)
 	draw_polyline(l, edge, 1.5, true)
 	# Right wing
 	var r := PackedVector2Array([
@@ -1050,7 +1088,7 @@ func _draw_wings(c: Vector2, face: float, span: float) -> void:
 		c + Vector2(spread * 0.6, 14),
 		c + Vector2(10, 6),
 	])
-	draw_colored_polygon(r, wing_col)
+	_poly_prop(r, wing_col)
 	draw_polyline(r, edge, 1.5, true)
 	# Tiny sparkles
 	for i in 4:
@@ -1070,7 +1108,7 @@ func _draw_clearing() -> void:
 	# Leaf flecks
 	for i in 5:
 		var lx := size.x * (0.2 + float(i) * 0.14)
-		draw_colored_polygon(PackedVector2Array([
+		_poly_prop(PackedVector2Array([
 			Vector2(lx, ground_y - 2),
 			Vector2(lx + 5, ground_y),
 			Vector2(lx + 1, ground_y + 3),
@@ -1084,7 +1122,7 @@ func _draw_oval_leaf(c: Vector2, rx: float, ry: float, color: Color, rot_deg: fl
 		var a := TAU * float(i) / 18.0
 		var local := Vector2(cos(a) * rx, sin(a) * ry).rotated(rad)
 		pts.append(c + local)
-	draw_colored_polygon(pts, color)
+	_poly_prop(pts, color)
 
 
 func _draw_tip_leaf(c: Vector2, len: float, wid: float, color: Color, rot_deg: float) -> void:
@@ -1093,7 +1131,7 @@ func _draw_tip_leaf(c: Vector2, len: float, wid: float, color: Color, rot_deg: f
 	var base := Vector2(0, len * 0.45).rotated(rad)
 	var left := Vector2(-wid, 0).rotated(rad)
 	var right := Vector2(wid, 0).rotated(rad)
-	draw_colored_polygon(PackedVector2Array([c + tip, c + right, c + base, c + left]), color)
+	_poly_prop(PackedVector2Array([c + tip, c + right, c + base, c + left]), color)
 
 
 func _draw_bush(c: Vector2) -> void:
@@ -1169,6 +1207,12 @@ func _side_leg(hip: Vector2, foot: Vector2, width: float, phase: float, amp: flo
 	var kick := sin(phase) * amp
 	var mid := (hip + foot) * 0.5 + Vector2(kick * 0.6, -absf(kick) * 0.35)
 	var toe := foot + Vector2(kick * 0.4, absf(kick) * 0.15)
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_limb(self, hip, mid, width * 1.05, Color("4f4f58"))
+		GraphicStyle.draw_limb(self, mid, toe, width * 0.95, Color("4f4f58"))
+		_ellipse(toe, Vector2(6.4, 3.4), Color("3a3a44"))
+		GraphicStyle.draw_joint_blend(self, mid, Vector2(width * 0.7, width * 0.45), Color("4f4f58"))
+		return
 	draw_line(hip, mid, Color("4f4f58"), width)
 	draw_line(mid, toe, Color("4f4f58"), width)
 	_ellipse(toe, Vector2(6, 3.2), Color("3a3a44"))
@@ -1176,6 +1220,16 @@ func _side_leg(hip: Vector2, foot: Vector2, width: float, phase: float, amp: flo
 
 func _ringed_tail(base: Vector2, length: float, face: float, rings: bool = true) -> void:
 	var tip := base + Vector2(-length * face, -length * 0.25)
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_limb(self, base, tip, 8.2, Color("5a5a64"))
+		if rings:
+			for i in 4:
+				var t := 0.2 + float(i) * 0.18
+				var p := base.lerp(tip, t)
+				_ellipse(p, Vector2(4.4, 3.2), Color("c8c8d0").darkened(0.05))
+				GraphicStyle.draw_joint_blend(self, p, Vector2(5.0, 3.5), Color("5a5a64"))
+		GraphicStyle.draw_joint_blend(self, base, Vector2(7.0, 5.0), _fur())
+		return
 	draw_line(base, tip, Color("5a5a64"), 8.0)
 	if rings:
 		for i in 4:
@@ -1413,18 +1467,20 @@ func _form_wings(kind: String, c: Vector2, face: float, cy: float) -> void:
 				c + Vector2(-34 * face, cy + 2),
 				c + Vector2(-10 * face, cy + 4),
 			])
-			draw_colored_polygon(l, Color(0.1, 0.1, 0.13, 0.88))
+			_poly_prop(l, Color(0.1, 0.1, 0.13, 0.88))
 			var r := PackedVector2Array([
 				c + Vector2(4 * face, cy - 2),
 				c + Vector2(22 * face, cy - 14),
 				c + Vector2(28 * face, cy),
 				c + Vector2(6 * face, cy + 2),
 			])
-			draw_colored_polygon(r, Color(0.1, 0.1, 0.13, 0.7))
+			_poly_prop(r, Color(0.1, 0.1, 0.13, 0.7))
 		"moth":
 			_ellipse(c + Vector2(-16 * face, cy - 2), Vector2(15, 9), Color(0.16, 0.19, 0.28, 0.8))
 			_ellipse(c + Vector2(12 * face, cy - 4), Vector2(11, 7), Color(0.16, 0.19, 0.28, 0.65))
 			_ellipse(c + Vector2(-14 * face, cy - 2), Vector2(7, 3.5), Color(0.78, 0.85, 0.94, 0.22))
+			if GraphicStyle and GraphicStyle.is_realistic():
+				GraphicStyle.draw_joint_blend(self, c + Vector2(-16 * face, cy - 2), Vector2(12, 7), Color(0.16, 0.19, 0.28, 0.8))
 		"leaf":
 			_ellipse(c + Vector2(-18 * face, cy), Vector2(13, 7.5), Color("6fbf84"))
 			_ellipse(c + Vector2(14 * face, cy - 2), Vector2(11, 6.5), Color(0.33, 0.54, 0.38, 0.85))
@@ -1435,14 +1491,14 @@ func _form_wings(kind: String, c: Vector2, face: float, cy: float) -> void:
 				c + Vector2(-34 * face, cy + 3),
 				c + Vector2(-8 * face, cy + 3),
 			])
-			draw_colored_polygon(gl, Color(0.78, 0.86, 0.94, 0.45))
+			_poly_prop(gl, Color(0.78, 0.86, 0.94, 0.45))
 			var gr := PackedVector2Array([
 				c + Vector2(2 * face, cy - 2),
 				c + Vector2(24 * face, cy - 16),
 				c + Vector2(32 * face, cy + 2),
 				c + Vector2(4 * face, cy + 2),
 			])
-			draw_colored_polygon(gr, Color(0.78, 0.86, 0.94, 0.35))
+			_poly_prop(gr, Color(0.78, 0.86, 0.94, 0.35))
 
 
 func _trash_crown(kind: String, tip: Vector2, face: float = 1.0) -> void:
@@ -1455,34 +1511,34 @@ func _trash_crown(kind: String, tip: Vector2, face: float = 1.0) -> void:
 			draw_line(tip + Vector2(3.0, -4), tip + Vector2(3.5, -8), Color("6a7888"), 1.5)
 			draw_line(tip + Vector2(6.5, -3), tip + Vector2(7.5, -7), Color("6a7888"), 1.5)
 		"tincan":
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				tip + Vector2(-9, 0), tip + Vector2(-7, -9), tip + Vector2(7, -9), tip + Vector2(9, 0)
 			]), Color("9a7a4a"))
 			draw_rect(Rect2(tip + Vector2(-6.5, -8), Vector2(13, 2.5)), Color(0.77, 0.63, 0.42, 0.85))
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				tip + Vector2(-5, -9), tip + Vector2(-3, -14), tip + Vector2(-1, -9)
 			]), Color("b8925a"))
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				tip + Vector2(1, -9), tip + Vector2(3, -13), tip + Vector2(5, -9)
 			]), Color("b8925a"))
 		"gold":
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				tip + Vector2(-11, 0), tip + Vector2(-9, -7), tip + Vector2(-3, -3),
 				tip + Vector2(0, -13), tip + Vector2(3, -3), tip + Vector2(9, -7), tip + Vector2(11, 0)
 			]), Color("e0a04a"))
-			draw_circle(tip + Vector2(0, -5), 2.0, Color("fff3d0"))
+			_dot(tip + Vector2(0, -5), 2.0, Color("fff3d0"))
 			_ellipse(tip, Vector2(11, 2.2), Color(0.77, 0.52, 0.16, 0.55))
 		"pizza":
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				tip + Vector2(-10, 1), tip + Vector2(-7, -8), tip + Vector2(0, -4),
 				tip + Vector2(7, -9), tip + Vector2(10, 1)
 			]), Color("8a4a28"))
-			draw_colored_polygon(PackedVector2Array([
+			_poly_prop(PackedVector2Array([
 				tip + Vector2(-8, 0), tip + Vector2(-6, -6), tip + Vector2(0, -3),
 				tip + Vector2(6, -7), tip + Vector2(8, 0)
 			]), Color("e0a04a"))
-			draw_circle(tip + Vector2(-2.5 * face, -2.5), 1.3, Color("8a2f2f"))
-			draw_circle(tip + Vector2(2.5 * face, -3.5), 1.1, Color("8a2f2f"))
+			_dot(tip + Vector2(-2.5 * face, -2.5), 1.3, Color("8a2f2f"))
+			_dot(tip + Vector2(2.5 * face, -3.5), 1.1, Color("8a2f2f"))
 
 
 func _draw_baby(c: Vector2, face: float) -> void:
@@ -1496,6 +1552,9 @@ func _draw_baby(c: Vector2, face: float) -> void:
 	_ellipse(c + Vector2(0, 16 + wobble), Vector2(22, 17), fur)
 	_ellipse(c + Vector2(4 * face, 20), Vector2(11, 9), fur.lightened(0.18))
 	_ellipse(c + Vector2(16 * face, 6), Vector2(13, 12), fur.lightened(0.04))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_joint_blend(self, c + Vector2(8 * face, 12 + wobble * 0.5), Vector2(14, 10), fur)
+		GraphicStyle.draw_joint_blend(self, c + Vector2(2 * face, 16 + wobble), Vector2(12, 8), fur)
 	_side_ear(c + Vector2(12 * face, -6))
 	_ellipse(c + Vector2(24 * face, 8), Vector2(5, 3.2), Color("c9a292"))
 	_ellipse(c + Vector2(16 * face, 8), Vector2(8, 5.5), Color("2a2a32"))
@@ -1569,10 +1628,20 @@ func _draw_young(c: Vector2, face: float) -> void:
 			c + Vector2(14 * face, body_y - 18),
 			c + Vector2(18 * face, body_y - 10),
 		])
-		draw_colored_polygon(ear_a, Color("4a4a54"))
+		if GraphicStyle:
+			GraphicStyle.draw_poly(self, ear_a, Color("4a4a54"))
+		else:
+			draw_colored_polygon(ear_a, Color("4a4a54"))
 		_ellipse(c + Vector2(16 * face, body_y + 12), Vector2(5, 2.5), Color("3a3a44"))
 
 	_ellipse(c + Vector2(head_x * face, body_y - 2), Vector2(head_r, head_r * 0.95), fur.lightened(0.05))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_joint_blend(
+			self,
+			c + Vector2(head_x * face * 0.45, body_y - 1),
+			Vector2(head_r * 0.9, head_r * 0.55),
+			fur
+		)
 	if young_form != "nub":
 		_side_ear(c + Vector2((head_x - 4) * face, body_y - head_r - 2))
 	if crown_kind != "":
@@ -1655,6 +1724,13 @@ func _draw_teen(c: Vector2, face: float) -> void:
 		_ellipse(c + Vector2(-6 * face, body_y + 8), Vector2(3.5, 2.5), Color(0.42, 0.47, 0.53, 0.55))
 
 	_ellipse(c + Vector2(head_x * face, body_y - 1), Vector2(head_r, head_r * 0.95), fur.lightened(0.04))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_joint_blend(
+			self,
+			c + Vector2(head_x * face * 0.42, body_y),
+			Vector2(head_r * 0.95, head_r * 0.55),
+			fur
+		)
 	if form == "scruff":
 		draw_line(c + Vector2((head_x - 2) * face, body_y - head_r), c + Vector2((head_x + 2) * face, body_y - head_r - 10), Color("4a4a54"), 3.0)
 	else:
@@ -1707,7 +1783,7 @@ func _draw_adult(c: Vector2, face: float) -> void:
 				c + Vector2(30 * face, -4),
 				c + Vector2(10 * face, 4),
 			])
-			draw_colored_polygon(blaze, Color("e0a04a"))
+			_poly_prop(blaze, Color("e0a04a"))
 			gleam = Color("fff3d0")
 		"alley_ghost":
 			body_rx = 36.0
@@ -1719,20 +1795,26 @@ func _draw_adult(c: Vector2, face: float) -> void:
 			_form_wings("ghost", c, face, body_y)
 			_ellipse(c + Vector2(-28 * face, 4), Vector2(10, 6), Color(0.78, 0.86, 0.94, 0.28))
 			_ellipse(c + Vector2(30 * face, 6), Vector2(8, 5), Color(0.78, 0.86, 0.94, 0.22))
-			draw_line(c + Vector2(-22 * face, 2), c + Vector2(-36 * face, -6), Color(0.66, 0.7, 0.77, 0.7), 7.0)
+			if GraphicStyle and GraphicStyle.is_realistic():
+				GraphicStyle.draw_limb(self, c + Vector2(-22 * face, 2), c + Vector2(-36 * face, -6), 7.2, Color(0.66, 0.7, 0.77, 0.7))
+			else:
+				draw_line(c + Vector2(-22 * face, 2), c + Vector2(-36 * face, -6), Color(0.66, 0.7, 0.77, 0.7), 7.0)
 		"ballard_blip":
 			body_rx = 34.0
 			body_ry = 30.0
 			leg_h = 34.0
 			crown_kind = "pizza"
-			draw_line(c + Vector2(6 * face, 8), c + Vector2(28 * face, 8), Color("c45c4a"), 4.0)
+			if GraphicStyle and GraphicStyle.is_realistic():
+				GraphicStyle.draw_limb(self, c + Vector2(6 * face, 8), c + Vector2(28 * face, 8), 4.2, Color("c45c4a"))
+			else:
+				draw_line(c + Vector2(6 * face, 8), c + Vector2(28 * face, 8), Color("c45c4a"), 4.0)
 			_ellipse(c + Vector2(0, 10), Vector2(13, 9), Color(0.88, 0.63, 0.29, 0.35))
 			var notch := PackedVector2Array([
 				c + Vector2(10 * face, -24),
 				c + Vector2(16 * face, -10),
 				c + Vector2(6 * face, -12),
 			])
-			draw_colored_polygon(notch, Color("4a4a54"))
+			_poly_prop(notch, Color("4a4a54"))
 
 	if adult_form != "alley_ghost":
 		_ringed_tail(c + Vector2(-26 * face, body_y + 4), 26.0, face, true)
@@ -1751,6 +1833,13 @@ func _draw_adult(c: Vector2, face: float) -> void:
 
 	if adult_form != "ballard_blip":
 		_side_ear(c + Vector2(12 * face, body_y - body_ry + 2), 6.0, 11.0)
+	if GraphicStyle and GraphicStyle.is_realistic():
+		GraphicStyle.draw_joint_blend(
+			self,
+			c + Vector2(10 * face, body_y - body_ry * 0.35),
+			Vector2(16, 12),
+			fur
+		)
 	if crown_kind != "":
 		_trash_crown(crown_kind, c + Vector2(12 * face, body_y - body_ry + 4), face)
 	_ellipse(c + Vector2(24 * face, body_y + 2), Vector2(8, 5.5), snout)

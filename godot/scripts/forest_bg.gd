@@ -154,24 +154,58 @@ func _ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
 func _pine(base: Vector2, scale: float, color: Color) -> void:
 	var trunk_h := 28.0 * scale
 	var trunk_col := color.darkened(0.2)
+	var realistic := GraphicStyle != null and GraphicStyle.is_realistic()
 	if GraphicStyle and GraphicStyle.is_cell():
 		draw_rect(Rect2(base.x - 4.0 * scale, base.y - 1.0, 8.0 * scale, trunk_h + 2.0), GraphicStyle.outline_for(trunk_col))
-	elif GraphicStyle and GraphicStyle.is_realistic():
-		# Soft trunk shadow / bark volume — same trunk shape.
-		draw_rect(Rect2(base.x - 3.4 * scale, base.y + 1.0, 7.0 * scale, trunk_h), Color(0.02, 0.03, 0.02, color.a * 0.25))
-	draw_rect(Rect2(base.x - 3.0 * scale, base.y, 6.0 * scale, trunk_h), trunk_col)
-	if GraphicStyle and GraphicStyle.is_realistic():
-		draw_rect(
-			Rect2(base.x - 2.2 * scale, base.y + 1.0, 2.2 * scale, trunk_h * 0.85),
-			trunk_col.lightened(0.12)
+	if realistic:
+		# Soft organic trunk capsule — not a hard rectangle.
+		GraphicStyle.draw_limb(
+			self,
+			base + Vector2(0, trunk_h * 0.08),
+			base + Vector2(0, trunk_h),
+			6.2 * scale,
+			trunk_col
 		)
-	var tiers: Array[Vector2] = [
+		# Organic layered canopy (soft lobes) instead of stacked triangles.
+		var canopy_y := base.y
+		var tiers: Array[Vector2] = [
+			Vector2(34, 36),
+			Vector2(26, 28),
+			Vector2(18, 22),
+		]
+		for i in tiers.size():
+			var t: Vector2 = tiers[i]
+			var half: float = t.x * scale
+			var tall: float = t.y * scale
+			var cy := canopy_y + tall * 0.12
+			_ellipse(
+				Vector2(base.x, cy),
+				Vector2(half * 0.92, tall * 0.42),
+				color.darkened(0.04 * float(i))
+			)
+			_ellipse(
+				Vector2(base.x - half * 0.28, cy + tall * 0.08),
+				Vector2(half * 0.48, tall * 0.3),
+				color.lightened(0.03)
+			)
+			_ellipse(
+				Vector2(base.x + half * 0.26, cy + tall * 0.1),
+				Vector2(half * 0.44, tall * 0.28),
+				color.darkened(0.06)
+			)
+			# Soft tip mass so the silhouette still reads as a pine.
+			if i == tiers.size() - 1:
+				_ellipse(Vector2(base.x, cy - tall * 0.22), Vector2(half * 0.38, tall * 0.28), color.lightened(0.05))
+			canopy_y -= tall * 0.32
+		return
+	draw_rect(Rect2(base.x - 3.0 * scale, base.y, 6.0 * scale, trunk_h), trunk_col)
+	var tiers_n: Array[Vector2] = [
 		Vector2(36, 40),
 		Vector2(28, 32),
 		Vector2(20, 24),
 	]
 	var y := base.y
-	for t in tiers:
+	for t in tiers_n:
 		var half: float = t.x * scale
 		var tall: float = t.y * scale
 		var tri := PackedVector2Array([
@@ -190,3 +224,6 @@ func _bush(base: Vector2, scale: float, color: Color = Color(0.12, 0.28, 0.18, 0
 	_ellipse(base + Vector2(-10 * scale, 0), Vector2(16 * scale, 12 * scale), color)
 	_ellipse(base + Vector2(8 * scale, -2 * scale), Vector2(14 * scale, 11 * scale), color.lightened(0.05))
 	_ellipse(base + Vector2(0, -8 * scale), Vector2(12 * scale, 10 * scale), color.lightened(0.08))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		# Fuse the three bush lobes into one soft mass.
+		GraphicStyle.draw_joint_blend(self, base + Vector2(-2 * scale, -3 * scale), Vector2(14 * scale, 10 * scale), color)

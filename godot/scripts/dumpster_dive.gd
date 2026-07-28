@@ -312,12 +312,46 @@ func _on_playfield_draw() -> void:
 func _draw_dumpster(pf: Control) -> void:
 	var r := dumpster
 	_draw_ellipse(pf, Vector2(r.get_center().x, r.end.y + 8), Vector2(r.size.x * 0.45, 10), Color(0, 0, 0, 0.25))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		# Soft organic dumpster body instead of stacked hard rectangles.
+		var body := PackedVector2Array([
+			r.position + Vector2(4, 18),
+			r.position + Vector2(r.size.x - 4, 18),
+			r.position + Vector2(r.size.x - 2, r.size.y - 4),
+			r.position + Vector2(2, r.size.y - 4),
+		])
+		GraphicStyle.draw_poly(pf, body, Color("3d6b4f"))
+		var inset := PackedVector2Array([
+			r.position + Vector2(12, 30),
+			r.position + Vector2(r.size.x - 12, 30),
+			r.position + Vector2(r.size.x - 14, r.size.y - 8),
+			r.position + Vector2(14, r.size.y - 8),
+		])
+		GraphicStyle.draw_poly(pf, inset, Color("2a4a38"))
+		var mouth := PackedVector2Array([
+			r.position + Vector2(18, 24),
+			r.position + Vector2(r.size.x - 20, 24),
+			r.position + Vector2(r.size.x - 22, 48),
+			r.position + Vector2(20, 48),
+		])
+		GraphicStyle.draw_poly(pf, mouth, Color("142019"))
+		var lid_y := r.position.y + 4.0 - lid_open * 18.0
+		var lid := PackedVector2Array([
+			Vector2(r.position.x + 12, lid_y + 2),
+			Vector2(r.end.x - 12, lid_y + 2),
+			Vector2(r.end.x - 16, lid_y + 16),
+			Vector2(r.position.x + 16, lid_y + 16),
+		])
+		GraphicStyle.draw_poly(pf, lid, Color("2f5540"))
+		_draw_ellipse(pf, Vector2(r.position.x + 22, r.end.y + 2), Vector2(7.5, 6.5), Color("1c1c22"))
+		_draw_ellipse(pf, Vector2(r.end.x - 22, r.end.y + 2), Vector2(7.5, 6.5), Color("1c1c22"))
+		return
 	pf.draw_rect(Rect2(r.position + Vector2(0, 16), Vector2(r.size.x, r.size.y - 10)), Color("3d6b4f"), true, -1.0, true)
 	pf.draw_rect(Rect2(r.position + Vector2(8, 28), Vector2(r.size.x - 16, r.size.y - 30)), Color("2a4a38"), true, -1.0, true)
 	pf.draw_rect(Rect2(r.position + Vector2(14, 22), Vector2(r.size.x - 30, 28)), Color("142019"), true, -1.0, true)
 	# Lid (tilted when open)
-	var lid_y := r.position.y + 4.0 - lid_open * 18.0
-	pf.draw_rect(Rect2(r.position.x + 10, lid_y, r.size.x - 20, 18), Color("2f5540"), true, -1.0, true)
+	var lid_y2 := r.position.y + 4.0 - lid_open * 18.0
+	pf.draw_rect(Rect2(r.position.x + 10, lid_y2, r.size.x - 20, 18), Color("2f5540"), true, -1.0, true)
 	pf.draw_circle(Vector2(r.position.x + 22, r.end.y + 2), 7, Color("1c1c22"))
 	pf.draw_circle(Vector2(r.end.x - 22, r.end.y + 2), 7, Color("1c1c22"))
 

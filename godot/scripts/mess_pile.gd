@@ -50,6 +50,10 @@ func _draw_pile(c: Vector2) -> void:
 	_blob(c + Vector2(5, 0), Vector2(10, 7), Color(0.28, 0.18, 0.1))
 	_blob(c + Vector2(-1, -4), Vector2(8, 6), Color(0.36, 0.24, 0.14))
 	_blob(c + Vector2(8, 4), Vector2(6, 5), Color(0.25, 0.16, 0.09))
+	if GraphicStyle and GraphicStyle.is_realistic():
+		# Fuse clumps into one organic pile instead of separate balls.
+		GraphicStyle.draw_joint_blend(self, c + Vector2(0, 1), Vector2(12, 7), Color(0.3, 0.2, 0.11))
+		GraphicStyle.draw_joint_blend(self, c + Vector2(3, 2), Vector2(9, 5), Color(0.28, 0.18, 0.1))
 	# Specular / moisture hint
 	_blob(c + Vector2(-4, -2), Vector2(3, 2), Color(0.45, 0.32, 0.18, 0.45))
 	# Tiny flies

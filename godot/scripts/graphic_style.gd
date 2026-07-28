@@ -1,7 +1,7 @@
 extends Node
 ## Shared look-and-feel for Normal / Cell-shaded / Realistic graphic modes.
-## Realistic keeps the same 2D silhouettes/designs and softens them with
-## richer lighting, depth, and material shading — no replacement meshes.
+## Realistic keeps the same designs but softens them into organic, painted forms
+## with depth and texture — no stacked perfect circles / triangles / boxes.
 
 signal mode_changed(mode: String)
 
@@ -115,6 +115,72 @@ func draw_poly(ci: CanvasItem, pts: PackedVector2Array, color: Color, outline: b
 			ci.draw_colored_polygon(pts, color)
 
 
+## Soft junction so overlapping body parts read as one mass (Realistic only).
+func draw_joint_blend(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color) -> void:
+	if not is_realistic() or color.a <= 0.001:
+		return
+	var lit := style_fill(color)
+	lit.a = color.a * 0.55
+	_poly_organic(ci, center, radii * 1.15, lit, 18, 0.12)
+	var soft := lit.lightened(0.04)
+	soft.a = color.a * 0.28
+	_poly_organic(ci, center + LIGHT_DIR * Vector2(radii.x, radii.y) * 0.12, radii * 0.7, soft, 14, 0.1)
+
+
+## Organic capsule for legs / tails in Realistic — avoids stick + circle look.
+func draw_limb(ci: CanvasItem, a: Vector2, b: Vector2, width: float, color: Color) -> void:
+	if color.a <= 0.001:
+		return
+	if not is_realistic():
+		ci.draw_line(a, b, color, width)
+		return
+	var lit := style_fill(color)
+	var dir := b - a
+	var len := dir.length()
+	if len < 0.5:
+		draw_ellipse(ci, a, Vector2(width * 0.55, width * 0.4), lit, 14)
+		return
+	var n := dir.normalized()
+	var perp := Vector2(-n.y, n.x)
+	var half := width * 0.55
+	var bulge := width * 0.12
+	# Soft under-shadow for contact with body.
+	var ao := Color(0.04, 0.05, 0.06, lit.a * 0.22)
+	var ao_pts := PackedVector2Array([
+		a + perp * (half * 1.15) + Vector2(0.6, 1.2),
+		a - perp * (half * 1.15) + Vector2(0.6, 1.2),
+		b - perp * (half * 0.95) + Vector2(0.6, 1.2),
+		b + perp * (half * 0.95) + Vector2(0.6, 1.2),
+	])
+	ci.draw_colored_polygon(_round_poly(ao_pts, 1), ao)
+
+	var mid := (a + b) * 0.5
+	var pts := PackedVector2Array([
+		a + perp * half,
+		mid + perp * (half + bulge) + n * len * 0.02,
+		b + perp * (half * 0.85),
+		b - perp * (half * 0.85),
+		mid - perp * (half + bulge * 0.6) + n * len * 0.02,
+		a - perp * half,
+	])
+	var body := _round_poly(pts, 2)
+	ci.draw_colored_polygon(body, lit.darkened(0.06))
+	# Lit edge
+	var hi := lit.lightened(0.1)
+	hi.a = lit.a * 0.45
+	var hi_pts := PackedVector2Array([
+		a + perp * half * 0.35 + LIGHT_DIR * 1.5,
+		mid + perp * (half * 0.55) + LIGHT_DIR * 2.0,
+		b + perp * half * 0.25 + LIGHT_DIR * 1.2,
+		b - perp * half * 0.1,
+		mid - perp * half * 0.15,
+		a - perp * half * 0.1,
+	])
+	ci.draw_colored_polygon(_round_poly(hi_pts, 1), hi)
+	# Soft paw tip mass
+	draw_ellipse(ci, b, Vector2(width * 0.72, width * 0.42), lit.darkened(0.08), 14)
+
+
 func face_lit(base: Color, n_z: float) -> Color:
 	## Dice / projected-mesh lighting tuned per graphic mode.
 	match mode():
@@ -182,138 +248,187 @@ func _draw_ellipse_cell(ci: CanvasItem, center: Vector2, radii: Vector2, color: 
 
 
 func _draw_ellipse_realistic(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color, points: int) -> void:
-	## Same silhouette as Normal, painted with soft volume, AO, and fur grain.
+	## Organic painted mass: irregular silhouette, soft depth, fur grain.
+	## Avoid nested perfect ellipses that read as stacked balls.
 	var min_r := minf(radii.x, radii.y)
 	var lit := style_fill(color)
+	var n := maxi(14, points + 4)
 
-	# Contact / ambient occlusion under the form (does not change outline).
+	# Contact / ambient occlusion under the form (organic, not a hard oval).
 	if color.a > 0.22 and min_r > 2.2:
-		var ao := Color(0.04, 0.05, 0.06, color.a * 0.28)
-		_poly_ellipse(
+		var ao := Color(0.04, 0.05, 0.06, color.a * 0.22)
+		_poly_organic(
 			ci,
-			center + Vector2(0.8, radii.y * 0.22),
-			radii * Vector2(1.08, 0.78),
+			center + Vector2(0.6, radii.y * 0.18),
+			radii * Vector2(1.12, 0.82),
 			ao,
-			points
+			n,
+			0.1
 		)
 
-	# Core body mass — slightly denser base so highlights read.
-	var core := lit.darkened(0.08)
-	_poly_ellipse(ci, center, radii, core, points)
+	# Soft under-bleed so overlapping parts fuse instead of showing circle seams.
+	if color.a > 0.28 and min_r > 3.5:
+		var bleed := lit
+		bleed.a = lit.a * 0.32
+		_poly_organic(ci, center, radii * 1.08, bleed, n, 0.14)
 
-	# Soft form shadow opposite the key light.
+	# Core organic silhouette.
+	var core := lit.darkened(0.05)
+	_poly_organic(ci, center, radii, core, n, 0.16)
+
+	# Broad soft form shadow — irregular, low-contrast so it doesn't look like a second ball.
 	if color.a > 0.28 and min_r > 3.0:
-		var form_sh := lit.darkened(0.22)
-		form_sh.a = lit.a * 0.42
-		_poly_ellipse(
+		var form_sh := lit.darkened(0.18)
+		form_sh.a = lit.a * 0.28
+		_poly_organic(
 			ci,
-			center - LIGHT_DIR * Vector2(radii.x, radii.y) * 0.22,
-			radii * Vector2(0.72, 0.68),
+			center - LIGHT_DIR * Vector2(radii.x, radii.y) * 0.18,
+			radii * Vector2(0.78, 0.74),
 			form_sh,
-			maxi(12, points - 4)
+			maxi(12, n - 4),
+			0.2
 		)
 
-	# Mid-tone lift toward the key.
-	var mid := lit.lightened(0.05)
-	mid.a = lit.a * 0.82
-	_poly_ellipse(
+	# Soft mid-tone lift toward the key — organic blob, low alpha.
+	var mid := lit.lightened(0.06)
+	mid.a = lit.a * 0.38
+	_poly_organic(
 		ci,
-		center + LIGHT_DIR * Vector2(radii.x, radii.y) * 0.16,
-		radii * 0.72,
+		center + LIGHT_DIR * Vector2(radii.x, radii.y) * 0.18,
+		radii * 0.62,
 		mid,
-		points
+		maxi(12, n - 6),
+		0.18
 	)
 
 	# Warm subsurface / bounce near the lit rim.
 	if color.a > 0.32 and min_r > 4.0:
 		var bounce := Color(
-			minf(1.0, lit.r * 1.08 + 0.04),
-			minf(1.0, lit.g * 0.98 + 0.02),
+			minf(1.0, lit.r * 1.06 + 0.03),
+			minf(1.0, lit.g * 0.98 + 0.015),
 			minf(1.0, lit.b * 0.9),
-			lit.a * 0.22
+			lit.a * 0.16
 		)
-		_poly_ellipse(
+		_poly_organic(
 			ci,
-			center + LIGHT_DIR * Vector2(radii.x, radii.y) * 0.48,
-			radii * Vector2(0.48, 0.4),
+			center + LIGHT_DIR * Vector2(radii.x, radii.y) * 0.42,
+			radii * Vector2(0.42, 0.34),
 			bounce,
-			maxi(10, points / 2)
+			maxi(10, n / 2),
+			0.22
 		)
 
-	# Soft specular — small and diffuse so it stays “painted”, not plastic.
+	# Diffuse rim darkening so the edge isn't a crisp oval cutout.
 	if color.a > 0.35 and min_r > 5.0:
-		var spec := Color(1.0, 0.98, 0.94, lit.a * 0.18)
-		_poly_ellipse(
-			ci,
-			center + LIGHT_DIR * Vector2(radii.x, radii.y) * 0.38,
-			radii * Vector2(0.22, 0.16),
-			spec,
-			maxi(8, points / 3)
-		)
+		_draw_soft_rim(ci, center, radii, lit, n)
 
-	# Fine fur / surface grain — tiny ticks inside the silhouette only.
-	if color.a > 0.4 and min_r > 7.0:
+	# Fine fur / surface grain inside the silhouette.
+	if color.a > 0.4 and min_r > 6.5:
 		_draw_fur_grain(ci, center, radii, lit)
 
 
 func _draw_poly_realistic(ci: CanvasItem, pts: PackedVector2Array, color: Color) -> void:
 	var lit := style_fill(color)
-	var c := _poly_centroid(pts)
+	var organic := _organicize_poly(pts, 0.14)
+	var c := _poly_centroid(organic)
 
-	# Soft AO blob under the poly.
+	# Soft AO under the shape.
 	if color.a > 0.25:
-		var ao_pts := _grow_poly(pts, 1.2)
-		var ao := Color(0.04, 0.05, 0.06, color.a * 0.2)
-		# Offset downward slightly.
+		var ao_pts := _grow_poly(organic, 1.4)
+		var ao := Color(0.04, 0.05, 0.06, color.a * 0.18)
 		var shifted := PackedVector2Array()
 		for p in ao_pts:
-			shifted.append(p + Vector2(0.6, 1.4))
+			shifted.append(p + Vector2(0.5, 1.2))
 		if shifted.size() >= 3:
-			ci.draw_colored_polygon(shifted, ao)
+			ci.draw_colored_polygon(_round_poly(shifted, 1), ao)
 
-	ci.draw_colored_polygon(pts, lit.darkened(0.06))
+	# Soft under-bleed for seams with neighbors.
+	if color.a > 0.3:
+		var bleed := lit
+		bleed.a = lit.a * 0.28
+		ci.draw_colored_polygon(_grow_poly(organic, 1.0), bleed)
 
-	# Lit half toward key light.
-	var hi := lit.lightened(0.12)
-	hi.a = lit.a * 0.5
+	ci.draw_colored_polygon(organic, lit.darkened(0.05))
+
+	# Soft lit half — organic, not a hard wedge.
+	var hi := lit.lightened(0.1)
+	hi.a = lit.a * 0.38
 	var soft := PackedVector2Array()
-	var toward := c + LIGHT_DIR * 6.0
-	for i in pts.size():
-		var p: Vector2 = pts[i]
-		var bias := 0.28 if (p - c).dot(LIGHT_DIR) > 0.0 else 0.08
+	var toward := c + LIGHT_DIR * 5.0
+	for i in organic.size():
+		var p: Vector2 = organic[i]
+		var bias := 0.22 if (p - c).dot(LIGHT_DIR) > 0.0 else 0.06
 		soft.append(p.lerp(toward, bias))
 	if soft.size() >= 3:
-		ci.draw_colored_polygon(soft, hi)
+		ci.draw_colored_polygon(_round_poly(soft, 1), hi)
 
-	# Cool shade wedge on the opposite side.
-	if color.a > 0.35 and pts.size() >= 3:
-		var shade := lit.darkened(0.2)
-		shade.a = lit.a * 0.35
-		var away := c - LIGHT_DIR * 5.0
-		var band := PackedVector2Array([away, pts[0], pts[mini(pts.size() - 1, maxi(1, pts.size() / 2))]])
-		if band.size() >= 3:
-			ci.draw_colored_polygon(band, shade)
+	# Cool shade on the away side — rounded, low contrast.
+	if color.a > 0.35 and organic.size() >= 3:
+		var shade := lit.darkened(0.16)
+		shade.a = lit.a * 0.26
+		var away := c - LIGHT_DIR * 4.0
+		var band := PackedVector2Array([
+			away,
+			organic[0],
+			organic[mini(organic.size() - 1, maxi(1, organic.size() / 2))],
+		])
+		ci.draw_colored_polygon(_round_poly(band, 2), shade)
+
+	# Light surface grain on larger polys (trees, food wedges).
+	var extent := 0.0
+	for p in organic:
+		extent = maxf(extent, p.distance_to(c))
+	if color.a > 0.4 and extent > 10.0:
+		_draw_surface_grain(ci, c, extent, lit)
+
+
+func _draw_soft_rim(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color, points: int) -> void:
+	## Darken the outer rim slightly so the silhouette feels volumetric, not cut out.
+	var rim := color.darkened(0.2)
+	rim.a = color.a * 0.12
+	var outer := _organic_pts(center, radii * 1.02, points, 0.12)
+	var inner := _organic_pts(center, radii * 0.82, points, 0.1)
+	# Draw as a ring of thin wedges.
+	var n := mini(outer.size(), inner.size())
+	for i in n:
+		var j := (i + 1) % n
+		var quad := PackedVector2Array([outer[i], outer[j], inner[j], inner[i]])
+		ci.draw_colored_polygon(quad, rim)
 
 
 func _draw_fur_grain(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color) -> void:
 	## Subtle directional fur ticks — reads as coat texture, keeps the same shape.
 	var grain := color.darkened(0.18)
-	grain.a = color.a * 0.16
+	grain.a = color.a * 0.14
 	var hi_grain := color.lightened(0.1)
-	hi_grain.a = color.a * 0.1
-	var count := clampi(int(minf(radii.x, radii.y) * 0.55), 6, 18)
+	hi_grain.a = color.a * 0.09
+	var count := clampi(int(minf(radii.x, radii.y) * 0.65), 8, 22)
 	for i in count:
 		var seed := float(i) * 2.399 + center.x * 0.13 + center.y * 0.07
 		var ang := fmod(seed * 1.7, TAU)
-		var u := 0.25 + 0.55 * absf(sin(seed * 3.1))
-		var v := 0.2 + 0.5 * absf(cos(seed * 2.4))
-		var local := Vector2(cos(ang) * radii.x * u, sin(ang) * radii.y * v)
-		# Bias grain with light so lit side is finer/brighter.
+		var u := 0.22 + 0.58 * absf(sin(seed * 3.1))
+		var v := 0.18 + 0.52 * absf(cos(seed * 2.4))
+		# Keep ticks inside organic silhouette.
+		var wobble := 0.92 + 0.1 * sin(ang * 3.0 + seed)
+		var local := Vector2(cos(ang) * radii.x * u * wobble, sin(ang) * radii.y * v * wobble)
 		var along := LIGHT_DIR.rotated(0.35 + 0.15 * sin(seed))
 		var p0 := center + local
-		var p1 := p0 + along * Vector2(radii.x, radii.y) * 0.08
+		var p1 := p0 + along * Vector2(radii.x, radii.y) * 0.07
 		var stroke := hi_grain if local.dot(LIGHT_DIR) > 0.0 else grain
 		ci.draw_line(p0, p1, stroke, 1.0)
+
+
+func _draw_surface_grain(ci: CanvasItem, center: Vector2, extent: float, color: Color) -> void:
+	var grain := color.darkened(0.14)
+	grain.a = color.a * 0.1
+	var count := clampi(int(extent * 0.35), 4, 12)
+	for i in count:
+		var seed := float(i) * 1.7 + center.x * 0.09 + center.y * 0.05
+		var ang := fmod(seed * 2.1, TAU)
+		var d := extent * (0.25 + 0.45 * absf(sin(seed * 2.7)))
+		var p0 := center + Vector2(cos(ang), sin(ang)) * d
+		var p1 := p0 + LIGHT_DIR.rotated(sin(seed)) * extent * 0.08
+		ci.draw_line(p0, p1, grain, 1.0)
 
 
 func _poly_ellipse(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color, points: int) -> void:
@@ -324,6 +439,74 @@ func _poly_ellipse(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color
 		var a := TAU * float(i) / float(n)
 		pts[i] = center + Vector2(cos(a) * radii.x, sin(a) * radii.y)
 	ci.draw_colored_polygon(pts, color)
+
+
+func _poly_organic(ci: CanvasItem, center: Vector2, radii: Vector2, color: Color, points: int, amp: float) -> void:
+	var pts := _organic_pts(center, radii, points, amp)
+	if pts.size() >= 3:
+		ci.draw_colored_polygon(pts, color)
+
+
+func _organic_pts(center: Vector2, radii: Vector2, points: int, amp: float) -> PackedVector2Array:
+	## Irregular silhouette so masses don't read as perfect circles.
+	var n := maxi(10, points)
+	var pts := PackedVector2Array()
+	pts.resize(n)
+	var seed := center.x * 0.17 + center.y * 0.11 + radii.x * 0.03
+	for i in n:
+		var a := TAU * float(i) / float(n)
+		# Multi-harmonic wobble — soft lobes, not star spikes.
+		var wobble := 1.0 \
+			+ amp * 0.55 * sin(a * 2.0 + seed) \
+			+ amp * 0.35 * sin(a * 3.0 - seed * 1.3) \
+			+ amp * 0.18 * sin(a * 5.0 + seed * 0.7)
+		wobble = clampf(wobble, 0.78, 1.22)
+		pts[i] = center + Vector2(cos(a) * radii.x * wobble, sin(a) * radii.y * wobble)
+	return pts
+
+
+func _organicize_poly(pts: PackedVector2Array, amp: float) -> PackedVector2Array:
+	## Push polygon vertices outward unevenly and round sharp corners (triangles → soft leaves).
+	if pts.size() < 3:
+		return pts
+	var c := _poly_centroid(pts)
+	var warped := PackedVector2Array()
+	for i in pts.size():
+		var p: Vector2 = pts[i]
+		var d := p - c
+		var len := d.length()
+		if len < 0.001:
+			warped.append(p)
+			continue
+		var seed := float(i) * 1.9 + c.x * 0.08 + c.y * 0.05
+		var f := 1.0 + amp * sin(seed) * 0.9 + amp * 0.35 * cos(seed * 1.7)
+		warped.append(c + d * clampf(f, 0.82, 1.18))
+	# Extra mid-edge points so triangles don't stay sharp wedges.
+	var denser := PackedVector2Array()
+	for i in warped.size():
+		var a: Vector2 = warped[i]
+		var b: Vector2 = warped[(i + 1) % warped.size()]
+		denser.append(a)
+		var mid := a.lerp(b, 0.5)
+		var outward := (mid - c).normalized() if mid.distance_to(c) > 0.001 else Vector2.ZERO
+		denser.append(mid + outward * (amp * 4.0))
+	return _round_poly(denser, 2)
+
+
+func _round_poly(pts: PackedVector2Array, passes: int = 1) -> PackedVector2Array:
+	## Chaikin-ish corner cutting for soft organic outlines.
+	var cur := pts
+	for _p in maxi(1, passes):
+		if cur.size() < 3:
+			break
+		var nxt := PackedVector2Array()
+		for i in cur.size():
+			var a: Vector2 = cur[i]
+			var b: Vector2 = cur[(i + 1) % cur.size()]
+			nxt.append(a.lerp(b, 0.25))
+			nxt.append(a.lerp(b, 0.75))
+		cur = nxt
+	return cur
 
 
 func _poly_centroid(pts: PackedVector2Array) -> Vector2:
