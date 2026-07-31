@@ -31,9 +31,14 @@ func _check_source_proportions(failures: PackedStringArray) -> void:
 	for bad in ["Vector2(22, 17)", "Vector2(26, 18)", "body_ry := 18.0\n\tvar body_y := 8.0", "leg_h := 18.0", "leg_h := 22.0", "leg_h := 36.0"]:
 		if src.find(bad) >= 0:
 			failures.append("elongated body marker still present: " + bad)
-	for must in ["configure_as_form_preview", "_is_bouncy_form", "Round short-spine", "Anticipation squash"]:
+	for must in ["configure_as_form_preview", "_is_bouncy_form", "_mascot_squash_xy", "_ellipse_outlined", "reference-matched"]:
 		if src.find(must) < 0:
 			failures.append("missing round-body helper/marker: " + must)
+	# Reciprocal tall-sliver stage-up transform must be gone.
+	if src.find("1.0 / maxf") >= 0 or src.find("1.0 / max(") >= 0:
+		failures.append("reciprocal squash transform still present")
+	if src.find("_body_squash = 0.08") >= 0 or src.find("_body_squash = 0.12") >= 0:
+		failures.append("extreme stage-up squash values still present")
 
 
 func _check_runtime_forms(failures: PackedStringArray) -> void:
@@ -92,6 +97,6 @@ func _check_mechanics_untouched(failures: PackedStringArray) -> void:
 	if dive_src.find("time_left = 22.0") < 0 or dive_src.find("score >= 18") < 0:
 		failures.append("dumpster scoring/timer changed")
 	var ver: Variant = ProjectSettings.get_setting("application/config/version", "")
-	if str(ver) != "1.0.29":
-		failures.append("project version not 1.0.29: " + str(ver))
+	if str(ver) not in ["1.0.30"]:
+		failures.append("unexpected project version: " + str(ver))
 	await get_tree().process_frame

@@ -367,18 +367,18 @@ func _add_form_preview_row(_title: String, bucket: String, forms: Array) -> void
 	for f in forms:
 		var form_id := str(f)
 		var cell := VBoxContainer.new()
-		cell.custom_minimum_size = Vector2(72, 96)
+		cell.custom_minimum_size = Vector2(88, 112)
 		cell.add_theme_constant_override("separation", 2)
 		grid.add_child(cell)
 		var holder := Control.new()
-		holder.custom_minimum_size = Vector2(64, 64)
+		holder.custom_minimum_size = Vector2(80, 80)
 		holder.clip_contents = true
 		cell.add_child(holder)
 		var thumb = RaccoonViewScript.new()
 		thumb.preview_mode = true
 		holder.add_child(thumb)
-		thumb.configure_as_form_preview(bucket if bucket != "baby" else "baby", form_id if form_id != "baby" else "puff", 0.36)
-		thumb.position = Vector2(-48, -52)
+		thumb.configure_as_form_preview(bucket if bucket != "baby" else "baby", form_id if form_id != "baby" else "puff", 0.24)
+		thumb.position = Vector2(-70, -72)
 		var caption := Label.new()
 		var pretty := form_id.replace("_", " ").capitalize()
 		pretty = pretty.replace("Alley ghost", "Alley Ghost").replace("Ballard blip", "Ballard Blip")

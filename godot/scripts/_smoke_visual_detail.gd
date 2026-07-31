@@ -229,12 +229,26 @@ func _check_minigame_open_close(failures: PackedStringArray) -> void:
 			if main.feed_panel and main.feed_panel.visible:
 				failures.append("Feed panel did not close")
 	if main.has_method("_on_play_pressed"):
+		# Play is disabled on bush/baby — temporarily unlock for UI smoke only.
+		var old_stage := str(PetState.stage)
+		var old_energy := float(PetState.energy)
+		var old_stubborn := bool(PetState.stubborn)
+		PetState.stage = "young"
+		PetState.young_form = "puff"
+		PetState.energy = maxf(PetState.energy, 40.0)
+		PetState.stubborn = false
+		PetState.discipline = maxf(PetState.discipline, 80.0)
+		if main.btn_play:
+			main.btn_play.disabled = false
 		main._on_play_pressed()
 		await get_tree().process_frame
 		if main._play_pick_panel and not main._play_pick_panel.visible:
 			failures.append("Play pick panel did not open")
 		if main._play_pick_panel:
 			main._play_pick_panel.visible = false
+		PetState.stage = old_stage
+		PetState.energy = old_energy
+		PetState.stubborn = old_stubborn
 	# Dumpster + High/Low if present on main
 	var dive = main.dumpster if "dumpster" in main else null
 	if dive == null:

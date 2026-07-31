@@ -74,7 +74,7 @@ func _ensure_avatar() -> void:
 			_avatar.call("_sync_from_state")
 		return
 	_avatar = RaccoonViewScript.new()
-	_avatar.configure_as_avatar(0.62)
+	_avatar.configure_as_avatar(0.48)
 	playfield.add_child(_avatar)
 	_avatar.visible = true
 
