@@ -222,10 +222,10 @@ func _build_overlay_panel(title_text: String) -> Dictionary:
 
 	var card := PanelContainer.new()
 	card.set_anchors_preset(Control.PRESET_CENTER)
-	card.offset_left = -180
-	card.offset_right = 180
-	card.offset_top = -240
-	card.offset_bottom = 240
+	card.offset_left = -190
+	card.offset_right = 190
+	card.offset_top = -280
+	card.offset_bottom = 280
 	dim.add_child(card)
 
 	var margin := MarginContainer.new()
@@ -275,12 +275,13 @@ func _refresh_forms_panel() -> void:
 		c.queue_free()
 
 	var intro := Label.new()
-	intro.text = "All forms below, then evolution paths. Adults always stay short-spine Jimothy."
+	intro.text = "Every form is the same round short-spine Jimothy. Differences are colors, crowns, wings, and personality — never longer legs."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.add_theme_color_override("font_color", Color("9aab9c"))
 	intro.add_theme_font_size_override("font_size", 12)
 	_forms_list.add_child(intro)
 
+	_add_form_preview_row("Baby", "baby", ["baby"])
 	_add_form_catalog("Young kits", "young", YOUNG_FORMS)
 	_add_form_catalog("Teen kits", "teen", TEEN_FORMS)
 	_add_form_catalog("Adult Jimothy", "adult", ADULT_FORMS)
@@ -344,6 +345,7 @@ func _add_form_catalog(title: String, bucket: String, forms: Array) -> void:
 	head.add_theme_color_override("font_color", Color("f0c57a"))
 	head.add_theme_font_size_override("font_size", 15)
 	_forms_list.add_child(head)
+	_add_form_preview_row("", bucket, forms)
 	var row := Label.new()
 	var bits: PackedStringArray = []
 	for f in forms:
@@ -353,6 +355,40 @@ func _add_form_catalog(title: String, bucket: String, forms: Array) -> void:
 	row.add_theme_color_override("font_color", Color("eef5ea"))
 	row.add_theme_font_size_override("font_size", 12)
 	_forms_list.add_child(row)
+
+
+func _add_form_preview_row(_title: String, bucket: String, forms: Array) -> void:
+	## Live round-chibi thumbnails so every form is visibly the same orb silhouette.
+	const RaccoonViewScript = preload("res://scripts/raccoon_view.gd")
+	var grid := HFlowContainer.new()
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	_forms_list.add_child(grid)
+	for f in forms:
+		var form_id := str(f)
+		var cell := VBoxContainer.new()
+		cell.custom_minimum_size = Vector2(72, 96)
+		cell.add_theme_constant_override("separation", 2)
+		grid.add_child(cell)
+		var holder := Control.new()
+		holder.custom_minimum_size = Vector2(64, 64)
+		holder.clip_contents = true
+		cell.add_child(holder)
+		var thumb = RaccoonViewScript.new()
+		thumb.preview_mode = true
+		holder.add_child(thumb)
+		thumb.configure_as_form_preview(bucket if bucket != "baby" else "baby", form_id if form_id != "baby" else "puff", 0.36)
+		thumb.position = Vector2(-48, -52)
+		var caption := Label.new()
+		var pretty := form_id.replace("_", " ").capitalize()
+		pretty = pretty.replace("Alley ghost", "Alley Ghost").replace("Ballard blip", "Ballard Blip")
+		if bucket == "baby":
+			pretty = "Baby"
+		caption.text = pretty
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caption.add_theme_font_size_override("font_size", 10)
+		caption.add_theme_color_override("font_color", Color("d8e8da"))
+		cell.add_child(caption)
 
 
 func _unlocked_count(bucket: String, forms: Array) -> int:
