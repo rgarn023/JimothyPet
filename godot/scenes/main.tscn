@@ -1,0 +1,545 @@
+[gd_scene load_steps=6 format=3 uid="uid://jimothy_main"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/raccoon_view.gd" id="2_raccoon"]
+[ext_resource type="Script" path="res://scripts/dumpster_dive.gd" id="3_dive"]
+[ext_resource type="Script" path="res://scripts/forest_bg.gd" id="4_forest"]
+[ext_resource type="Script" path="res://scripts/mess_pile.gd" id="5_mess"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_forest")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Brand" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 42
+text = "JimothyPet"
+horizontal_alignment = 1
+
+[node name="Tagline" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
+theme_override_font_sizes/font_size = 14
+text = "Your Cryptid Companion"
+horizontal_alignment = 1
+
+[node name="Device" type="PanelContainer" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DeviceMargin" type="MarginContainer" parent="Margin/VBox/Device"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="DeviceVBox" type="VBoxContainer" parent="Margin/VBox/Device/DeviceMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatusRow" type="HBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox"]
+layout_mode = 2
+
+[node name="ClockLabel" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 13
+text = "00:00"
+
+[node name="AgeLabel" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 13
+text = "Age 0s"
+horizontal_alignment = 1
+
+[node name="StageChip" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 13
+text = "Egg"
+horizontal_alignment = 2
+
+[node name="Screen" type="PanelContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScreenMargin" type="MarginContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ScreenVBox" type="VBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Meters" type="VBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HungerRow" type="HBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters"]
+layout_mode = 2
+
+[node name="L" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HungerRow"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "HUNGER"
+
+[node name="HungerBar" type="ProgressBar" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HungerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 80.0
+show_percentage = false
+
+[node name="HappyRow" type="HBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters"]
+layout_mode = 2
+
+[node name="L" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HappyRow"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "HAPPY"
+
+[node name="HappyBar" type="ProgressBar" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HappyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 80.0
+show_percentage = false
+
+[node name="HealthRow" type="HBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters"]
+layout_mode = 2
+
+[node name="L" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HealthRow"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "HEALTH"
+
+[node name="HealthBar" type="ProgressBar" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/HealthRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="DisciplineRow" type="HBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters"]
+layout_mode = 2
+
+[node name="L" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/DisciplineRow"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "DISCIPLINE"
+
+[node name="DisciplineBar" type="ProgressBar" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/Meters/DisciplineRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 55.0
+show_percentage = false
+
+[node name="StageArea" type="Control" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox"]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SpeechLabel" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 4.0
+offset_right = -8.0
+offset_bottom = 40.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.105882, 0.164706, 0.133333, 1)
+theme_override_colors/font_shadow_color = Color(0.91, 0.937, 0.894, 1)
+theme_override_constants/shadow_outline_size = 8
+theme_override_font_sizes/font_size = 13
+text = "Hello"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="RaccoonView" type="Control" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 18.0
+offset_bottom = -36.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_raccoon")
+
+[node name="MessMark" type="Control" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5_mess")
+
+[node name="StageName" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox/StageArea"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.973, 0.91, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.04, 0.02, 0.92)
+theme_override_colors/font_shadow_color = Color(0.05, 0.04, 0.02, 0.92)
+theme_override_constants/outline_size = 5
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 17
+text = "Mystery Egg"
+horizontal_alignment = 1
+
+[node name="AlertBanner" type="Label" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Screen/ScreenMargin/ScreenVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 12
+text = "Alert"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Controls" type="HBoxContainer" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnAction" type="Button" parent="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Feed, Play, Scold, Heal, Clean"
+text = "Action"
+
+[node name="HintLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.968627, 0.941176, 1)
+theme_override_colors/font_shadow_color = Color(0.02, 0.05, 0.03, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.05, 0.03, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 15
+text = "Keep Jimothy fed, exercised, and in line."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="UtilityRow" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnSettings" type="Button" parent="Margin/VBox/UtilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Sound, alerts, and reset"
+text = "Settings"
+
+[node name="FeedPanel" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.05, 0.04, 0.78)
+
+[node name="FeedCard" type="PanelContainer" parent="FeedPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -270.0
+offset_right = 180.0
+offset_bottom = 270.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FeedMargin" type="MarginContainer" parent="FeedPanel/FeedCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="FeedVBox" type="VBoxContainer" parent="FeedPanel/FeedCard/FeedMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FeedTitle" type="Label" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 22
+text = "Forage for Jimothy"
+horizontal_alignment = 1
+
+[node name="FeedCopy" type="Label" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
+theme_override_font_sizes/font_size = 13
+text = "Real forage fills him properly. Alley junk lifts mood but taxes health. He won’t eat if already stuffed."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="BtnBerries" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+text = "Wild Berries  ·  H+18 Mood+3 HP+6"
+
+[node name="BtnCrickets" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+text = "Night Crickets  ·  H+16 Mood+2 HP+5 Fit+1"
+
+[node name="BtnFish" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+text = "Stream Fish Bits  ·  H+24 Mood+4 HP+8 Fit+1"
+
+[node name="BtnPizza" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+text = "Pizza Crust  ·  H+10 Mood+16 HP-3 Fit-1"
+
+[node name="BtnFries" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+text = "Dumpster Fries  ·  H+9 Mood+18 HP-4 Fit-1"
+
+[node name="BtnFeedClose" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
+layout_mode = 2
+text = "Close"
+
+[node name="MessagePanel" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.05, 0.04, 0.78)
+
+[node name="MessageCard" type="PanelContainer" parent="MessagePanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -170.0
+offset_top = -120.0
+offset_right = 170.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MessageMargin" type="MarginContainer" parent="MessagePanel/MessageCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="MessageVBox" type="VBoxContainer" parent="MessagePanel/MessageCard/MessageMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MessageTitle" type="Label" parent="MessagePanel/MessageCard/MessageMargin/MessageVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 22
+text = "Hey"
+horizontal_alignment = 1
+
+[node name="MessageBody" type="Label" parent="MessagePanel/MessageCard/MessageMargin/MessageVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
+theme_override_font_sizes/font_size = 14
+text = "Message"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="BtnMessageOk" type="Button" parent="MessagePanel/MessageCard/MessageMargin/MessageVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "OK"
+
+[node name="DumpsterDive" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_dive")
+
+[node name="Dim" type="ColorRect" parent="DumpsterDive"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.03, 0.05, 0.04, 0.82)
+
+[node name="DiveCard" type="PanelContainer" parent="DumpsterDive"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DiveMargin" type="MarginContainer" parent="DumpsterDive/DiveCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="DiveVBox" type="VBoxContainer" parent="DumpsterDive/DiveCard/DiveMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DiveHeader" type="HBoxContainer" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox"]
+layout_mode = 2
+
+[node name="DiveTitleBox" type="VBoxContainer" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DiveTitle" type="Label" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader/DiveTitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+theme_override_font_sizes/font_size = 22
+text = "Dumpster Dive"
+
+[node name="DiveHelp" type="Label" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader/DiveTitleBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
+theme_override_font_sizes/font_size = 12
+text = "Scraps fling out of the bin. Catch food, dodge spoil. Stand under the dumpster to dig."
+autowrap_mode = 3
+
+[node name="DiveStats" type="VBoxContainer" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader"]
+layout_mode = 2
+
+[node name="ScoreLabel" type="Label" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader/DiveStats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+text = "Score 0"
+horizontal_alignment = 2
+
+[node name="TimeLabel" type="Label" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox/DiveHeader/DiveStats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.772549, 0.478431, 1)
+text = "Time 20s"
+horizontal_alignment = 2
+
+[node name="Playfield" type="Control" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 360)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ControlsHint" type="Label" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.670588, 0.611765, 1)
+theme_override_font_sizes/font_size = 12
+text = "Drag / ← → to move · stand under dumpster to dig"
+horizontal_alignment = 1
+
+[node name="BtnBail" type="Button" parent="DumpsterDive/DiveCard/DiveMargin/DiveVBox"]
+layout_mode = 2
+text = "Bail Out"
+
+[connection signal="pressed" from="Margin/VBox/Device/DeviceMargin/DeviceVBox/Controls/BtnAction" to="." method="_on_action_pressed"]
+[connection signal="pressed" from="Margin/VBox/UtilityRow/BtnSettings" to="." method="_on_settings_pressed"]
+[connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnBerries" to="." method="_on_food" binds= ["berries"]]
+[connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnCrickets" to="." method="_on_food" binds= ["crickets"]]
+[connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnFish" to="." method="_on_food" binds= ["fish"]]
+[connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnPizza" to="." method="_on_food" binds= ["pizza"]]
+[connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnFries" to="." method="_on_food" binds= ["fries"]]
+[connection signal="pressed" from="FeedPanel/FeedCard/FeedMargin/FeedVBox/BtnFeedClose" to="." method="_on_feed_close"]
+[connection signal="pressed" from="MessagePanel/MessageCard/MessageMargin/MessageVBox/BtnMessageOk" to="." method="_on_message_ok"]
+[connection signal="gui_input" from="DumpsterDive/DiveCard/DiveMargin/DiveVBox/Playfield" to="DumpsterDive" method="_on_playfield_gui_input"]
+[connection signal="draw" from="DumpsterDive/DiveCard/DiveMargin/DiveVBox/Playfield" to="DumpsterDive" method="_on_playfield_draw"]
+[connection signal="pressed" from="DumpsterDive/DiveCard/DiveMargin/DiveVBox/BtnBail" to="DumpsterDive" method="bail_out"]
