@@ -1,0 +1,18 @@
+node_modules/
+.DS_Store
+*.log
+
+# Godot
+godot/.godot/
+godot/.mono/
+# Keep Android plugins; ignore generated custom-build output
+godot/android/build/
+godot/android/.gradle/
+godot/android/local.properties
+build/
+*.apk
+!dist/jimothy-android-*-gradle.apk
+*.aab
+!dist/jimothy-android-*-gradle.aab
+*.pck
+scripts/__pycache__/
