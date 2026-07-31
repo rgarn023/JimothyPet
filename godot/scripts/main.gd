@@ -1,6 +1,8 @@
 extends Control
 ## Main Jimothy pet UI (Godot 4.7.1).
 
+const VisualPolish = preload("res://scripts/visual_polish.gd")
+
 const YOUNG_FORMS := ["puff", "looper", "shadow", "nub"]
 const TEEN_FORMS := ["dumpling", "bounder", "nightlane", "scruff"]
 const ADULT_FORMS := ["saint", "legend", "alley_ghost", "ballard_blip"]
@@ -1111,6 +1113,7 @@ func _on_feed_pressed() -> void:
 		_action_panel.visible = false
 	if JimothyAudio:
 		JimothyAudio.play("chitter", -6.0)
+	_refresh_feed_menu_effects()
 	feed_panel.visible = true
 
 
@@ -1121,6 +1124,25 @@ func _on_feed_close() -> void:
 func _on_food(food_key: String) -> void:
 	PetState.try_feed(food_key)
 	feed_panel.visible = false
+
+
+func _refresh_feed_menu_effects() -> void:
+	# Exact PetState FOOD effects on each button — balance unchanged.
+	var map := {
+		"BtnBerries": "berries",
+		"BtnCrickets": "crickets",
+		"BtnFish": "fish",
+		"BtnPizza": "pizza",
+		"BtnFries": "fries",
+	}
+	for btn_name in map.keys():
+		var btn := feed_panel.find_child(str(btn_name), true, false) as Button
+		if btn == null:
+			continue
+		btn.text = VisualPolish.food_effect_line(str(map[btn_name]))
+	var copy := feed_panel.find_child("FeedCopy", true, false) as Label
+	if copy:
+		copy.text = "Real forage fills him properly. Alley junk lifts mood but taxes health. He won’t eat if already stuffed. Numbers show exact Hunger / Mood / Health / Fitness deltas."
 
 
 func _build_play_pick_panel() -> void:

@@ -353,23 +353,23 @@ autowrap_mode = 3
 
 [node name="BtnBerries" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Wild Berries — light clean fuel"
+text = "Wild Berries  ·  H+18 Mood+3 HP+6"
 
 [node name="BtnCrickets" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Night Crickets — protein for legs"
+text = "Night Crickets  ·  H+16 Mood+2 HP+5 Fit+1"
 
 [node name="BtnFish" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Stream Fish Bits — proper meal"
+text = "Stream Fish Bits  ·  H+24 Mood+4 HP+8 Fit+1"
 
 [node name="BtnPizza" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Pizza Crust — triangle slice · greasy"
+text = "Pizza Crust  ·  H+10 Mood+16 HP-3 Fit-1"
 
 [node name="BtnFries" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2
-text = "Dumpster Fries — red carton · salty sticks"
+text = "Dumpster Fries  ·  H+9 Mood+18 HP-4 Fit-1"
 
 [node name="BtnFeedClose" type="Button" parent="FeedPanel/FeedCard/FeedMargin/FeedVBox"]
 layout_mode = 2

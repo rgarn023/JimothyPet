@@ -1,6 +1,8 @@
 extends Control
 ## Animated Jimothy — bush rustle, walk/run/jump, form variance, adult short-spine look.
 
+const VisualPolish = preload("res://scripts/visual_polish.gd")
+
 signal ascend_finished
 
 var stage: String = "bush"
@@ -32,6 +34,7 @@ var _target_x: float = 0.0
 var _speed: float = 0.0
 var _eat_flash: float = 0.0
 var _eat_food: String = "berry"
+var _eat_crumbs: Array = []
 var _head_dip: float = 0.0
 var _body_squash: float = 1.0
 var _smile: float = 0.0
@@ -39,6 +42,7 @@ var _wing_span: float = 0.0
 var _fade: float = 1.0
 var _ascend_done_emitted: bool = false
 var _tap_cooldown: float = 0.0
+var _paw_lift: float = 0.0
 
 const SIDE_ANIMS := ["walk", "run", "lope", "jump", "hop", "sniff"]
 
@@ -261,9 +265,11 @@ func play_anim(kind: String) -> void:
 			_anim_dur = 1.05
 			_body_squash = 1.0
 		"eat":
-			_anim_dur = 2.6
+			_anim_dur = 3.2
 			_eat_flash = 1.0
 			_head_dip = 0.0
+			_paw_lift = 0.0
+			_eat_crumbs.clear()
 			if PetState and PetState.last_fed_food != "":
 				_eat_food = PetState.last_fed_food
 		"refuse":
@@ -476,23 +482,62 @@ func _process(delta: float) -> void:
 				_head_dip = 0.0
 		"eat":
 			var eu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			# Slow reach → long chew → settle so food stays readable.
-			if eu < 0.28:
-				_head_dip = lerpf(0.0, 10.0, eu / 0.28)
-				_pose_y = lerpf(0.0, 3.0, eu / 0.28)
-			elif eu < 0.82:
-				_head_dip = 8.0 + sin(_t * 10.0) * 2.2
-				_pose_y = 2.0 + sin(_t * 8.0) * 1.2
-				_walk_phase += delta * 4.5
+			# Inspect/sniff → paw lift → bites/chew → swallow → pleased.
+			if eu < 0.14:
+				var sn := eu / 0.14
+				_head_dip = lerpf(0.0, 5.0, sn) + sin(_t * 12.0) * 1.2
+				_pose_y = sin(_t * 6.0) * 1.0
+				_paw_lift = lerpf(0.0, 0.35, sn)
+			elif eu < 0.28:
+				var lift := (eu - 0.14) / 0.14
+				_head_dip = lerpf(5.0, 9.0, lift)
+				_pose_y = lerpf(0.0, 2.5, lift)
+				_paw_lift = lerpf(0.35, 1.0, lift)
+			elif eu < 0.72:
+				_head_dip = 8.0 + sin(_t * 11.0) * 2.4
+				_pose_y = 2.0 + sin(_t * 9.0) * 1.3
+				_paw_lift = 0.92 + sin(_t * 10.0) * 0.06
+				_walk_phase += delta * 5.0
+				# Spawn crumbs on bite peaks
+				if sin(_t * 11.0) > 0.92 and _eat_crumbs.size() < 10:
+					_eat_crumbs.append({
+						"x": randf_range(-8.0, 10.0),
+						"y": randf_range(-2.0, 6.0),
+						"vx": randf_range(-18.0, 22.0),
+						"vy": randf_range(-30.0, -8.0),
+						"t": 0.0,
+						"life": randf_range(0.35, 0.65),
+					})
+			elif eu < 0.84:
+				var sw := (eu - 0.72) / 0.12
+				_head_dip = lerpf(8.0, 4.0, sw)
+				_pose_y = lerpf(2.0, 1.0, sw)
+				_paw_lift = lerpf(0.9, 0.2, sw)
+				_body_squash = lerpf(1.0, 1.08, sin(sw * PI))
 			else:
-				var settle := (eu - 0.82) / 0.18
-				_head_dip = lerpf(8.0, 0.0, settle)
-				_pose_y = lerpf(2.0, 0.0, settle)
-			_eat_flash = 1.0 - smoothstep(0.62, 0.95, eu)
+				var please := (eu - 0.84) / 0.16
+				_head_dip = lerpf(4.0, -1.5, please)
+				_pose_y = -sin(please * PI) * 4.0
+				_paw_lift = lerpf(0.2, 0.0, please)
+				_smile = 1.0
+				_body_squash = 1.0
+			# Update crumbs
+			var keep_c: Array = []
+			for crumb in _eat_crumbs:
+				crumb.t = float(crumb.t) + delta
+				crumb.x = float(crumb.x) + float(crumb.vx) * delta
+				crumb.y = float(crumb.y) + float(crumb.vy) * delta
+				crumb.vy = float(crumb.vy) + 90.0 * delta
+				if float(crumb.t) < float(crumb.life):
+					keep_c.append(crumb)
+			_eat_crumbs = keep_c
+			_eat_flash = 1.0 - smoothstep(0.55, 0.95, eu)
 			if _anim_t >= _anim_dur:
 				_anim = "idle"
 				_head_dip = 0.0
 				_pose_y = 0.0
+				_paw_lift = 0.0
+				_eat_crumbs.clear()
 		"refuse":
 			var ru := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			# Head-shake without rapid facing flips (avoids visual glitch).
@@ -582,18 +627,21 @@ func _process(delta: float) -> void:
 				_anim_t = 0.0
 				_anim_dur = 4.0
 		"sleep":
-			_pose_y = 4.0 + sin(_t * 1.1) * 0.6
-			_head_dip = 9.0 + sin(_t * 0.9) * 0.5
+			# Slow breathing motion — visual only.
+			var breath := sin(_t * 1.15)
+			_pose_y = 4.0 + breath * 1.1
+			_head_dip = 9.0 + breath * 0.7
 			_pose_x = move_toward(_pose_x, 0.0, 30.0 * delta)
-			_body_squash = 1.06
+			_body_squash = 1.05 + breath * 0.035
 			_smile = 0.0
 		_:
 			# Idle: face the screen, gentle bob, settle toward center.
 			if mood == "sleep" or (PetState != null and PetState.is_sleeping()):
-				_pose_y = 4.0 + sin(_t * 1.1) * 0.6
-				_head_dip = 9.0 + sin(_t * 0.9) * 0.5
+				var breath2 := sin(_t * 1.15)
+				_pose_y = 4.0 + breath2 * 1.1
+				_head_dip = 9.0 + breath2 * 0.7
 				_pose_x = move_toward(_pose_x, 0.0, 30.0 * delta)
-				_body_squash = 1.06
+				_body_squash = 1.05 + breath2 * 0.035
 				_smile = 0.0
 			elif _is_sick():
 				_pose_y = sin(_t * 1.35) * 1.0
@@ -739,8 +787,13 @@ func _draw() -> void:
 	if _anim == "stageUp" and _body_squash != 1.0:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	if _anim == "eat" and _eat_flash > 0.05:
+	if _anim == "eat":
 		_draw_food_prop(c, face, clampf(_anim_t / _anim_dur, 0.0, 1.0))
+		_draw_eat_crumbs(c)
+		if _eat_flash > 0.05:
+			var flash_col := VisualPolish.food_flash_color(_eat_food)
+			flash_col.a = 0.22 * _eat_flash
+			_ellipse(c + Vector2(0, 4), Vector2(48, 36), flash_col)
 
 	modulate = old_mod
 
@@ -966,52 +1019,28 @@ func _draw_front(c: Vector2) -> void:
 
 
 func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
-	# Larger food arcs from paws up to muzzle, then fades while chewing.
-	var reach := smoothstep(0.0, 0.32, u)
-	var fade := 1.0 - smoothstep(0.62, 0.95, u)
-	var paw := c + Vector2(18.0 * face, 22.0)
-	var mouth := c + Vector2(2.0 * face, -2.0 + _head_dip)
-	var p := paw.lerp(mouth, reach)
-	p += Vector2(sin(u * PI) * -8.0 * face, -sin(reach * PI) * 14.0)
+	# Food stays in paws: inspect → lift to muzzle → shrink on bites → gone after swallow.
+	var fade := 1.0 - smoothstep(0.78, 0.93, u)
+	if fade <= 0.02:
+		return
+	var paw_base := c + Vector2(16.0 * face, 20.0 - _paw_lift * 14.0)
+	var mouth := c + Vector2(4.0 * face, -2.0 + _head_dip * 0.35)
+	var hold := smoothstep(0.12, 0.30, u)
+	var p := paw_base.lerp(mouth + Vector2(6.0 * face, 8.0), hold * 0.72)
+	# Drawn paws gripping the food
+	_ellipse(paw_base + Vector2(-3.0 * face, 4.0), Vector2(6.5, 3.8), Color("3a3a44"))
+	_ellipse(paw_base + Vector2(4.0 * face, 5.0), Vector2(5.8, 3.4), Color("3a3a44"))
+	var bite_shrink := 1.0 - smoothstep(0.30, 0.78, u) * 0.55
 	var a := fade * 0.98
-	match _eat_food:
-		"pizza":
-			# Pizza wedge — pointed tip, crust rim, pepperoni
-			var crust := PackedVector2Array([
-				p + Vector2(0, -14), p + Vector2(16, 12), p + Vector2(-16, 12)
-			])
-			draw_colored_polygon(crust, Color(0.54, 0.29, 0.16, a))
-			var cheese := PackedVector2Array([
-				p + Vector2(0, -12), p + Vector2(13, 10), p + Vector2(-13, 10)
-			])
-			draw_colored_polygon(cheese, Color(0.88, 0.63, 0.29, a))
-			draw_line(p + Vector2(-11, -2), p + Vector2(11, -2), Color(0.77, 0.36, 0.29, a), 3.5)
-			draw_circle(p + Vector2(-4, 3), 2.6, Color(0.54, 0.18, 0.18, a))
-			draw_circle(p + Vector2(5, 5), 2.2, Color(0.54, 0.18, 0.18, a))
-		"fries":
-			# Red carton + upright fry sticks (reads clearly vs pizza)
-			draw_colored_polygon(PackedVector2Array([
-				p + Vector2(-12, 2), p + Vector2(12, 2), p + Vector2(9, 16), p + Vector2(-9, 16)
-			]), Color(0.77, 0.36, 0.29, a))
-			draw_rect(Rect2(p + Vector2(-11, 0), Vector2(22, 4)), Color(0.83, 0.42, 0.34, a))
-			draw_line(p + Vector2(-7, -12), p + Vector2(-7, 4), Color(0.94, 0.77, 0.48, a), 3.2)
-			draw_line(p + Vector2(-2, -14), p + Vector2(-2, 4), Color(0.88, 0.63, 0.29, a), 3.4)
-			draw_line(p + Vector2(3, -11), p + Vector2(3, 4), Color(0.94, 0.77, 0.48, a), 3.0)
-			draw_line(p + Vector2(7, -13), p + Vector2(7, 4), Color(0.83, 0.57, 0.23, a), 2.8)
-		"fish":
-			_ellipse(p, Vector2(18, 8), Color(0.66, 0.77, 0.83, a))
-			draw_colored_polygon(PackedVector2Array([
-				p + Vector2(16, 0), p + Vector2(24, -7), p + Vector2(24, 7)
-			]), Color(0.45, 0.62, 0.7, a))
-			draw_circle(p + Vector2(-8, -1), 2.2, Color(0.1, 0.12, 0.14, a))
-		"crickets":
-			_ellipse(p, Vector2(12, 7), Color(0.42, 0.48, 0.28, a))
-			draw_line(p + Vector2(-5, -3), p + Vector2(-13, -10), Color(0.3, 0.35, 0.18, a), 2.0)
-			draw_line(p + Vector2(4, 2), p + Vector2(12, 9), Color(0.3, 0.35, 0.18, a), 2.0)
-		_:
-			_ellipse(p + Vector2(-7, 1), Vector2(10, 10), Color(0.42, 0.35, 0.63, a))
-			_ellipse(p + Vector2(7, -3), Vector2(9, 9), Color(0.48, 0.38, 0.68, a))
-			_ellipse(p + Vector2(0, 7), Vector2(8, 8), Color(0.35, 0.28, 0.52, a))
+	VisualPolish.draw_food(self, _eat_food, p, a, 0.92 * bite_shrink)
+
+
+func _draw_eat_crumbs(c: Vector2) -> void:
+	var flash := VisualPolish.food_flash_color(_eat_food)
+	for crumb in _eat_crumbs:
+		var aa := 1.0 - float(crumb.t) / float(crumb.life)
+		var p := c + Vector2(float(crumb.x), float(crumb.y) - 4.0)
+		_ellipse(p, Vector2(2.2, 1.8), Color(flash.r, flash.g, flash.b, 0.75 * aa))
 
 
 func _draw_wings(c: Vector2, face: float, span: float) -> void:
@@ -1208,23 +1237,38 @@ func _is_sleeping() -> bool:
 
 
 func _draw_nest_bed(c: Vector2) -> void:
-	_ellipse(c + Vector2(0, 8), Vector2(46, 14), Color(0.23, 0.16, 0.09, 0.55))
-	_ellipse(c + Vector2(0, 6), Vector2(42, 11), Color(0.29, 0.21, 0.12, 0.7))
-	# Sticks
+	# Layered nest: outer twigs → moss cushion → leaf pillow → leaf blanket edge
+	_ellipse(c + Vector2(0, 10), Vector2(52, 16), Color(0.16, 0.11, 0.06, 0.45))
+	_ellipse(c + Vector2(0, 8), Vector2(48, 14), Color(0.23, 0.16, 0.09, 0.6))
 	var sticks := [
-		[Vector2(-38, 2), Vector2(-2, 0), Vector2(34, 4)],
-		[Vector2(-30, 10), Vector2(-2, 14), Vector2(28, 8)],
-		[Vector2(-22, -4), Vector2(2, -8), Vector2(36, 2)],
-		[Vector2(-36, 6), Vector2(-8, 12), Vector2(20, 4)],
-		[Vector2(-12, 14), Vector2(10, 18), Vector2(40, 4)],
+		[Vector2(-40, 2), Vector2(-4, -2), Vector2(36, 4)],
+		[Vector2(-34, 12), Vector2(-2, 16), Vector2(32, 10)],
+		[Vector2(-24, -6), Vector2(4, -10), Vector2(38, 0)],
+		[Vector2(-38, 8), Vector2(-10, 14), Vector2(22, 6)],
+		[Vector2(-14, 16), Vector2(12, 20), Vector2(42, 6)],
+		[Vector2(-44, 6), Vector2(-28, 0), Vector2(-10, 8)],
+		[Vector2(18, -2), Vector2(34, 4), Vector2(46, 10)],
 	]
-	var stick_cols := [Color("6b4a2a"), Color("5a3c22"), Color("7a5530"), Color("4a3018"), Color("6a4828")]
+	var stick_cols := [
+		Color("6b4a2a"), Color("5a3c22"), Color("7a5530"), Color("4a3018"),
+		Color("6a4828"), Color("5c3e20"), Color("734f2c"),
+	]
 	for i in sticks.size():
 		var pts: Array = sticks[i]
-		draw_polyline(PackedVector2Array([c + pts[0], c + pts[1], c + pts[2]]), stick_cols[i], 2.6, true)
-	draw_line(c + Vector2(-42, 4), c + Vector2(-26, -2), Color("5c3e20"), 2.0)
-	draw_line(c + Vector2(32, 0), c + Vector2(44, 6), Color("5c3e20"), 2.0)
-	# Leaves
+		draw_polyline(PackedVector2Array([c + pts[0], c + pts[1], c + pts[2]]), stick_cols[i], 2.8, true)
+	# Soft cushion
+	_ellipse(c + Vector2(0, 6), Vector2(36, 10), Color(0.32, 0.24, 0.14, 0.85))
+	_ellipse(c + Vector2(-2, 4), Vector2(28, 7), Color(0.4, 0.32, 0.2, 0.55))
+	# Leaf pillow
+	draw_set_transform(c + Vector2(18, -2), deg_to_rad(-18.0), Vector2.ONE)
+	_ellipse(Vector2.ZERO, Vector2(14, 7), Color(0.33, 0.54, 0.38, 0.92))
+	_ellipse(Vector2(-3, -1), Vector2(6, 3), Color(0.45, 0.68, 0.48, 0.55))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# Leaf blanket draped over near side
+	draw_set_transform(c + Vector2(-6, 12), deg_to_rad(8.0), Vector2.ONE)
+	_ellipse(Vector2.ZERO, Vector2(22, 8), Color(0.3, 0.48, 0.34, 0.8))
+	_ellipse(Vector2(8, 1), Vector2(12, 5), Color(0.42, 0.62, 0.4, 0.55))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var leaves := [
 		[Vector2(-32, 4), Vector2(7, 3.5), Color("4a7a48"), -28.0],
 		[Vector2(-20, 12), Vector2(8, 3.8), Color("3d6b4f"), 18.0],
@@ -1233,6 +1277,7 @@ func _draw_nest_bed(c: Vector2) -> void:
 		[Vector2(-4, 16), Vector2(8, 3.2), Color("3d6b4f"), 8.0],
 		[Vector2(4, -2), Vector2(6, 2.8), Color("5a8a58"), -35.0],
 		[Vector2(-12, 0), Vector2(5.5, 2.6), Color("6fbf84"), 40.0],
+		[Vector2(22, 14), Vector2(6.5, 3.0), Color("4a7a48"), -20.0],
 	]
 	for L in leaves:
 		var p: Vector2 = c + L[0]
@@ -1240,7 +1285,7 @@ func _draw_nest_bed(c: Vector2) -> void:
 		var col: Color = L[2]
 		var rot: float = deg_to_rad(float(L[3]))
 		draw_set_transform(p, rot, Vector2.ONE)
-		_ellipse(Vector2.ZERO, r, Color(col.r, col.g, col.b, 0.88))
+		_ellipse(Vector2.ZERO, r, Color(col.r, col.g, col.b, 0.9))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -1280,24 +1325,32 @@ func _draw_sleeping(c: Vector2) -> void:
 			head_r = 17.5
 			head = Vector2(34, 2)
 			stroke_w = 5.0
+	var breath := sin(_t * 1.15)
 	var body := c + Vector2(0, body_y)
-	# Curled tail
-	draw_polyline(
-		PackedVector2Array([
-			body + Vector2(-body_rx + 4, 2),
-			body + Vector2(-body_rx - 14, -10),
-			body + Vector2(-body_rx - 6, -18),
-		]),
-		Color("5a5a64"),
-		stroke_w,
-		true
-	)
-	_ellipse(body + Vector2(-body_rx - 4, -16), Vector2(3.2, 2.6), Color(0.78, 0.78, 0.82, 0.7))
+	# Breathing arc (subtle)
+	draw_arc(body + Vector2(2, -2), body_rx * 0.85 + breath * 1.5, -2.5, -0.6, 16, Color(0.85, 0.9, 0.95, 0.12 + breath * 0.04), 1.6, true)
+	# Curled tail with visible rings
+	var tail_pts := PackedVector2Array([
+		body + Vector2(-body_rx + 4, 2),
+		body + Vector2(-body_rx - 10, -6),
+		body + Vector2(-body_rx - 16, -14),
+		body + Vector2(-body_rx - 8, -22),
+		body + Vector2(-body_rx + 2, -18),
+	])
+	draw_polyline(tail_pts, Color("5a5a64"), stroke_w, true)
+	for i in 5:
+		var tt := 0.15 + float(i) * 0.18
+		var tp := tail_pts[0].lerp(tail_pts[mini(4, i + 1)], tt)
+		_ellipse(tp, Vector2(4.2, 3.2), Color("c8c8d0").darkened(0.08 if i % 2 == 0 else 0.18))
 	# Tucked paws
-	_ellipse(body + Vector2(-10, body_ry - 2), Vector2(7, 4), Color("3a3a44"))
-	_ellipse(body + Vector2(6, body_ry), Vector2(6.5, 3.6), Color("3a3a44"))
-	_ellipse(body, Vector2(body_rx, body_ry), fur)
-	_ellipse(body + Vector2(2, 2), Vector2(body_rx * 0.55, body_ry * 0.55), Color(belly.r, belly.g, belly.b, 0.45))
+	_ellipse(body + Vector2(-12, body_ry - 1), Vector2(8, 4.5), Color("3a3a44"))
+	_ellipse(body + Vector2(4, body_ry + 1), Vector2(7.5, 4.0), Color("3a3a44"))
+	_ellipse(body + Vector2(-4, body_ry + 2), Vector2(6.5, 3.4), Color("32323a"))
+	# Soft breathing squash on body
+	draw_set_transform(body, 0.0, Vector2(1.0 + breath * 0.02, 1.0 - breath * 0.02))
+	_ellipse(Vector2.ZERO, Vector2(body_rx, body_ry), fur)
+	_ellipse(Vector2(2, 2), Vector2(body_rx * 0.55, body_ry * 0.55), Color(belly.r, belly.g, belly.b, 0.45))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_ellipse(body + Vector2(head.x - 8, body_ry - 4), Vector2(5.5, 3.2), Color("3a3a44"))
 	_ellipse(body + Vector2(head.x - 2, body_ry - 2), Vector2(5, 3), Color("3a3a44"))
 	# Head resting
@@ -1327,6 +1380,19 @@ func _draw_sleeping(c: Vector2) -> void:
 	)
 	_ellipse(hp + Vector2(4, head_r * 0.38), Vector2(head_r * 0.26, head_r * 0.16), Color("c9a292"))
 	draw_circle(hp + Vector2(4, head_r * 0.28), 1.4, Color("2a2a32"))
+	# Drifting Z symbols
+	for i in 3:
+		var zt := fposmod(_t * 0.35 + float(i) * 0.33, 1.0)
+		var zp := hp + Vector2(14.0 + float(i) * 6.0 + zt * 8.0, -10.0 - zt * 22.0 - float(i) * 4.0)
+		var za := (1.0 - zt) * 0.75
+		var zs := 10 + i * 2
+		draw_string(ThemeDB.fallback_font, zp, "z", HORIZONTAL_ALIGNMENT_LEFT, -1, zs, Color(0.85, 0.9, 0.95, za))
+	# Quiet fireflies near nest
+	for i in 4:
+		var fx := c.x - 36.0 + fposmod(float(i) * 29.0 + _t * 12.0, 72.0)
+		var fy := c.y - 28.0 + sin(_t * 1.4 + float(i) * 1.7) * 10.0 + float(i) * 3.0
+		var pulse := 0.25 + 0.55 * absf(sin(_t * 2.2 + float(i)))
+		draw_circle(Vector2(fx, fy), 1.7, Color(0.95, 0.82, 0.4, pulse * 0.65))
 
 
 func _side_eye(p: Vector2, r: float, gleam: Color = Color("faf6ec")) -> void:

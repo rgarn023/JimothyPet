@@ -32,6 +32,8 @@ var _rot := Vector3(-0.35, 0.45, 0.1)
 var _target_rot := Vector3(-0.35, 0.45, 0.1)
 var _start_rot := Vector3.ZERO
 var _tumble := Vector3.ZERO
+var _land_fx_t := 0.0
+var _sparkles: Array = []
 
 
 func _ready() -> void:
@@ -109,7 +111,7 @@ func _build() -> void:
 	vbox.add_child(_status)
 
 	_die = Control.new()
-	_die.custom_minimum_size = Vector2(0, 220)
+	_die.custom_minimum_size = Vector2(0, 260)
 	_die.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_die.draw.connect(_on_die_draw)
 	vbox.add_child(_die)
@@ -149,7 +151,7 @@ func start_game() -> void:
 	set_process(true)
 	# Ensure die control has a drawable size before first paint.
 	if _die:
-		_die.custom_minimum_size = Vector2(220, 220)
+		_die.custom_minimum_size = Vector2(260, 260)
 		_die.queue_redraw()
 
 
@@ -161,9 +163,13 @@ func _reset() -> void:
 	_landed = false
 	_correct = false
 	_reported = false
+	_land_fx_t = 0.0
+	_sparkles.clear()
 	_rot = Vector3(-0.35, 0.45, 0.1)
 	_picks.visible = true
 	_btn_again.visible = false
+	_btn_low.disabled = false
+	_btn_high.disabled = false
 	_status.text = "Guess High (11–20) or Low (1–10), then watch the d20 tumble."
 	_idle = true
 	_die.queue_redraw()
@@ -197,9 +203,11 @@ func _pick(guess: String) -> void:
 	if face_i < 0:
 		face_i = 0
 	_target_rot = _rotation_for_face(face_i)
-	_picks.visible = false
+	_picks.visible = true
+	_btn_low.disabled = true
+	_btn_high.disabled = true
 	_btn_again.visible = false
-	_status.text = "You called High (11–20)…" if guess == "high" else "You called Low (1–10)…"
+	_status.text = "You called High (11–20)… rolling!" if guess == "high" else "You called Low (1–10)… rolling!"
 
 
 func _rotation_for_face(face_index: int) -> Vector3:
@@ -217,6 +225,15 @@ func _ease_out(t: float) -> float:
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	if _landed:
+		_land_fx_t += delta
+	if _sparkles.size() > 0:
+		var keep: Array = []
+		for sp in _sparkles:
+			sp.t = float(sp.t) + delta
+			if float(sp.t) < float(sp.life):
+				keep.append(sp)
+		_sparkles = keep
 	if _rolling:
 		_spin_t += delta / _spin_dur
 		var u := clampf(_spin_t, 0.0, 1.0)
@@ -244,19 +261,35 @@ func _process(delta: float) -> void:
 func _finish() -> void:
 	_rolling = false
 	_landed = true
+	_land_fx_t = 0.0
 	_rot = _target_rot
 	var is_high := _result >= 11
 	_correct = (_guess == "high" and is_high) or (_guess == "low" and not is_high)
 	var band := "High" if is_high else "Low"
+	var call_txt := "High" if _guess == "high" else "Low"
 	if _correct:
-		_status.text = "d20 shows %d — %s! Jimothy is thrilled." % [_result, band]
+		_status.text = "Call: %s  ·  d20 = %d (%s)  ·  Correct! Jimothy is thrilled." % [call_txt, _result, band]
 	else:
-		_status.text = "d20 shows %d — %s. Jimothy droops." % [_result, band]
+		_status.text = "Call: %s  ·  d20 = %d (%s)  ·  Miss. Jimothy droops." % [call_txt, _result, band]
 	_btn_again.visible = true
+	_picks.visible = true
+	_burst_sparkles()
 	_die.queue_redraw()
 	if not _reported:
 		_reported = true
 		finished.emit(_correct, _result, _guess)
+
+
+func _burst_sparkles() -> void:
+	_sparkles.clear()
+	for i in 12:
+		_sparkles.append({
+			"a": TAU * float(i) / 12.0 + randf() * 0.2,
+			"r": randf_range(18.0, 36.0),
+			"t": 0.0,
+			"life": randf_range(0.55, 0.95),
+			"sz": randf_range(1.6, 3.2),
+		})
 
 
 func _on_again() -> void:
@@ -296,11 +329,31 @@ func _project(v: Vector3, scale: float, cx: float, cy: float) -> Vector3:
 func _on_die_draw() -> void:
 	var size := _die.size
 	var cx := size.x * 0.5
-	var cy := size.y * 0.5 + 4.0
-	var scale := 78.0
+	var cy := size.y * 0.48
+	var scale := 96.0
 
-	# Shadow
-	_die.draw_colored_polygon(_ellipse_pts(Vector2(cx, size.y - 22.0), Vector2(52, 11)), Color(0, 0, 0, 0.32))
+	# Ritual / tabletop circle
+	var ring_col := Color(0.55, 0.42, 0.75, 0.35)
+	if _landed:
+		ring_col = Color(0.45, 0.75, 0.5, 0.45) if _correct else Color(0.75, 0.4, 0.38, 0.45)
+	_die.draw_arc(Vector2(cx, cy + 8.0), 92.0, 0.0, TAU, 48, ring_col, 2.2, true)
+	_die.draw_arc(Vector2(cx, cy + 8.0), 78.0, 0.0, TAU, 40, Color(ring_col.r, ring_col.g, ring_col.b, ring_col.a * 0.55), 1.2, true)
+	for i in 8:
+		var ang := float(i) * TAU / 8.0 + Time.get_ticks_msec() * 0.0004
+		var rp := Vector2(cx, cy + 8.0) + Vector2(cos(ang), sin(ang)) * 85.0
+		_die.draw_circle(rp, 1.6, Color(0.94, 0.77, 0.48, 0.35))
+
+	# Table shadow
+	_die.draw_colored_polygon(_ellipse_pts(Vector2(cx, size.y - 18.0), Vector2(64, 13)), Color(0, 0, 0, 0.38))
+
+	# Roll streaks while tumbling
+	if _rolling and _spin_t < 0.72:
+		for i in 5:
+			var ang2 := float(i) * 0.7 + _spin_t * 14.0
+			var len := 28.0 + (1.0 - _spin_t / 0.72) * 40.0
+			var a0 := Vector2(cx, cy) + Vector2(cos(ang2), sin(ang2)) * 20.0
+			var a1 := Vector2(cx, cy) + Vector2(cos(ang2), sin(ang2)) * len
+			_die.draw_line(a0, a1, Color(0.94, 0.77, 0.48, 0.22 * (1.0 - _spin_t / 0.72)), 2.0)
 
 	var rotated: Array[Vector3] = []
 	for v in _verts:
@@ -329,7 +382,7 @@ func _on_die_draw() -> void:
 	draw_faces.sort_custom(func(a, b): return a.z > b.z)
 
 	for f in draw_faces:
-		var lit := 0.35 + 0.65 * maxf(0.0, f.n.z)
+		var lit := 0.32 + 0.68 * maxf(0.0, f.n.z)
 		var base := Color("5a4a8a")
 		if _landed:
 			if int(f.num) == _result:
@@ -342,26 +395,88 @@ func _on_die_draw() -> void:
 			Vector2(f.pts[1].x, f.pts[1].y),
 			Vector2(f.pts[2].x, f.pts[2].y),
 		])
-		_die.draw_colored_polygon(poly, col)
-		var edge := Color("f0c57a")
-		edge.a = 0.5 if not (_landed and int(f.num) == _result) else 0.9
-		_die.draw_polyline(poly + PackedVector2Array([poly[0]]), edge, 1.4 if int(f.num) != _result else 2.2, true)
-
+		# Beveled / inset face: dark outer, lighter inset
+		_die.draw_colored_polygon(poly, col.darkened(0.18))
 		var mx: float = (float(f.pts[0].x) + float(f.pts[1].x) + float(f.pts[2].x)) / 3.0
 		var my: float = (float(f.pts[0].y) + float(f.pts[1].y) + float(f.pts[2].y)) / 3.0
-		var font_size: int = int(11.0 + maxf(0.0, float(f.n.z)) * 10.0)
+		var inset := PackedVector2Array()
+		for pt in poly:
+			inset.append(pt.lerp(Vector2(mx, my), 0.18))
+		var hi := Color(
+			minf(1.0, col.r * 1.18 + 0.05),
+			minf(1.0, col.g * 1.15 + 0.04),
+			minf(1.0, col.b * 1.12 + 0.03),
+			1.0
+		)
+		_die.draw_colored_polygon(inset, hi)
+		# Specular glint on brightest faces
+		if float(f.n.z) > 0.55:
+			_die.draw_colored_polygon(PackedVector2Array([
+				inset[0].lerp(Vector2(mx, my), 0.35),
+				inset[1].lerp(Vector2(mx, my), 0.55),
+				Vector2(mx, my),
+			]), Color(1, 1, 1, 0.16 + float(f.n.z) * 0.12))
+		var edge := Color("f0c57a")
+		edge.a = 0.55 if not (_landed and int(f.num) == _result) else 0.95
+		_die.draw_polyline(poly + PackedVector2Array([poly[0]]), edge, 1.6 if int(f.num) != _result else 2.6, true)
+		_die.draw_polyline(inset + PackedVector2Array([inset[0]]), Color(0.1, 0.12, 0.14, 0.35), 1.0, true)
+
+		var font_size: int = int(13.0 + maxf(0.0, float(f.n.z)) * 12.0)
 		var num_col := Color("f0c57a")
 		if _landed and int(f.num) == _result:
 			num_col = Color("eef5ea") if _correct else Color("fff0ec")
+		var label := str(f.num)
+		var tw := ThemeDB.fallback_font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		# Number shadow for readability
 		_die.draw_string(
 			ThemeDB.fallback_font,
-			Vector2(mx - 8, my + 5),
-			str(f.num),
+			Vector2(mx - tw * 0.5 + 1.0, my + 5 + 1.0),
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			font_size,
+			Color(0, 0, 0, 0.45)
+		)
+		_die.draw_string(
+			ThemeDB.fallback_font,
+			Vector2(mx - tw * 0.5, my + 5),
+			label,
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
 			font_size,
 			num_col
 		)
+
+	# Landing rings
+	if _landed and _land_fx_t < 0.9:
+		var lt := _land_fx_t / 0.9
+		var rr := lerpf(20.0, 70.0, lt)
+		var lc := Color(0.55, 0.9, 0.55, 0.65 * (1.0 - lt)) if _correct else Color(0.9, 0.45, 0.4, 0.6 * (1.0 - lt))
+		_die.draw_arc(Vector2(cx, cy), rr, 0.0, TAU, 36, lc, 2.4, true)
+		_die.draw_arc(Vector2(cx, cy), rr * 0.72, 0.0, TAU, 28, Color(lc.r, lc.g, lc.b, lc.a * 0.6), 1.5, true)
+
+	# Result sparkles
+	for sp in _sparkles:
+		var u := float(sp.t) / float(sp.life)
+		var rad := float(sp.r) * (0.4 + u)
+		var p := Vector2(cx, cy) + Vector2(cos(float(sp.a)), sin(float(sp.a))) * rad
+		var sc := Color(0.98, 0.86, 0.45, 0.85 * (1.0 - u)) if _correct else Color(0.95, 0.7, 0.55, 0.7 * (1.0 - u))
+		_die.draw_circle(p, float(sp.sz) * (1.0 - u * 0.4), sc)
+
+	# Call / result chip under die
+	if _guess != "":
+		var call_txt := "Call: High" if _guess == "high" else "Call: Low"
+		if _landed:
+			call_txt += "  ·  %s" % ("Correct!" if _correct else "Incorrect")
+		var font := ThemeDB.fallback_font
+		var fs := 14
+		var tw2 := font.get_string_size(call_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var chip_c := Color(0.08, 0.12, 0.1, 0.72)
+		_die.draw_colored_polygon(_ellipse_pts(Vector2(cx, size.y - 8.0), Vector2(tw2 * 0.55 + 16.0, 12.0)), chip_c)
+		var tc := Color("f0c57a")
+		if _landed:
+			tc = Color("8fdf9a") if _correct else Color("e08a7a")
+		_die.draw_string(font, Vector2(cx - tw2 * 0.5, size.y - 3.0), call_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
 
 
 func _ellipse_pts(center: Vector2, radii: Vector2, n: int = 22) -> PackedVector2Array:

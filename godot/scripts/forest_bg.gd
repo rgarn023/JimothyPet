@@ -47,8 +47,14 @@ func _draw() -> void:
 	else:
 		for i in 24:
 			var t := float(i) / 23.0
-			var col := Color(0.04, 0.08, 0.07).lerp(Color(0.09, 0.16, 0.12), t)
+			var col := Color(0.04, 0.07, 0.12).lerp(Color(0.08, 0.14, 0.12), t)
 			draw_rect(Rect2(0, h * t / 1.15, w, h / 22.0 + 2.0), col)
+		# Soft star flecks
+		for i in 10:
+			var sx := fposmod(float(i) * 97.3, w)
+			var sy := h * (0.05 + fmod(float(i) * 0.07, 0.28))
+			var tw := 0.25 + 0.55 * absf(sin(Time.get_ticks_msec() * 0.002 + float(i)))
+			draw_circle(Vector2(sx, sy), 1.2, Color(0.92, 0.95, 1.0, tw * 0.45))
 		# Moon glow
 		var moon := Vector2(w * 0.78, h * 0.12)
 		draw_circle(moon, 48.0, Color(0.95, 0.85, 0.45, 0.08))

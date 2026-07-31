@@ -2,6 +2,7 @@ extends Control
 ## Alley rummage mini-game — scraps fling out of the dumpster.
 
 const RaccoonViewScript = preload("res://scripts/raccoon_view.gd")
+const VisualPolish = preload("res://scripts/visual_polish.gd")
 
 signal finished(score: int, stars: int, completed: bool)
 
@@ -26,9 +27,11 @@ var spawn_timer := 0.0
 var dig_hold := 0.0
 var lid_open := 0.0
 var chew_t := 0.0
+var catch_streak := 0
 var _pointer_down := false
 var dumpster := Rect2(60, 70, 240, 78)
 var _avatar: Control
+var _steam: Array = []
 
 @onready var score_label: Label = %ScoreLabel
 @onready var time_label: Label = %TimeLabel
@@ -49,6 +52,8 @@ func start_game() -> void:
 	dig_hold = 0.0
 	lid_open = 0.0
 	chew_t = 0.0
+	catch_streak = 0
+	_steam.clear()
 	walk_phase = 0.0
 	player_facing = 1.0
 	player_x = playfield.size.x * 0.5 if playfield.size.x > 0 else 180.0
@@ -136,12 +141,28 @@ func _spawn_item(forced_good: bool = false) -> void:
 		"spin": randf_range(-3.0, 3.0),
 	})
 	lid_open = 1.0
+	_puff_steam()
 	if JimothyAudio:
 		JimothyAudio.play("rustle", -8.0)
 
 
 func _add_fx(kind: String, x: float, y: float, text: String = "") -> void:
-	fx.append({"kind": kind, "x": x, "y": y, "text": text, "t": 0.0, "life": 0.7})
+	var life := 0.85 if kind == "label" or kind == "streak" else 0.7
+	fx.append({"kind": kind, "x": x, "y": y, "text": text, "t": 0.0, "life": life})
+
+
+func _puff_steam() -> void:
+	var cx := dumpster.get_center().x
+	var cy := dumpster.position.y + 10.0
+	for i in 4:
+		_steam.append({
+			"x": cx + randf_range(-28.0, 28.0),
+			"y": cy + randf_range(-2.0, 8.0),
+			"r": randf_range(5.0, 10.0),
+			"t": 0.0,
+			"life": randf_range(0.55, 0.95),
+			"vx": randf_range(-8.0, 8.0),
+		})
 
 
 func _process(delta: float) -> void:
@@ -176,7 +197,9 @@ func _process(delta: float) -> void:
 		if dig_hold >= 0.55:
 			dig_hold = 0.0
 			_spawn_item(true)
-			_add_fx("label", player_x, playfield.size.y - 90.0, "DIG!")
+			_add_fx("dig", player_x, playfield.size.y - 96.0, "DIG!")
+			_add_fx("label", player_x, playfield.size.y - 112.0, "DIG!")
+			_puff_steam()
 			if JimothyAudio:
 				JimothyAudio.play("chitter", -6.0)
 	else:
@@ -204,13 +227,19 @@ func _process(delta: float) -> void:
 			score = maxi(0, score + int(item.points))
 			chew_t = 0.35
 			if int(item.points) < 0:
+				catch_streak = 0
 				_add_fx("splat", float(item.x), float(item.y))
-				_add_fx("label", float(item.x), float(item.y) - 12.0, str(item.points))
+				_add_fx("bad", float(item.x), float(item.y) - 6.0, "YUCK")
+				_add_fx("label", float(item.x), float(item.y) - 22.0, str(item.points))
 				if JimothyAudio:
 					JimothyAudio.play("grumble", -4.0)
 			else:
+				catch_streak += 1
 				_add_fx("crumb", float(item.x), float(item.y))
-				_add_fx("label", float(item.x), float(item.y) - 14.0, "+%d" % int(item.points))
+				_add_fx("catch", float(item.x), float(item.y) - 4.0, "NICE")
+				_add_fx("label", float(item.x), float(item.y) - 20.0, "+%d" % int(item.points))
+				if catch_streak >= 2:
+					_add_fx("streak", float(item.x) + 10.0, float(item.y) - 36.0, "x%d" % catch_streak)
 				if JimothyAudio:
 					JimothyAudio.play("crunch", -5.0)
 			_update_hud()
@@ -230,6 +259,16 @@ func _process(delta: float) -> void:
 		if float(f.t) < float(f.life):
 			keep_fx.append(f)
 	fx = keep_fx
+
+	var keep_steam: Array = []
+	for s in _steam:
+		s.t = float(s.t) + delta
+		s.y = float(s.y) - 22.0 * delta
+		s.x = float(s.x) + float(s.vx) * delta
+		s.r = float(s.r) + 10.0 * delta
+		if float(s.t) < float(s.life):
+			keep_steam.append(s)
+	_steam = keep_steam
 
 	_update_hud()
 	playfield.queue_redraw()
@@ -269,17 +308,11 @@ func _on_playfield_draw() -> void:
 	var pf := playfield
 	var w := pf.size.x
 	var h := pf.size.y
-	pf.draw_rect(Rect2(Vector2.ZERO, pf.size), Color("101a14"))
-	# Brick hints
-	for y in range(100, int(h - 70), 26):
-		pf.draw_line(Vector2(0, y), Vector2(w, y), Color(0.6, 0.67, 0.61, 0.1), 1.0)
-	# Ground
-	pf.draw_rect(Rect2(0, h - 48, w, 48), Color("1a281e"))
-	pf.draw_rect(Rect2(0, h - 48, w, 3), Color(0.88, 0.63, 0.29, 0.12))
-	for i in 8:
-		_draw_ellipse(pf, Vector2(30 + i * 42, h - 38 + (i % 3)), Vector2(10, 4), Color(0.24, 0.19, 0.12, 0.35))
-
+	_draw_alley(pf, w, h)
 	_draw_dumpster(pf)
+	for s in _steam:
+		var aa := 1.0 - float(s.t) / float(s.life)
+		_draw_ellipse(pf, Vector2(s.x, s.y), Vector2(float(s.r), float(s.r) * 0.55), Color(0.75, 0.85, 0.78, 0.18 * aa))
 
 	if _under_dumpster() and dig_hold > 0.0:
 		pf.draw_rect(Rect2(dumpster.position.x + 20, dumpster.position.y - 4, (dumpster.size.x - 40) * minf(1.0, dig_hold / 0.55), 3), Color(0.44, 0.75, 0.51, 0.5))
@@ -289,20 +322,134 @@ func _on_playfield_draw() -> void:
 		_draw_item(pf, item)
 	for f in fx:
 		_draw_fx(pf, f)
+	VisualPolish.draw_vignette(pf, pf.size, 0.42)
 	# Player is a live RaccoonView avatar child (current Jimothy form).
+
+
+func _draw_alley(pf: Control, w: float, h: float) -> void:
+	# Layered night sky
+	for i in 16:
+		var t := float(i) / 15.0
+		var col := Color(0.05, 0.08, 0.14).lerp(Color(0.12, 0.16, 0.18), t)
+		pf.draw_rect(Rect2(0, h * t * 0.42, w, h * 0.045 + 2.0), col)
+	# Distant skyline with lit windows
+	var skyline_y := h * 0.28
+	for i in 9:
+		var bx := float(i) * (w / 8.5) - 8.0
+		var bw := 28.0 + float(i % 3) * 8.0
+		var bh := 28.0 + float((i * 17) % 40)
+		pf.draw_rect(Rect2(bx, skyline_y - bh, bw, bh), Color(0.08, 0.1, 0.14, 0.95))
+		for wy in range(3):
+			for wx in range(2):
+				if ((i + wy + wx) % 3) == 0:
+					continue
+				var lit := 0.35 + 0.45 * absf(sin(Time.get_ticks_msec() * 0.0015 + float(i * 3 + wy)))
+				pf.draw_rect(
+					Rect2(bx + 5.0 + float(wx) * 10.0, skyline_y - bh + 6.0 + float(wy) * 9.0, 5.0, 5.0),
+					Color(0.95, 0.8, 0.4, lit * 0.55)
+				)
+	# Brick wall
+	var wall_top := h * 0.34
+	pf.draw_rect(Rect2(0, wall_top, w, h - wall_top - 48.0), Color("1a2420"))
+	for y in range(int(wall_top) + 8, int(h - 70), 14):
+		var row := int((y - wall_top) / 14.0)
+		var xoff := 10.0 if (row % 2) == 0 else 0.0
+		pf.draw_line(Vector2(0, y), Vector2(w, y), Color(0.35, 0.4, 0.36, 0.16), 1.0)
+		for x in range(int(xoff), int(w), 22):
+			pf.draw_line(Vector2(x, y), Vector2(x, minf(float(y + 14), h - 70.0)), Color(0.3, 0.35, 0.32, 0.12), 1.0)
+	# Drainpipe
+	pf.draw_rect(Rect2(18, wall_top - 10, 7, h - wall_top - 40), Color("2a3430"))
+	pf.draw_rect(Rect2(19, wall_top - 10, 2, h - wall_top - 40), Color(1, 1, 1, 0.08))
+	pf.draw_circle(Vector2(21.5, h - 58), 5.0, Color("24302c"))
+	# Poster
+	VisualPolish.round_rect(pf, Rect2(w - 78, wall_top + 24, 42, 54), Color("3a2a22"), 3.0)
+	VisualPolish.round_rect(pf, Rect2(w - 74, wall_top + 28, 34, 36), Color("c45c4a"), 2.0)
+	pf.draw_rect(Rect2(w - 70, wall_top + 34, 26, 4), Color("f0c57a"))
+	pf.draw_rect(Rect2(w - 68, wall_top + 42, 22, 3), Color(0.95, 0.9, 0.8, 0.55))
+	# Graffiti
+	pf.draw_polyline(
+		PackedVector2Array([Vector2(40, wall_top + 50), Vector2(55, wall_top + 40), Vector2(70, wall_top + 52), Vector2(88, wall_top + 38)]),
+		Color(0.42, 0.55, 0.85, 0.55),
+		2.2,
+		true
+	)
+	pf.draw_arc(Vector2(110, wall_top + 58), 10.0, 0.4, 2.6, 10, Color(0.75, 0.45, 0.7, 0.45), 2.0, true)
+	# Security lamp
+	var lamp := Vector2(w * 0.72, wall_top + 8)
+	pf.draw_rect(Rect2(lamp.x - 2, lamp.y - 18, 4, 18), Color("2a2a32"))
+	pf.draw_colored_polygon(PackedVector2Array([
+		lamp + Vector2(-10, 0), lamp + Vector2(10, 0), lamp + Vector2(6, 8), lamp + Vector2(-6, 8)
+	]), Color("3a3a44"))
+	pf.draw_circle(lamp + Vector2(0, 10), 4.5, Color(0.98, 0.9, 0.55, 0.95))
+	_draw_ellipse(pf, lamp + Vector2(0, 55), Vector2(48, 28), Color(0.95, 0.85, 0.4, 0.08))
+	# Ground / curb
+	pf.draw_rect(Rect2(0, h - 48, w, 48), Color("1a281e"))
+	pf.draw_rect(Rect2(0, h - 54, w, 8), Color("24342a"))
+	pf.draw_rect(Rect2(0, h - 54, w, 2), Color(0.55, 0.6, 0.55, 0.25))
+	pf.draw_rect(Rect2(0, h - 48, w, 3), Color(0.88, 0.63, 0.29, 0.12))
+	# Puddles
+	_draw_ellipse(pf, Vector2(w * 0.22, h - 36), Vector2(28, 7), Color(0.2, 0.32, 0.38, 0.45))
+	_draw_ellipse(pf, Vector2(w * 0.22, h - 36), Vector2(18, 3.5), Color(0.55, 0.7, 0.75, 0.18))
+	_draw_ellipse(pf, Vector2(w * 0.78, h - 40), Vector2(22, 6), Color(0.18, 0.28, 0.34, 0.4))
+	# Debris
+	for i in 8:
+		_draw_ellipse(pf, Vector2(30 + i * 42, h - 38 + (i % 3)), Vector2(10, 4), Color(0.24, 0.19, 0.12, 0.35))
+	pf.draw_rect(Rect2(48, h - 44, 14, 5), Color(0.35, 0.28, 0.18, 0.55))
+	pf.draw_colored_polygon(PackedVector2Array([
+		Vector2(w - 60, h - 46), Vector2(w - 48, h - 50), Vector2(w - 42, h - 42)
+	]), Color(0.45, 0.38, 0.28, 0.5))
 
 
 func _draw_dumpster(pf: Control) -> void:
 	var r := dumpster
-	_draw_ellipse(pf, Vector2(r.get_center().x, r.end.y + 8), Vector2(r.size.x * 0.45, 10), Color(0, 0, 0, 0.25))
-	pf.draw_rect(Rect2(r.position + Vector2(0, 16), Vector2(r.size.x, r.size.y - 10)), Color("3d6b4f"), true, -1.0, true)
-	pf.draw_rect(Rect2(r.position + Vector2(8, 28), Vector2(r.size.x - 16, r.size.y - 30)), Color("2a4a38"), true, -1.0, true)
-	pf.draw_rect(Rect2(r.position + Vector2(14, 22), Vector2(r.size.x - 30, 28)), Color("142019"), true, -1.0, true)
-	# Lid (tilted when open)
+	_draw_ellipse(pf, Vector2(r.get_center().x, r.end.y + 8), Vector2(r.size.x * 0.48, 11), Color(0, 0, 0, 0.32))
+	# Body shell
+	VisualPolish.round_rect(pf, Rect2(r.position + Vector2(0, 16), Vector2(r.size.x, r.size.y - 8)), Color("3d6b4f"), 5.0)
+	# Side bevels
+	pf.draw_rect(Rect2(r.position + Vector2(3, 20), Vector2(5, r.size.y - 18)), Color(0.35, 0.55, 0.42, 0.55))
+	pf.draw_rect(Rect2(r.end.x - 8, r.position.y + 20, 5, r.size.y - 18), Color(0.15, 0.28, 0.2, 0.55))
+	# Inset panels
+	VisualPolish.round_rect(pf, Rect2(r.position + Vector2(12, 30), Vector2(r.size.x * 0.38, r.size.y - 38)), Color("2a4a38"), 3.0)
+	VisualPolish.round_rect(pf, Rect2(r.position + Vector2(r.size.x * 0.52, 30), Vector2(r.size.x * 0.38, r.size.y - 38)), Color("2a4a38"), 3.0)
+	# Mouth recess
+	VisualPolish.round_rect(pf, Rect2(r.position + Vector2(16, 22), Vector2(r.size.x - 32, 26)), Color("142019"), 3.0)
+	# Rust streaks + scratches
+	pf.draw_line(r.position + Vector2(20, 34), r.position + Vector2(24, r.size.y - 4), Color(0.55, 0.32, 0.18, 0.45), 2.0)
+	pf.draw_line(r.position + Vector2(r.size.x - 28, 36), r.position + Vector2(r.size.x - 24, r.size.y - 6), Color(0.5, 0.3, 0.16, 0.4), 1.8)
+	pf.draw_line(r.position + Vector2(40, 48), r.position + Vector2(70, 46), Color(0.2, 0.28, 0.22, 0.5), 1.2)
+	pf.draw_line(r.position + Vector2(90, 52), r.position + Vector2(120, 50), Color(0.2, 0.28, 0.22, 0.45), 1.0)
+	# Warning label
+	VisualPolish.round_rect(pf, Rect2(r.get_center().x - 22, r.position.y + 48, 44, 14), Color("e0a04a"), 2.0)
+	pf.draw_rect(Rect2(r.get_center().x - 18, r.position.y + 51, 36, 3), Color("1c1c22"))
+	pf.draw_rect(Rect2(r.get_center().x - 14, r.position.y + 56, 28, 2), Color("1c1c22"))
+	# Bags + cardboard peeking out
+	_draw_ellipse(pf, Vector2(r.position.x + 34, r.position.y + 28), Vector2(12, 8), Color(0.18, 0.2, 0.18, 0.85))
+	_draw_ellipse(pf, Vector2(r.end.x - 40, r.position.y + 26), Vector2(11, 7), Color(0.22, 0.18, 0.14, 0.8))
+	pf.draw_colored_polygon(PackedVector2Array([
+		Vector2(r.get_center().x - 8, r.position.y + 20),
+		Vector2(r.get_center().x + 18, r.position.y + 18),
+		Vector2(r.get_center().x + 14, r.position.y + 30),
+		Vector2(r.get_center().x - 12, r.position.y + 28),
+	]), Color(0.55, 0.42, 0.28, 0.85))
+	# Lid with rim + handle
 	var lid_y := r.position.y + 4.0 - lid_open * 18.0
-	pf.draw_rect(Rect2(r.position.x + 10, lid_y, r.size.x - 20, 18), Color("2f5540"), true, -1.0, true)
-	pf.draw_circle(Vector2(r.position.x + 22, r.end.y + 2), 7, Color("1c1c22"))
-	pf.draw_circle(Vector2(r.end.x - 22, r.end.y + 2), 7, Color("1c1c22"))
+	var lid_tilt := lid_open * 0.18
+	pf.draw_set_transform(Vector2(r.position.x + 10, lid_y), -lid_tilt, Vector2.ONE)
+	VisualPolish.round_rect(pf, Rect2(0, 0, r.size.x - 20, 18), Color("2f5540"), 3.0)
+	pf.draw_rect(Rect2(4, 2, r.size.x - 28, 3), Color(0.55, 0.72, 0.58, 0.35))
+	pf.draw_rect(Rect2(6, 14, r.size.x - 32, 3), Color(0.15, 0.22, 0.18, 0.65))
+	# Handle
+	VisualPolish.round_rect(pf, Rect2((r.size.x - 20) * 0.5 - 14, 5, 28, 6), Color("1c1c22"), 2.0)
+	pf.draw_rect(Rect2((r.size.x - 20) * 0.5 - 10, 6, 20, 2), Color(0.55, 0.55, 0.6, 0.35))
+	pf.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# Wheels
+	var wheel_sides: Array[float] = [-1.0, 1.0]
+	for side in wheel_sides:
+		var wx: float = r.get_center().x + side * (r.size.x * 0.38)
+		var wy: float = r.end.y + 2.0
+		pf.draw_circle(Vector2(wx, wy), 8.0, Color("1c1c22"))
+		pf.draw_circle(Vector2(wx, wy), 4.5, Color("2a2a32"))
+		pf.draw_circle(Vector2(wx - 1.5, wy - 1.5), 1.4, Color(1, 1, 1, 0.15))
 
 
 func _draw_item(pf: Control, item: Dictionary) -> void:
@@ -394,15 +541,37 @@ func _draw_round_rect(pf: Control, r: Rect2, color: Color) -> void:
 func _draw_fx(pf: Control, f: Dictionary) -> void:
 	var a := 1.0 - float(f.t) / float(f.life)
 	var p := Vector2(f.x, f.y)
+	var txt := str(f.get("text", ""))
 	match str(f.kind):
 		"label":
-			# Tiny score pip (no font dependency)
-			_draw_ellipse(pf, p, Vector2(8, 5), Color(0.94, 0.77, 0.48, a))
+			var col := Color(0.94, 0.77, 0.48, a)
+			if txt.begins_with("-"):
+				col = Color(0.85, 0.45, 0.4, a)
+			elif txt.begins_with("+"):
+				col = Color(0.55, 0.85, 0.55, a)
+			VisualPolish.draw_label(pf, p, txt if txt != "" else "!", col, 14)
+		"streak":
+			VisualPolish.draw_label(pf, p, txt if txt != "" else "x2", Color(0.98, 0.82, 0.4, a), 15)
+			pf.draw_arc(p + Vector2(0, 2), 12.0 + float(f.t) * 10.0, 0.0, TAU, 16, Color(0.95, 0.75, 0.35, 0.35 * a), 1.6, true)
+		"catch":
+			pf.draw_arc(p, 8.0 + float(f.t) * 22.0, 0.0, TAU, 18, Color(0.55, 0.9, 0.55, 0.55 * a), 2.0, true)
+			_draw_ellipse(pf, p, Vector2(6, 6), Color(0.7, 0.95, 0.65, 0.35 * a))
+		"bad":
+			pf.draw_arc(p, 7.0 + float(f.t) * 18.0, 0.0, TAU, 16, Color(0.85, 0.35, 0.3, 0.5 * a), 2.0, true)
+			VisualPolish.draw_label(pf, p + Vector2(0, -10), txt if txt != "" else "YUCK", Color(0.9, 0.45, 0.4, a), 12)
+		"dig":
+			for i in 5:
+				var ang := float(i) * TAU / 5.0 + float(f.t) * 4.0
+				var rp := p + Vector2(cos(ang), sin(ang)) * (10.0 + float(f.t) * 16.0)
+				_draw_ellipse(pf, rp, Vector2(2.2, 2.2), Color(0.88, 0.63, 0.29, 0.55 * a))
 		"splat":
 			_draw_ellipse(pf, p, Vector2(14 * (1.0 + float(f.t)), 6), Color(0.35, 0.42, 0.23, 0.55 * a))
+			_draw_ellipse(pf, p + Vector2(-6, -2), Vector2(4, 3), Color(0.4, 0.48, 0.25, 0.4 * a))
+			_draw_ellipse(pf, p + Vector2(7, 1), Vector2(3.5, 2.5), Color(0.4, 0.48, 0.25, 0.35 * a))
 		_:
 			_draw_ellipse(pf, p + Vector2(-3, 0), Vector2(2.5, 2.5), Color(0.88, 0.63, 0.29, 0.45 * a))
 			_draw_ellipse(pf, p + Vector2(3, 1), Vector2(2, 2), Color(0.88, 0.63, 0.29, 0.45 * a))
+			_draw_ellipse(pf, p + Vector2(0, -3), Vector2(1.8, 1.8), Color(0.94, 0.77, 0.48, 0.4 * a))
 
 
 func _draw_ellipse(pf: Control, center: Vector2, radii: Vector2, color: Color) -> void:
