@@ -60,7 +60,9 @@ func _check_runtime_forms(failures: PackedStringArray) -> void:
 		await get_tree().process_frame
 		r.play_anim("jump")
 		await get_tree().process_frame
-		r.play_anim("eat")
+		r.play_eat("berries")
+		if not r._is_feeding():
+			push_error("expected feed state")
 		await get_tree().process_frame
 		r.mood = "sleep"
 		r.play_anim("sleep")

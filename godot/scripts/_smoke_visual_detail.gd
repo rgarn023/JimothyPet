@@ -136,13 +136,14 @@ func _check_raccoon(failures: PackedStringArray) -> void:
 	await get_tree().process_frame
 	r.custom_minimum_size = Vector2(200, 200)
 	r.size = Vector2(200, 200)
-	r.play_anim("eat")
-	if r._anim != "eat":
-		failures.append("eat anim did not start")
-	# Exercise all five food keys visually
+	r.play_eat("fries")
+	if not r._is_feeding():
+		failures.append("feed anim did not start")
+	# Exercise all five food-specific feed states
 	for food_key in ["berries", "crickets", "fish", "pizza", "fries"]:
-		r.play_anim("eat")
-		r._eat_food = food_key
+		r.play_eat(food_key)
+		if not r._is_feeding():
+			failures.append("feed failed for " + food_key)
 		r.queue_redraw()
 		await get_tree().process_frame
 	r.mood = "sleep"

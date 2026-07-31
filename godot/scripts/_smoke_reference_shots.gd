@@ -90,21 +90,23 @@ func _run() -> void:
 			r._smile = 1.0
 			r._anim = "idle"
 		if str(case[3]) == "eat":
+			# Explicit feed state (legacy "eat" still drawn via _is_feeding).
 			r._eat_food = "fries"
 			r._paw_lift = 0.95
 			r._mouth_open = 0.75
 			r._bite_progress = 0.45
 			r._chew_puff = 0.7
-			r._anim = "eat"
-			r._anim_t = 1.8
-			r._anim_dur = 3.2
+			r._anim = "feed_dumpster_fries"
+			r._anim_t = 0.5
+			r._anim_dur = 1.15
 		if str(case[3]) == "sleep":
 			r.mood = "sleep"
 			r._anim = "sleep"
 		if str(case[3]) == "stageUp":
-			r._anim = "stageUp"
-			r._anim_dur = 2.8
-			r._anim_t = 0.95
+			r._anim = "hatch_reveal"
+			r._anim_dur = 1.35
+			r._anim_t = 0.55
+			r._hatch_show_bush = true
 			r._body_squash = 0.84
 			r._fade = 0.55
 			r.modulate = Color(1, 1, 1, 0.55)

@@ -668,7 +668,7 @@ func _evolve_if_needed() -> void:
 			anim_impulse.emit("fallAsleep")
 		else:
 			speech.emit("The bush explodes in leaves — baby kit Jimothy!")
-			anim_impulse.emit("stageUp")
+			anim_impulse.emit("hatch_reveal")
 	elif stage == "baby" and age_sec >= baby_end():
 		stage = "young"
 		young_form = _pick_young_form(genes)
@@ -966,8 +966,8 @@ func try_feed(food_key: String) -> String:
 			anim_impulse.emit("sick")
 		else:
 			speech.emit("He stash-eats the %s." % food.name)
-			anim_impulse.emit("eat")
-			_anim_cooldown = 3.2
+			anim_impulse.emit(_feed_anim_name(food_key))
+			_anim_cooldown = 1.25
 	else:
 		treat_streak = 0
 		healthy_meals += 1
@@ -975,8 +975,8 @@ func try_feed(food_key: String) -> String:
 		sick = false if health > 40.0 else sick
 		discipline = clamp01(discipline + 1.5)
 		speech.emit("He forages the %s carefully." % food.name)
-		anim_impulse.emit("eat")
-		_anim_cooldown = 3.2
+		anim_impulse.emit(_feed_anim_name(food_key))
+		_anim_cooldown = 1.25
 
 	state_changed.emit()
 	save_game()
@@ -1171,9 +1171,26 @@ func apply_dice_result(correct: bool, roll: int) -> void:
 	save_game()
 
 
+func _feed_anim_name(food_key: String) -> String:
+	## Explicit feed state per food — never a generic eat cycle of unrelated poses.
+	match food_key:
+		"fries":
+			return "feed_dumpster_fries"
+		"berries":
+			return "feed_wild_berries"
+		"crickets":
+			return "feed_night_crickets"
+		"fish":
+			return "feed_stream_fish"
+		"pizza":
+			return "feed_pizza_crust"
+		_:
+			return "feed_wild_berries"
+
+
 func _pulse_ambient_anim() -> void:
-	# Skip while a care animation (especially slow eat) should stay visible.
-	# Cooldown is also stretched when eat is emitted.
+	# Skip while a care animation (especially feed) should stay visible.
+	# Cooldown is also stretched when feed is emitted.
 	sync_sleep_transition()
 	if is_sleeping():
 		_anim_cooldown = randf_range(3.5, 6.0)
@@ -1183,8 +1200,17 @@ func _pulse_ambient_anim() -> void:
 		_anim_cooldown = randf_range(2.2, 3.6)
 		anim_impulse.emit("stubborn" if stubborn else "sick")
 		return
+	# Baby Kit ambient: only approved front idle / blink — never walk/side/roll.
+	if stage == "baby":
+		var baby_roll := randf()
+		if baby_roll < 0.18:
+			anim_impulse.emit("blink")
+		else:
+			anim_impulse.emit("idle_front")
+		_anim_cooldown = randf_range(2.8, 5.0)
+		return
 	var roll := randf()
-	var kind := "idle"
+	var kind := "idle_front"
 	var peppy := young_form in ["looper", "nub"] or teen_form in ["bounder"] or fitness > 55.0
 	var sneaky := young_form == "shadow" or teen_form == "nightlane" or adult_form == "alley_ghost"
 	if energy > 55.0 and happy > 50.0 and roll < (0.42 if peppy else 0.32):
@@ -1197,11 +1223,11 @@ func _pulse_ambient_anim() -> void:
 	elif roll < 0.66:
 		kind = "jump" if peppy else "sniff"
 	elif roll < 0.78:
-		kind = "lope" if stage == "adult" else ("stretch" if stage != "baby" else "sniff")
+		kind = "lope" if stage == "adult" else "stretch"
 	elif roll < 0.9:
-		kind = "sniff" if sneaky or stage == "baby" else "stretch"
+		kind = "sniff" if sneaky else "stretch"
 	else:
-		kind = "idle"
+		kind = "idle_front"
 	_anim_cooldown = randf_range(1.2, 3.2)
 	anim_impulse.emit(kind)
 

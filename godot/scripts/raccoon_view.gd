@@ -29,7 +29,7 @@ var _pose_y: float = 0.0
 var _facing: float = 1.0
 var _desired_facing: float = 1.0
 var _face_cooldown: float = 0.0
-var _anim: String = "idle"
+var _anim: String = "idle_front"
 var _anim_t: float = 0.0
 var _anim_dur: float = 1.2
 var _walk_phase: float = 0.0
@@ -51,7 +51,44 @@ var _mouth_open: float = 0.0
 var _chew_puff: float = 0.0
 var _bite_progress: float = 0.0
 
-const SIDE_ANIMS := ["walk", "run", "lope", "jump", "hop", "sniff"]
+const SIDE_ANIMS := ["walk", "run", "lope", "jump", "sniff"]
+## Explicit Baby Kit / care animation states (procedural poses — not auto-scanned textures).
+## idle_front: front-facing breathing only (no side / roll / feed poses)
+## hatch_reveal: bush → leaf FX → front kit bounce → idle_front
+## happy_bounce: short front bounce one-shot
+## feed_*: anticipation → food to mouth → bite → chew → swallow → recovery → idle_front
+## blink: optional one-shot eyelid close during idle_front
+const FEED_ANIMS := [
+	"feed_dumpster_fries",
+	"feed_wild_berries",
+	"feed_night_crickets",
+	"feed_stream_fish",
+	"feed_pizza_crust",
+]
+const ONE_SHOT_ANIMS := [
+	"hatch_reveal",
+	"happy_bounce",
+	"blink",
+	"ascend",
+	"fallAsleep",
+	"feed_dumpster_fries",
+	"feed_wild_berries",
+	"feed_night_crickets",
+	"feed_stream_fish",
+	"feed_pizza_crust",
+	# legacy aliases still treated as locked one-shots while playing
+	"eat",
+	"stageUp",
+	"hop",
+	"happy",
+]
+## Temporary debug for state transitions — disabled after validation.
+const ANIM_DEBUG := false
+
+var _blink_amt: float = 0.0
+var _hatch_show_bush: bool = false
+var _action_locked: bool = false
+
 const CREAM := Color("f2e6d2")
 const CREAM_SOFT := Color("e8d8c2")
 const MASK_DARK := Color("2a2a32")
@@ -113,7 +150,7 @@ func configure_as_form_preview(p_stage: String, form_id: String, thumb_scale: fl
 		"adult":
 			adult_form = form_id
 	mood = "idle"
-	_anim = "idle"
+	_anim = "idle_front"
 	_anim_t = 0.0
 	_pose_x = 0.0
 	_pose_y = 0.0
@@ -121,6 +158,8 @@ func configure_as_form_preview(p_stage: String, form_id: String, thumb_scale: fl
 	_body_squash = 1.0
 	_facing = 1.0
 	_desired_facing = 1.0
+	_action_locked = false
+	_blink_amt = 0.0
 	_smile = 0.35 if form_id in ["ballard_blip", "puff", "dumpling"] else 0.0
 	set_process(true)
 	queue_redraw()
@@ -154,15 +193,15 @@ func _try_tap() -> void:
 		return
 	if PetState.ascending or not PetState.alive:
 		return
-	# Don't interrupt eat / ascend mid-motion
-	if _anim in ["eat", "ascend"]:
+	# Don't interrupt one-shot care / feed / ascend mid-motion
+	if _action_locked or _is_one_shot_anim(_anim):
 		return
 	_tap_cooldown = 0.55
 	PetState.interact_tap()
 
 
 func clear_ascend() -> void:
-	_anim = "idle"
+	_anim = "idle_front"
 	_anim_t = 0.0
 	_pose_x = 0.0
 	_pose_y = 0.0
@@ -174,6 +213,9 @@ func clear_ascend() -> void:
 	_facing = 1.0
 	_desired_facing = 1.0
 	_face_cooldown = 0.0
+	_action_locked = false
+	_blink_amt = 0.0
+	_hatch_show_bush = false
 	_sync_from_state()
 	# Invisible only while waiting for a new session; sync reveals once alive.
 	if PetState != null and not PetState.alive and not PetState.ascending:
@@ -193,11 +235,122 @@ func reveal() -> void:
 func _view_front() -> bool:
 	if stage == "bush":
 		return true
+	# Baby Kit never uses side/roll poses for care or idle — front only.
+	if stage == "baby":
+		return true
+	if _is_feeding() or _anim in ["idle_front", "idle", "hatch_reveal", "happy_bounce", "blink", "stageUp"]:
+		return true
 	return not (_anim in SIDE_ANIMS)
+
+
+func _is_feeding() -> bool:
+	return _anim in FEED_ANIMS or _anim == "eat"
+
+
+func _is_one_shot_anim(name: String) -> bool:
+	return name in ONE_SHOT_ANIMS or name in FEED_ANIMS
+
+
+func _is_idle_front() -> bool:
+	return _anim in ["idle_front", "idle"]
+
+
+func _foot_pivot_y() -> float:
+	## Bottom-center body anchor so squash/stretch does not float the feet.
+	match stage:
+		"baby":
+			return 54.0
+		"young":
+			return 58.0
+		"teen":
+			return 66.0
+		"adult":
+			return 74.0
+		_:
+			return 54.0
+
+
+func _anim_debug(name: String) -> void:
+	if ANIM_DEBUG:
+		print("Jimothy animation: ", name)
+
+
+func _return_to_idle_front() -> void:
+	_anim = "idle_front"
+	_anim_t = 0.0
+	_anim_dur = 4.0
+	_action_locked = false
+	_hatch_show_bush = false
+	_pose_y = 0.0
+	_head_dip = 0.0
+	_body_squash = 1.0
+	_paw_lift = 0.0
+	_mouth_open = 0.0
+	_chew_puff = 0.0
+	_bite_progress = 0.0
+	_blink_amt = 0.0
+	_speed = 0.0
+	_anim_debug("idle_front")
+
+
+func _feed_anim_for_food(food_key: String) -> String:
+	## Explicit food → feed state mapping (never alphabetical directory order).
+	match food_key:
+		"fries":
+			return "feed_dumpster_fries"
+		"berries", "berry":
+			return "feed_wild_berries"
+		"crickets":
+			return "feed_night_crickets"
+		"fish":
+			return "feed_stream_fish"
+		"pizza":
+			return "feed_pizza_crust"
+		_:
+			return "feed_wild_berries"
+
+
+func _food_for_feed_anim(anim_name: String) -> String:
+	match anim_name:
+		"feed_dumpster_fries":
+			return "fries"
+		"feed_wild_berries":
+			return "berries"
+		"feed_night_crickets":
+			return "crickets"
+		"feed_stream_fish":
+			return "fish"
+		"feed_pizza_crust":
+			return "pizza"
+		_:
+			return _eat_food if _eat_food != "" else "berries"
+
+
+func _normalize_anim_name(kind: String) -> String:
+	## Map legacy impulses onto the explicit state machine names.
+	match kind:
+		"idle":
+			return "idle_front"
+		"hop", "happy":
+			return "happy_bounce"
+		"stageUp":
+			return "hatch_reveal"
+		"eat":
+			var food := _eat_food
+			if PetState and PetState.last_fed_food != "":
+				food = PetState.last_fed_food
+			return _feed_anim_for_food(food)
+		_:
+			if kind in FEED_ANIMS:
+				return kind
+			return kind
 
 
 func _request_facing(dir: float) -> void:
 	if dir == 0.0:
+		return
+	# Baby Kit stays front-facing — ignore side facing requests.
+	if stage == "baby":
 		return
 	_desired_facing = -1.0 if dir < 0.0 else 1.0
 
@@ -216,7 +369,7 @@ func _commit_facing(delta: float) -> void:
 
 func play_eat(food_kind: String = "berry") -> void:
 	_eat_food = food_kind if food_kind != "" else "berry"
-	play_anim("eat")
+	play_anim(_feed_anim_for_food(_eat_food))
 
 
 func _sync_from_state() -> void:
@@ -230,7 +383,7 @@ func _sync_from_state() -> void:
 		mood = "ascend"
 	elif PetState.is_sleeping():
 		mood = "sleep"
-		if _anim not in ["sleep", "fallAsleep", "ascend"]:
+		if _anim not in ["sleep", "fallAsleep", "ascend"] and not _action_locked:
 			_anim = "sleep"
 			_anim_t = 0.0
 			_anim_dur = 4.0
@@ -243,14 +396,15 @@ func _sync_from_state() -> void:
 		mood = "idle"
 	# Living kit after ascend/reset — never keep the post-fade invisible state.
 	if PetState != null and PetState.alive and not PetState.ascending:
-		if _anim in ["ascend", "gone"] or (_fade < 0.99 and _anim != "stageUp") or modulate.a < 0.99:
+		if _anim in ["ascend", "gone"] or (_fade < 0.99 and _anim not in ["stageUp", "hatch_reveal"]) or modulate.a < 0.99:
 			if PetState.is_sleeping():
 				_anim = "sleep"
 				_anim_t = 0.0
 				_anim_dur = 4.0
 			elif _anim in ["ascend", "gone"]:
-				_anim = "idle"
+				_anim = "idle_front"
 				_anim_t = 0.0
+				_action_locked = false
 			_pose_x = 0.0
 			_pose_y = 0.0
 			_wing_span = 0.0
@@ -265,33 +419,57 @@ func set_look(_stage: String, _variant: String = "", _mood: String = "idle") -> 
 
 
 func play_anim(kind: String) -> void:
-	# Don't let ambient walks cut off a slow eat / ascent / stage-up / falling asleep.
-	# Sleep may interrupt stage-up when he hatches during sleep hours.
-	if kind in ["fallAsleep", "sleep"] and _anim == "stageUp":
-		pass  # allow interrupt below
-	elif _anim in ["eat", "ascend", "fallAsleep", "stageUp"] and kind in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "stubborn", "sick", "sleep"]:
-		return
-	_anim = kind
+	var raw := kind
+	var normalized := _normalize_anim_name(kind)
+
+	# Baby Kit: ambient side locomotion is never allowed (no roll/side idle).
+	if stage == "baby" and normalized in SIDE_ANIMS:
+		if _action_locked:
+			return
+		normalized = "idle_front"
+
+	# Sleep may interrupt hatch when he emerges during sleep hours.
+	var allow_sleep_interrupt := raw in ["fallAsleep", "sleep"] and _anim in ["hatch_reveal", "stageUp"]
+	if not allow_sleep_interrupt:
+		if _action_locked or _is_one_shot_anim(_anim):
+			# Ambient / idle noise cannot cut a one-shot.
+			if normalized in ["walk", "run", "lope", "jump", "sniff", "stretch", "idle", "idle_front", "stubborn", "sick", "sleep", "blink"]:
+				return
+			# Another major one-shot also waits (except sleep interrupt handled above).
+			if _is_one_shot_anim(normalized) and _anim in ["ascend", "hatch_reveal", "stageUp"] and normalized not in ["fallAsleep"]:
+				return
+
+	_anim = normalized
 	_anim_t = 0.0
-	match kind:
+	_action_locked = _is_one_shot_anim(normalized) and normalized not in ["sleep"]
+	_anim_debug(normalized)
+
+	match normalized:
 		"ascend":
 			_anim_dur = 4.2
 			_wing_span = 0.0
 			_fade = 1.0
 			_ascend_done_emitted = false
 			_speed = 0.0
-		"stageUp":
-			_anim_dur = 10.0
-			_jump_peak = 26.0
+			_hatch_show_bush = false
+		"hatch_reveal", "stageUp":
+			# ~1.0–1.5s bush/leaf reveal + controlled bounce, then idle_front.
+			_anim_dur = 1.35
+			_jump_peak = 18.0
 			_speed = 0.0
 			_smile = 1.0
 			_fade = 1.0
+			_pose_x = 0.0
+			_pose_y = 0.0
+			_body_squash = 1.0
+			_hatch_show_bush = (stage == "baby")
 		"fallAsleep":
 			_anim_dur = 1.5
 			_speed = 0.0
 		"sleep":
 			_anim_dur = 4.0
 			_speed = 0.0
+			_action_locked = false
 		"run":
 			_anim_dur = randf_range(1.6, 2.8)
 			_speed = randf_range(100.0, 155.0)
@@ -299,9 +477,10 @@ func play_anim(kind: String) -> void:
 			_request_facing(signf(_target_x - _pose_x) if _target_x != _pose_x else 1.0)
 			_facing = _desired_facing
 			_face_cooldown = 0.0
+			_action_locked = false
 		"walk", "lope":
 			_anim_dur = randf_range(2.2, 3.8)
-			_speed = randf_range(40.0, 80.0) if kind == "walk" else randf_range(60.0, 105.0)
+			_speed = randf_range(40.0, 80.0) if normalized == "walk" else randf_range(60.0, 105.0)
 			_target_x = randf_range(-78.0, 78.0)
 			var wdir := signf(_target_x - _pose_x)
 			if wdir == 0.0:
@@ -309,6 +488,7 @@ func play_anim(kind: String) -> void:
 			_request_facing(wdir)
 			_facing = _desired_facing
 			_face_cooldown = 0.0
+			_action_locked = false
 		"jump":
 			_anim_dur = randf_range(0.55, 0.9)
 			_jump_peak = randf_range(18.0, 36.0)
@@ -316,14 +496,16 @@ func play_anim(kind: String) -> void:
 			_facing = _desired_facing
 			_face_cooldown = 0.0
 			_target_x = clampf(_pose_x + _facing * randf_range(20.0, 50.0), -70.0, 70.0)
+			_action_locked = false
 		"pop":
 			_anim_dur = 0.85
 			_body_squash = 1.0
 		"stretch":
 			_anim_dur = 1.05
 			_body_squash = 1.0
-		"eat":
-			_anim_dur = 3.2
+		"feed_dumpster_fries", "feed_wild_berries", "feed_night_crickets", "feed_stream_fish", "feed_pizza_crust", "eat":
+			# Coherent eat sequence ~0.8–1.4s (not slow static image swaps).
+			_anim_dur = 1.15
 			_eat_flash = 1.0
 			_head_dip = 0.0
 			_paw_lift = 0.0
@@ -331,7 +513,12 @@ func play_anim(kind: String) -> void:
 			_chew_puff = 0.0
 			_bite_progress = 0.0
 			_eat_crumbs.clear()
-			if PetState and PetState.last_fed_food != "":
+			_pose_x = 0.0
+			_pose_y = 0.0
+			_body_squash = 1.0
+			if normalized in FEED_ANIMS:
+				_eat_food = _food_for_feed_anim(normalized)
+			elif PetState and PetState.last_fed_food != "":
 				_eat_food = PetState.last_fed_food
 		"refuse":
 			_anim_dur = 0.95
@@ -339,17 +526,33 @@ func play_anim(kind: String) -> void:
 			_anim_dur = 0.9
 		"stubborn", "sick":
 			_anim_dur = 1.1
+			_action_locked = false
 		"sniff":
 			_anim_dur = 1.0
+			_action_locked = false
 		"smile":
 			_anim_dur = 0.95
 			_smile = 1.0
 		"sad":
 			_anim_dur = 1.35
 			_smile = 0.0
-		"hop":
+		"happy_bounce", "hop", "happy":
+			# Short front-facing bounce ~0.5–0.9s.
 			_anim_dur = 0.7
-			_jump_peak = randf_range(22.0, 34.0)
+			_jump_peak = 20.0
+			_smile = 1.0
+			_pose_x = 0.0
+			_body_squash = 1.0
+		"blink":
+			_anim_dur = 0.28
+			_blink_amt = 0.0
+			_speed = 0.0
+		"idle_front", "idle":
+			_anim = "idle_front"
+			_anim_dur = 4.0
+			_speed = 0.0
+			_action_locked = false
+			_blink_amt = 0.0
 		"nuzzle", "heal":
 			_anim_dur = 1.05
 			_smile = 0.85
@@ -358,10 +561,6 @@ func play_anim(kind: String) -> void:
 			_anim_dur = 0.85
 		"rustle":
 			_anim_dur = 1.15
-		"happy":
-			_anim_dur = 0.8
-			_smile = 1.0
-			_jump_peak = 16.0
 		_:
 			_anim_dur = randf_range(1.0, 2.0)
 			_speed = 0.0
@@ -372,7 +571,7 @@ func _process(delta: float) -> void:
 	_anim_t += delta
 	_tap_cooldown = maxf(0.0, _tap_cooldown - delta)
 	_eat_flash = maxf(0.0, _eat_flash - delta * 0.85)
-	if _anim not in ["smile", "nuzzle", "happy"]:
+	if _anim not in ["smile", "nuzzle", "happy", "happy_bounce"]:
 		_smile = maxf(0.0, _smile - delta * 1.8)
 
 	if _anim == "ascend":
@@ -401,70 +600,51 @@ func _process(delta: float) -> void:
 		modulate = Color(1, 1, 1, 0)
 		# New session may have revived the kit while we were still "gone".
 		if PetState != null and PetState.alive and not PetState.ascending:
-			_anim = "idle"
-			_anim_t = 0.0
+			_return_to_idle_front()
 			reveal()
 		else:
 			queue_redraw()
 			return
 
-	if _anim == "stageUp":
+	if _anim in ["hatch_reveal", "stageUp"]:
 		var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 		_smile = 1.0
-		# Anticipation → soft hide under FX → bloom → bounce settle.
-		# Squash stays mascot-safe (never a thin vertical sliver).
-		if u < 0.22:
-			var p := u / 0.22
-			_pose_y = sin(p * PI) * 8.0
-			_pose_x = sin(_t * 12.0) * (3.0 + p * 6.0)
-			_head_dip = p * 6.0
-			_body_squash = lerpf(1.0, 0.84, p) # slight anticipation squash
-			_fade = lerpf(1.0, 0.75, p)
-			_walk_phase += delta * 8.0
-		elif u < 0.40:
-			var p2 := (u - 0.22) / 0.18
-			_pose_y = -p2 * 6.0
-			_pose_x = sin(_t * 14.0) * (10.0 * (1.0 - p2))
-			_head_dip = 6.0 * (1.0 - p2)
-			_body_squash = lerpf(0.84, 0.80, p2)
-			_fade = lerpf(0.75, 0.0, p2)
-		elif u < 0.48:
-			_pose_y = -2.0
-			_pose_x = 0.0
+		_pose_x = 0.0
+		# Bush hold → leaf reveal → front kit pop with small squash/stretch → idle_front.
+		if u < 0.28:
+			var p := u / 0.28
+			_pose_y = 0.0
 			_head_dip = 0.0
-			_body_squash = 0.86
-			_fade = 0.0
+			_body_squash = 1.0
+			_fade = 0.0 if _hatch_show_bush else lerpf(0.35, 0.0, p)
+		elif u < 0.48:
+			var p2 := (u - 0.28) / 0.20
+			_pose_y = 0.0
+			_head_dip = 0.0
+			_body_squash = lerpf(1.0, 0.88, p2)
+			_fade = lerpf(0.0, 0.55, p2)
 		elif u < 0.72:
 			var p3 := (u - 0.48) / 0.24
-			_pose_y = -sin(p3 * PI) * 22.0
-			_pose_x = sin(_t * 8.0) * 8.0 * (1.0 - p3 * 0.5)
-			_head_dip = -sin(p3 * PI) * 3.0
-			_body_squash = lerpf(0.88, 1.12, smoothstep(0.0, 1.0, p3))
-			_fade = smoothstep(0.0, 0.28, p3)
-			_walk_phase += delta * 6.0
-			if p3 > 0.35 and p3 < 0.55:
-				_request_facing(-_facing if _facing != 0.0 else 1.0)
-		elif u < 0.90:
-			var p4 := (u - 0.72) / 0.18
-			_pose_y = -absf(sin(p4 * PI * 2.0)) * 10.0
-			_pose_x = sin(_t * 7.0) * 5.0 * (1.0 - p4)
-			_head_dip = sin(_t * 9.0) * 1.5
-			_body_squash = lerpf(1.12, 1.0, p4)
+			# Small controlled bounce — feet stay via foot-pivot squash.
+			_pose_y = -sin(p3 * PI) * 10.0
+			_head_dip = -sin(p3 * PI) * 1.5
+			_body_squash = lerpf(0.88, 1.10, sin(p3 * PI))
+			_fade = smoothstep(0.0, 0.35, p3)
+		elif u < 0.88:
+			var p4 := (u - 0.72) / 0.16
+			_pose_y = -absf(sin(p4 * PI)) * 4.0
+			_head_dip = 0.0
+			_body_squash = lerpf(1.08, 0.94, p4)
 			_fade = 1.0
 		else:
-			var p5 := (u - 0.90) / 0.10
-			_pose_y = -sin(p5 * PI) * 4.0 * (1.0 - p5)
-			_pose_x = lerpf(_pose_x, 0.0, minf(1.0, delta * 3.5))
-			_head_dip = 1.5 * (1.0 - p5)
-			_body_squash = 1.0
+			var p5 := (u - 0.88) / 0.12
+			_pose_y = 0.0
+			_head_dip = 0.0
+			_body_squash = lerpf(0.94, 1.0, p5)
 			_fade = 1.0
 		if _anim_t >= _anim_dur:
-			_anim = "idle"
-			_pose_y = 0.0
-			_pose_x = 0.0
-			_head_dip = 0.0
-			_body_squash = 1.0
 			_fade = 1.0
+			_return_to_idle_front()
 		queue_redraw()
 		return
 
@@ -484,7 +664,8 @@ func _process(delta: float) -> void:
 		if _anim == "rustle":
 			bush_amp = 9.0 + sin(_anim_t * 34.0) * 3.5
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
+				_anim = "idle_front"
+				_action_locked = false
 		_pose_x = sin(_t * 11.0) * bush_amp + sin(_t * 4.1) * (bush_amp * 0.85) + sin(_t * 17.0) * (bush_amp * 0.22)
 		_pose_y = sin(_t * 8.2) * (bush_amp * 0.8) + cos(_t * 13.0) * (bush_amp * 0.25)
 		modulate = Color(1, 1, 1, 1)
@@ -519,10 +700,7 @@ func _process(delta: float) -> void:
 						ndir = 1.0
 					_request_facing(ndir)
 				else:
-					_anim = "idle"
-					_pose_y = 0.0
-					_head_dip = 0.0
-					_body_squash = 1.0
+					_return_to_idle_front()
 		"jump":
 			var u := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			var peak := _jump_peak * (1.25 if _is_bouncy_form() else 1.0)
@@ -543,17 +721,13 @@ func _process(delta: float) -> void:
 				_body_squash = lerpf(0.7, 1.0, ease(lu, 0.4))
 				_pose_x = lerpf(_pose_x, _target_x, delta * 2.5)
 			if u >= 1.0:
-				_anim = "idle"
-				_pose_y = 0.0
-				_body_squash = 1.0
+				_return_to_idle_front()
 		"pop":
 			var pu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_pose_y = -ease(pu, 0.3) * 22.0
 			_body_squash = 1.0 + (1.0 - pu) * 0.15
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_pose_y = 0.0
-				_body_squash = 1.0
+				_return_to_idle_front()
 		"stretch":
 			var su := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_pose_y = -sin(su * PI) * 6.0
@@ -562,68 +736,78 @@ func _process(delta: float) -> void:
 			_head_dip = -sin(su * PI) * 4.0
 			_walk_phase += delta * 4.0
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_pose_y = 0.0
-				_body_squash = 1.0
-				_head_dip = 0.0
-		"eat":
+				_return_to_idle_front()
+		"feed_dumpster_fries", "feed_wild_berries", "feed_night_crickets", "feed_stream_fish", "feed_pizza_crust", "eat":
 			var eu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			# Inspect → lift food to mouth → bites/chew → swallow → pleased.
-			if eu < 0.14:
-				var sn := eu / 0.14
-				_head_dip = lerpf(0.0, 4.0, sn) + sin(_t * 12.0) * 1.0
-				_pose_y = sin(_t * 6.0) * 1.0
-				_paw_lift = lerpf(0.0, 0.4, sn)
-				_mouth_open = lerpf(0.0, 0.15, sn)
+			# anticipation → food in paws → to mouth → bite → 2–3 chews → swallow → recovery
+			_pose_x = 0.0
+			if eu < 0.12:
+				var sn := eu / 0.12
+				_head_dip = lerpf(0.0, 3.0, sn)
+				_pose_y = 0.0
+				_paw_lift = lerpf(0.0, 0.35, sn)
+				_mouth_open = lerpf(0.0, 0.12, sn)
 				_chew_puff = 0.0
 				_bite_progress = 0.0
-			elif eu < 0.30:
-				var lift := (eu - 0.14) / 0.16
-				_head_dip = lerpf(4.0, 8.0, lift)
-				_pose_y = lerpf(0.0, 2.0, lift)
-				_paw_lift = lerpf(0.4, 1.0, lift)
-				_mouth_open = lerpf(0.15, 0.55, lift)
+				_body_squash = lerpf(1.0, 0.96, sn)
+			elif eu < 0.28:
+				var lift := (eu - 0.12) / 0.16
+				_head_dip = lerpf(3.0, 6.5, lift)
+				_pose_y = 0.0
+				_paw_lift = lerpf(0.35, 1.0, lift)
+				_mouth_open = lerpf(0.12, 0.55, lift)
 				_chew_puff = 0.0
-				_bite_progress = lerpf(0.0, 0.08, lift)
-			elif eu < 0.76:
-				var chew_u := (eu - 0.30) / 0.46
-				var chew_wave := sin(_t * 12.0)
-				_head_dip = 7.5 + chew_wave * 2.0
-				_pose_y = 1.8 + sin(_t * 9.0) * 1.1
-				_paw_lift = 0.95 + sin(_t * 10.0) * 0.04
-				_mouth_open = 0.2 + absf(chew_wave) * 0.65
-				_chew_puff = absf(sin(_t * 10.0)) * 0.9
-				_bite_progress = lerpf(0.08, 0.92, chew_u)
-				_walk_phase += delta * 5.0
-				# Crumbs originate at the mouth on bite peaks.
-				if chew_wave > 0.88 and _eat_crumbs.size() < 14:
+				_bite_progress = lerpf(0.0, 0.12, lift)
+				_body_squash = 0.96
+			elif eu < 0.40:
+				# Bite
+				var bite_u := (eu - 0.28) / 0.12
+				_head_dip = 7.0 + sin(bite_u * PI) * 1.5
+				_pose_y = 0.0
+				_paw_lift = 1.0
+				_mouth_open = lerpf(0.55, 0.85, sin(bite_u * PI))
+				_chew_puff = bite_u * 0.4
+				_bite_progress = lerpf(0.12, 0.45, bite_u)
+				_body_squash = lerpf(0.96, 1.04, bite_u)
+			elif eu < 0.72:
+				# Two–three quick chew pulses (~10 FPS holds via sin)
+				var chew_u := (eu - 0.40) / 0.32
+				var chew_wave := sin(chew_u * PI * 3.0)
+				_head_dip = 6.5 + chew_wave * 1.8
+				_pose_y = 0.0
+				_paw_lift = 0.92
+				_mouth_open = 0.22 + absf(chew_wave) * 0.55
+				_chew_puff = absf(chew_wave) * 0.85
+				_bite_progress = lerpf(0.45, 0.92, chew_u)
+				_body_squash = 1.0 + absf(chew_wave) * 0.03
+				if chew_wave > 0.85 and _eat_crumbs.size() < 10:
 					_eat_crumbs.append({
 						"x": randf_range(-4.0, 6.0),
 						"y": randf_range(-18.0, -8.0),
 						"vx": randf_range(-28.0, 28.0),
 						"vy": randf_range(-42.0, -12.0),
 						"t": 0.0,
-						"life": randf_range(0.4, 0.7),
+						"life": randf_range(0.25, 0.45),
 					})
-			elif eu < 0.86:
-				var sw := (eu - 0.76) / 0.10
-				_head_dip = lerpf(7.5, 3.0, sw)
-				_pose_y = lerpf(1.8, 0.8, sw)
-				_paw_lift = lerpf(0.95, 0.15, sw)
-				_mouth_open = lerpf(0.4, 0.0, sw)
-				_chew_puff = lerpf(0.5, 0.0, sw)
+			elif eu < 0.84:
+				var sw := (eu - 0.72) / 0.12
+				_head_dip = lerpf(6.5, 2.0, sw)
+				_pose_y = 0.0
+				_paw_lift = lerpf(0.92, 0.1, sw)
+				_mouth_open = lerpf(0.35, 0.0, sw)
+				_chew_puff = lerpf(0.4, 0.0, sw)
 				_bite_progress = lerpf(0.92, 1.0, sw)
-				_body_squash = lerpf(1.0, 1.08, sin(sw * PI))
+				_body_squash = lerpf(1.0, 1.06, sin(sw * PI))
 			else:
-				var please := (eu - 0.86) / 0.14
-				_head_dip = lerpf(3.0, -2.0, please)
-				_pose_y = -sin(please * PI) * 5.0
+				var please := (eu - 0.84) / 0.16
+				_head_dip = lerpf(2.0, 0.0, please)
+				_pose_y = 0.0
 				_paw_lift = 0.0
 				_mouth_open = 0.0
 				_chew_puff = 0.0
 				_bite_progress = 1.0
 				_smile = 1.0
-				_body_squash = 1.0
+				_body_squash = lerpf(1.06, 1.0, please)
 			var keep_c: Array = []
 			for crumb in _eat_crumbs:
 				crumb.t = float(crumb.t) + delta
@@ -635,31 +819,22 @@ func _process(delta: float) -> void:
 			_eat_crumbs = keep_c
 			_eat_flash = 1.0 - smoothstep(0.55, 0.95, eu)
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
-				_pose_y = 0.0
-				_paw_lift = 0.0
-				_mouth_open = 0.0
-				_chew_puff = 0.0
-				_bite_progress = 0.0
 				_eat_crumbs.clear()
+				_return_to_idle_front()
 		"refuse":
 			var ru := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			# Head-shake without rapid facing flips (avoids visual glitch).
 			_pose_x += sin(_t * 14.0) * 0.9
 			_head_dip = sin(ru * PI) * 4.0
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
+				_return_to_idle_front()
 		"scold":
 			var cu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_pose_y = sin(cu * PI) * 2.0
 			_head_dip = 3.0 + sin(_t * 14.0) * 2.0
 			_body_squash = 0.94
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
-				_body_squash = 1.0
+				_return_to_idle_front()
 		"sniff":
 			_head_dip = 6.0 + sin(_t * 10.0) * 2.0
 			_pose_y = sin(_t * 3.0) * 1.0
@@ -670,8 +845,7 @@ func _process(delta: float) -> void:
 			_request_facing(sniff_dir)
 			_pose_x = move_toward(_pose_x, sniff_target, 18.0 * delta)
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
+				_return_to_idle_front()
 		"smile":
 			var sm := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_smile = 1.0
@@ -679,8 +853,7 @@ func _process(delta: float) -> void:
 			_head_dip = -sin(sm * PI) * 2.0
 			_body_squash = 1.0 + sin(sm * PI) * 0.04
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
+				_return_to_idle_front()
 		"sad":
 			var sd := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_smile = 0.0
@@ -688,35 +861,44 @@ func _process(delta: float) -> void:
 			_pose_y = sin(_t * 2.2) * 0.8
 			_pose_x += sin(_t * 3.0) * 0.25
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
-		"hop", "happy":
+				_return_to_idle_front()
+		"happy_bounce", "hop", "happy":
 			var hu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
-			var hop_peak := _jump_peak * (1.2 if _is_bouncy_form() else 1.0)
-			if hu < 0.15:
-				_body_squash = lerpf(1.0, 0.75, hu / 0.15)
-				_pose_y = lerpf(0.0, 3.0, hu / 0.15)
-			elif hu < 0.8:
-				var ju := (hu - 0.15) / 0.65
-				_pose_y = -sin(ju * PI) * hop_peak
-				_body_squash = lerpf(0.9, 1.12, sin(ju * PI))
-			else:
-				var lu := (hu - 0.8) / 0.2
-				_pose_y = lerpf(2.0, 0.0, lu)
-				_body_squash = lerpf(0.72, 1.0, lu)
-			_smile = 0.85
-			if hu >= 1.0:
-				_anim = "idle"
+			var hop_peak := _jump_peak * (1.15 if _is_bouncy_form() else 1.0)
+			_pose_x = 0.0
+			# Rise → land compress → recover to idle_front (front-facing only).
+			if hu < 0.18:
+				_body_squash = lerpf(1.0, 0.82, hu / 0.18)
 				_pose_y = 0.0
-				_body_squash = 1.0
+			elif hu < 0.72:
+				var ju := (hu - 0.18) / 0.54
+				_pose_y = -sin(ju * PI) * hop_peak
+				_body_squash = lerpf(0.9, 1.10, sin(ju * PI))
+			else:
+				var lu := (hu - 0.72) / 0.28
+				_pose_y = 0.0
+				_body_squash = lerpf(0.78, 1.0, ease(lu, 0.45))
+			_smile = 0.9
+			if hu >= 1.0:
+				_return_to_idle_front()
+		"blink":
+			var bu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
+			_pose_x = move_toward(_pose_x, 0.0, 40.0 * delta)
+			_pose_y = 0.0
+			_body_squash = 1.0 + sin(_t * 1.7) * 0.02
+			if bu < 0.45:
+				_blink_amt = lerpf(0.0, 1.0, bu / 0.45)
+			else:
+				_blink_amt = lerpf(1.0, 0.0, (bu - 0.45) / 0.55)
+			if bu >= 1.0:
+				_return_to_idle_front()
 		"nuzzle":
 			var nu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_pose_x += sin(_t * 6.0) * 0.45
 			_head_dip = 4.0 + sin(nu * PI) * 5.0
 			_smile = 0.8
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_head_dip = 0.0
+				_return_to_idle_front()
 		"spin":
 			var su2 := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			if su2 > 0.45 and su2 < 0.55:
@@ -725,13 +907,12 @@ func _process(delta: float) -> void:
 			_pose_x += sin(_t * 10.0) * 0.6
 			_smile = 0.6
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
-				_pose_y = 0.0
+				_return_to_idle_front()
 		"stubborn", "sick":
 			_pose_x += sin(_t * 10.0) * 0.35
 			_head_dip = 2.0
 			if _anim_t >= _anim_dur:
-				_anim = "idle"
+				_return_to_idle_front()
 		"fallAsleep":
 			var fu := clampf(_anim_t / _anim_dur, 0.0, 1.0)
 			_head_dip = 4.0 + fu * 6.0
@@ -772,15 +953,19 @@ func _process(delta: float) -> void:
 				_smile = 0.0
 				_body_squash = 1.0
 			else:
-				# Subtle breathing on every idle form — keeps the plush orb alive.
+				# idle_front: calm front-facing breath. Feet stay planted (pose_y=0);
+				# subtle squash uses the bottom-center foot pivot in _draw.
 				var breath_i := sin(_t * 1.7)
-				_pose_y = breath_i * 1.6 + sin(_t * 4.2) * 0.35
+				_pose_y = 0.0
 				_pose_x = move_toward(_pose_x, 0.0, 36.0 * delta)
-				_head_dip = sin(_t * 1.4) * 1.1
-				_body_squash = 1.0 + breath_i * 0.035
-				if _is_bouncy_form() and randf() < 0.004:
-					# Tiny idle micro-hop personality without changing proportions.
-					_pose_y -= 2.5
+				_head_dip = sin(_t * 1.4) * (0.7 if stage == "baby" else 1.1)
+				_body_squash = 1.0 + breath_i * (0.025 if stage == "baby" else 0.035)
+				_blink_amt = 0.0
+				# Occasional blink one-shot only from approved idle — never side poses.
+				if stage == "baby" and not _action_locked and randf() < 0.0025:
+					play_anim("blink")
+				elif _is_bouncy_form() and stage != "baby" and randf() < 0.004:
+					_body_squash = 0.96
 			_walk_phase += delta * 1.2
 
 	_pose_x = clampf(_pose_x, -56.0, 56.0)
@@ -890,18 +1075,30 @@ func _draw() -> void:
 		_draw_bush(size * 0.5)
 		return
 
-	# Soft sky glow during ascent / stage-up
+	# Hatch from bush: keep bush visible first, then leaf FX, then reveal kit.
+	if _anim in ["hatch_reveal", "stageUp"] and _hatch_show_bush:
+		var hu := clampf(_anim_t / maxf(0.001, _anim_dur), 0.0, 1.0)
+		if hu < 0.34:
+			_draw_bush(size * 0.5)
+			_draw_stage_up_fx(c)
+			return
+		if hu < 0.48:
+			_draw_bush(size * 0.5)
+			_draw_stage_up_fx(c)
+			# Baby peeks under leaves at low fade.
+
+	# Soft sky glow during ascent / hatch
 	if _anim == "ascend":
 		var glow_a := (1.0 - _fade) * 0.35 + _wing_span * 0.25
 		_ellipse(c + Vector2(0, 10), Vector2(70, 40), Color(0.95, 0.88, 0.55, glow_a * 0.35))
-	elif _anim == "stageUp":
+	elif _anim in ["hatch_reveal", "stageUp"]:
 		_draw_stage_up_fx(c)
 
 	var face := _facing if _facing != 0.0 else 1.0
 	var old_mod := modulate
 	if _anim == "ascend":
 		modulate = Color(1, 1, 1, _fade)
-	elif _anim == "stageUp":
+	elif _anim in ["hatch_reveal", "stageUp"]:
 		modulate = Color(1, 1, 1, _fade)
 
 	if _anim == "ascend" and _wing_span > 0.05:
@@ -909,12 +1106,14 @@ func _draw() -> void:
 
 	# Head dip nudges the silhouette down while chewing / sniffing.
 	var draw_c := c + Vector2(0, _head_dip * 0.45)
-	# Controlled mascot squash-and-stretch — never reciprocal tall-sliver distortion.
+	# Foot-anchored squash: scale around body base so feet/Y do not jump.
 	var using_squash := absf(_body_squash - 1.0) > 0.004 and not _is_sleeping()
 	var squash_xy := _mascot_squash_xy(_body_squash)
 	if using_squash:
-		draw_set_transform(draw_c, 0.0, squash_xy)
-		draw_c = Vector2.ZERO
+		var pivot_y := _foot_pivot_y()
+		var pivot := draw_c + Vector2(0.0, pivot_y)
+		draw_set_transform(pivot, 0.0, squash_xy)
+		draw_c = Vector2(0.0, -pivot_y)
 
 	if _is_sleeping() and _anim != "ascend":
 		if not preview_mode:
@@ -938,7 +1137,7 @@ func _draw() -> void:
 	if using_squash:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	if _anim == "eat":
+	if _is_feeding():
 		var eat_u := clampf(_anim_t / maxf(0.001, _anim_dur), 0.0, 1.0)
 		_draw_food_prop(c, face, eat_u)
 		_draw_eat_crumbs(c)
@@ -1173,7 +1372,9 @@ func _draw_front(c: Vector2) -> void:
 		_ellipse(c + Vector2(head_rx * 0.48, muzzle_y + 2), Vector2(10 + puff * 4, 8 + puff * 2), Color(snout.r, snout.g, snout.b, 0.95))
 
 	# Large glossy eyes with multiple highlights.
-	var eye_state := "sleep" if _is_sleeping() else ("sick" if _is_sick() else ("stubborn" if _is_stubborn() else ("happy" if _smile > 0.35 and _anim != "eat" else "idle")))
+	var eye_state := "sleep" if _is_sleeping() else ("sick" if _is_sick() else ("stubborn" if _is_stubborn() else ("happy" if _smile > 0.35 and not _is_feeding() else "idle")))
+	if _blink_amt > 0.55 or _anim == "blink":
+		eye_state = "sleep"
 	var eye_y := head_y + eye_r * 0.05
 	_draw_chibi_eye(c + Vector2(-eye_r * 2.05, eye_y), eye_r, gleam, eye_state, -1.0)
 	_draw_chibi_eye(c + Vector2(eye_r * 2.05, eye_y), eye_r, gleam, eye_state, 1.0)
@@ -1183,7 +1384,7 @@ func _draw_front(c: Vector2) -> void:
 	_ellipse(nose_p, Vector2(4.2, 3.2), Color("1a1a20"))
 	draw_circle(nose_p + Vector2(-1.2, -0.8), 1.1, Color(1, 1, 1, 0.45))
 	var mouth_y := muzzle_y + head_ry * 0.18
-	if _anim == "eat" and _mouth_open > 0.08:
+	if _is_feeding() and _mouth_open > 0.08:
 		var open_h := 2.0 + _mouth_open * 7.0
 		_ellipse(c + Vector2(0, mouth_y), Vector2(7.5, open_h), Color("4a2030"))
 		_ellipse(c + Vector2(0, mouth_y + open_h * 0.25), Vector2(4.5, open_h * 0.45), Color("c45c6a"))
@@ -1194,7 +1395,7 @@ func _draw_front(c: Vector2) -> void:
 		draw_arc(c + Vector2(0, mouth_y), 5.5, 0.35, PI - 0.35, 10, Color("2a2a32"), 1.7, true)
 
 	# Small rounded paws when eating (hold food in front of belly).
-	if _anim == "eat" and paw_show:
+	if _is_feeding() and paw_show:
 		var hold := clampf(_paw_lift, 0.0, 1.0)
 		var paw_y := body_y + lerpf(18.0, -2.0, hold)
 		_ellipse_outlined(c + Vector2(-18, paw_y), Vector2(10, 7), PAW_DARK, OUTLINE, 1.6)
