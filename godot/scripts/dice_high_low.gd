@@ -13,6 +13,8 @@ var _btn_again: Button
 var _btn_done: Button
 var _die: Control
 var _picks: HBoxContainer
+var _call_label: Label
+var _result_chip: Label
 
 var _verts: Array[Vector3] = []
 var _faces: Array = [] # Array of PackedInt32Array
@@ -33,6 +35,7 @@ var _target_rot := Vector3(-0.35, 0.45, 0.1)
 var _start_rot := Vector3.ZERO
 var _tumble := Vector3.ZERO
 var _land_fx_t := 0.0
+var _result_glow := 0.0
 var _sparkles: Array = []
 
 
@@ -77,11 +80,12 @@ func _build_mesh() -> void:
 
 func _build() -> void:
 	var card := PanelContainer.new()
+	card.name = "DiceCard"
 	card.set_anchors_preset(Control.PRESET_CENTER)
-	card.offset_left = -180
-	card.offset_right = 180
-	card.offset_top = -270
-	card.offset_bottom = 270
+	card.offset_left = -188
+	card.offset_right = 188
+	card.offset_top = -286
+	card.offset_bottom = 300
 	add_child(card)
 
 	var margin := MarginContainer.new()
@@ -99,8 +103,17 @@ func _build() -> void:
 	title.text = "High or Low"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_color_override("font_color", Color("f0c57a"))
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_constant_override("outline_size", 3)
+	title.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.03, 0.9))
 	vbox.add_child(title)
+
+	_call_label = Label.new()
+	_call_label.text = "Awaiting your call"
+	_call_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_call_label.add_theme_color_override("font_color", Color("d8e8da"))
+	_call_label.add_theme_font_size_override("font_size", 14)
+	vbox.add_child(_call_label)
 
 	_status = Label.new()
 	_status.text = "Guess High (11–20) or Low (1–10), then watch the d20 tumble."
@@ -111,10 +124,18 @@ func _build() -> void:
 	vbox.add_child(_status)
 
 	_die = Control.new()
-	_die.custom_minimum_size = Vector2(0, 260)
+	_die.custom_minimum_size = Vector2(0, 276)
 	_die.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_die.draw.connect(_on_die_draw)
 	vbox.add_child(_die)
+
+	_result_chip = Label.new()
+	_result_chip.visible = false
+	_result_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_result_chip.add_theme_font_size_override("font_size", 18)
+	_result_chip.add_theme_constant_override("outline_size", 3)
+	_result_chip.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.03, 0.9))
+	vbox.add_child(_result_chip)
 
 	_picks = HBoxContainer.new()
 	_picks.add_theme_constant_override("separation", 8)
@@ -123,25 +144,40 @@ func _build() -> void:
 	_btn_low = Button.new()
 	_btn_low.text = "Low · 1–10"
 	_btn_low.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_low.custom_minimum_size = Vector2(0, 44)
+	_style_action_button(_btn_low)
 	_btn_low.pressed.connect(_on_low)
 	_picks.add_child(_btn_low)
 
 	_btn_high = Button.new()
 	_btn_high.text = "High · 11–20"
 	_btn_high.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_btn_high.custom_minimum_size = Vector2(0, 44)
+	_style_action_button(_btn_high)
 	_btn_high.pressed.connect(_on_high)
 	_picks.add_child(_btn_high)
 
 	_btn_again = Button.new()
 	_btn_again.text = "Roll again"
 	_btn_again.visible = false
+	_btn_again.custom_minimum_size = Vector2(0, 42)
+	_style_action_button(_btn_again)
 	_btn_again.pressed.connect(_on_again)
 	vbox.add_child(_btn_again)
 
 	_btn_done = Button.new()
 	_btn_done.text = "Done"
+	_btn_done.custom_minimum_size = Vector2(0, 42)
+	_style_action_button(_btn_done)
 	_btn_done.pressed.connect(_on_done)
 	vbox.add_child(_btn_done)
+
+
+func _style_action_button(button: Button) -> void:
+	button.add_theme_font_size_override("font_size", 15)
+	button.add_theme_color_override("font_color", Color("fff4df"))
+	button.add_theme_constant_override("outline_size", 2)
+	button.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.03, 0.85))
 
 
 func start_game() -> void:
@@ -151,7 +187,7 @@ func start_game() -> void:
 	set_process(true)
 	# Ensure die control has a drawable size before first paint.
 	if _die:
-		_die.custom_minimum_size = Vector2(260, 260)
+		_die.custom_minimum_size = Vector2(276, 276)
 		_die.queue_redraw()
 
 
@@ -164,6 +200,7 @@ func _reset() -> void:
 	_correct = false
 	_reported = false
 	_land_fx_t = 0.0
+	_result_glow = 0.0
 	_sparkles.clear()
 	_rot = Vector3(-0.35, 0.45, 0.1)
 	_picks.visible = true
@@ -171,6 +208,10 @@ func _reset() -> void:
 	_btn_low.disabled = false
 	_btn_high.disabled = false
 	_status.text = "Guess High (11–20) or Low (1–10), then watch the d20 tumble."
+	_call_label.text = "Awaiting your call"
+	_call_label.add_theme_color_override("font_color", Color("d8e8da"))
+	_result_chip.visible = false
+	_result_chip.text = ""
 	_idle = true
 	_die.queue_redraw()
 
@@ -207,6 +248,9 @@ func _pick(guess: String) -> void:
 	_btn_low.disabled = true
 	_btn_high.disabled = true
 	_btn_again.visible = false
+	_result_chip.visible = false
+	_call_label.text = "YOUR CALL: HIGH" if guess == "high" else "YOUR CALL: LOW"
+	_call_label.add_theme_color_override("font_color", Color("eaa1a4") if guess == "high" else Color("a9bce9"))
 	_status.text = "You called High (11–20)… rolling!" if guess == "high" else "You called Low (1–10)… rolling!"
 
 
@@ -227,6 +271,7 @@ func _process(delta: float) -> void:
 		return
 	if _landed:
 		_land_fx_t += delta
+	_result_glow = maxf(0.0, _result_glow - delta * 0.75)
 	if _sparkles.size() > 0:
 		var keep: Array = []
 		for sp in _sparkles:
@@ -271,6 +316,11 @@ func _finish() -> void:
 		_status.text = "Call: %s  ·  d20 = %d (%s)  ·  Correct! Jimothy is thrilled." % [call_txt, _result, band]
 	else:
 		_status.text = "Call: %s  ·  d20 = %d (%s)  ·  Miss. Jimothy droops." % [call_txt, _result, band]
+	_call_label.text = "YOUR CALL: %s" % call_txt.to_upper()
+	_result_chip.visible = true
+	_result_chip.text = "CORRECT · %d" % _result if _correct else "MISSED · %d" % _result
+	_result_chip.add_theme_color_override("font_color", Color("9fe0ac") if _correct else Color("f29b91"))
+	_result_glow = 1.0
 	_btn_again.visible = true
 	_picks.visible = true
 	_burst_sparkles()
@@ -329,22 +379,24 @@ func _project(v: Vector3, scale: float, cx: float, cy: float) -> Vector3:
 func _on_die_draw() -> void:
 	var size := _die.size
 	var cx := size.x * 0.5
-	var cy := size.y * 0.48
-	var scale := 96.0
+	var cy := size.y * 0.46
+	var scale := 108.0
 
 	# Ritual / tabletop circle
 	var ring_col := Color(0.55, 0.42, 0.75, 0.35)
 	if _landed:
 		ring_col = Color(0.45, 0.75, 0.5, 0.45) if _correct else Color(0.75, 0.4, 0.38, 0.45)
-	_die.draw_arc(Vector2(cx, cy + 8.0), 92.0, 0.0, TAU, 48, ring_col, 2.2, true)
-	_die.draw_arc(Vector2(cx, cy + 8.0), 78.0, 0.0, TAU, 40, Color(ring_col.r, ring_col.g, ring_col.b, ring_col.a * 0.55), 1.2, true)
+	if _result_glow > 0.0:
+		ring_col.a = minf(0.85, ring_col.a + _result_glow * 0.35)
+	_die.draw_arc(Vector2(cx, cy + 8.0), 102.0, 0.0, TAU, 48, ring_col, 2.4, true)
+	_die.draw_arc(Vector2(cx, cy + 8.0), 86.0, 0.0, TAU, 40, Color(ring_col.r, ring_col.g, ring_col.b, ring_col.a * 0.55), 1.3, true)
 	for i in 8:
 		var ang := float(i) * TAU / 8.0 + Time.get_ticks_msec() * 0.0004
-		var rp := Vector2(cx, cy + 8.0) + Vector2(cos(ang), sin(ang)) * 85.0
-		_die.draw_circle(rp, 1.6, Color(0.94, 0.77, 0.48, 0.35))
+		var rp := Vector2(cx, cy + 8.0) + Vector2(cos(ang), sin(ang)) * 94.0
+		_die.draw_circle(rp, 1.8, Color(0.94, 0.77, 0.48, 0.35))
 
 	# Table shadow
-	_die.draw_colored_polygon(_ellipse_pts(Vector2(cx, size.y - 18.0), Vector2(64, 13)), Color(0, 0, 0, 0.38))
+	_die.draw_colored_polygon(_ellipse_pts(Vector2(cx, size.y - 14.0), Vector2(72, 14)), Color(0, 0, 0, 0.4))
 
 	# Roll streaks while tumbling
 	if _rolling and _spin_t < 0.72:

@@ -788,8 +788,10 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if _anim == "eat":
-		_draw_food_prop(c, face, clampf(_anim_t / _anim_dur, 0.0, 1.0))
+		var eat_u := clampf(_anim_t / maxf(0.001, _anim_dur), 0.0, 1.0)
+		_draw_food_prop(c, face, eat_u)
 		_draw_eat_crumbs(c)
+		_draw_eating_details(draw_c, face, eat_u)
 		if _eat_flash > 0.05:
 			var flash_col := VisualPolish.food_flash_color(_eat_food)
 			flash_col.a = 0.22 * _eat_flash
@@ -979,41 +981,17 @@ func _draw_front(c: Vector2) -> void:
 		_trash_crown(crown_kind, c + Vector2(0, head_y - head_r + 2), 1.0)
 	_ellipse(c + Vector2(0, head_y + 2), Vector2(head_r * 0.72, head_r * 0.42), Color(mask.r, mask.g, mask.b, 0.9))
 
-	var eye_r := 2.6 if stage == "baby" else (3.6 if stage == "adult" else 3.1)
-	var gap := eye_r * 2.2
+	# Rounded chibi eyes — larger, outlined, glossy highlights.
+	var eye_r := 3.4 if stage == "baby" else (4.6 if stage == "adult" else 4.0)
+	var gap := eye_r * 2.05
 	var eye_y := head_y + 1.0
-	if _is_sleeping():
-		draw_line(c + Vector2(-gap - eye_r, eye_y), c + Vector2(-gap, eye_y + eye_r * 0.5), Color("2a2a32"), 1.8)
-		draw_line(c + Vector2(-gap, eye_y + eye_r * 0.5), c + Vector2(-gap + eye_r, eye_y), Color("2a2a32"), 1.8)
-		draw_line(c + Vector2(gap - eye_r, eye_y), c + Vector2(gap, eye_y + eye_r * 0.5), Color("2a2a32"), 1.8)
-		draw_line(c + Vector2(gap, eye_y + eye_r * 0.5), c + Vector2(gap + eye_r, eye_y), Color("2a2a32"), 1.8)
-	elif _is_sick():
-		_ellipse(c + Vector2(-gap, eye_y), Vector2(eye_r * 1.15, eye_r * 0.5), gleam)
-		_ellipse(c + Vector2(-gap + eye_r * 0.1, eye_y + eye_r * 0.05), Vector2(eye_r * 0.36, eye_r * 0.26), Color("101014"))
-		draw_line(c + Vector2(-gap - eye_r * 1.2, eye_y - eye_r * 0.35), c + Vector2(-gap, eye_y + eye_r * 0.15), Color("2a2a32"), 1.5)
-		draw_line(c + Vector2(-gap, eye_y + eye_r * 0.15), c + Vector2(-gap + eye_r * 1.2, eye_y - eye_r * 0.2), Color("2a2a32"), 1.5)
-		_ellipse(c + Vector2(gap, eye_y), Vector2(eye_r * 1.15, eye_r * 0.5), gleam)
-		_ellipse(c + Vector2(gap + eye_r * 0.1, eye_y + eye_r * 0.05), Vector2(eye_r * 0.36, eye_r * 0.26), Color("101014"))
-		draw_line(c + Vector2(gap - eye_r * 1.2, eye_y - eye_r * 0.35), c + Vector2(gap, eye_y + eye_r * 0.15), Color("2a2a32"), 1.5)
-		draw_line(c + Vector2(gap, eye_y + eye_r * 0.15), c + Vector2(gap + eye_r * 1.2, eye_y - eye_r * 0.2), Color("2a2a32"), 1.5)
-	elif _is_stubborn():
-		_ellipse(c + Vector2(-gap, eye_y), Vector2(eye_r * 1.05, eye_r * 0.7), gleam)
-		_ellipse(c + Vector2(-gap + eye_r * 0.15, eye_y), Vector2(eye_r * 0.4, eye_r * 0.38), Color("101014"))
-		_ellipse(c + Vector2(gap, eye_y), Vector2(eye_r * 1.05, eye_r * 0.7), gleam)
-		_ellipse(c + Vector2(gap + eye_r * 0.15, eye_y), Vector2(eye_r * 0.4, eye_r * 0.38), Color("101014"))
-	elif _smile > 0.35:
-		draw_line(c + Vector2(-gap - eye_r, eye_y), c + Vector2(-gap, eye_y - eye_r), gleam, 2.0)
-		draw_line(c + Vector2(-gap, eye_y - eye_r), c + Vector2(-gap + eye_r, eye_y), gleam, 2.0)
-		draw_line(c + Vector2(gap - eye_r, eye_y), c + Vector2(gap, eye_y - eye_r), gleam, 2.0)
-		draw_line(c + Vector2(gap, eye_y - eye_r), c + Vector2(gap + eye_r, eye_y), gleam, 2.0)
-	else:
-		draw_circle(c + Vector2(-gap, eye_y), eye_r, gleam)
-		draw_circle(c + Vector2(-gap + eye_r * 0.2, eye_y), eye_r * 0.42, Color("101014"))
-		draw_circle(c + Vector2(gap, eye_y), eye_r, gleam)
-		draw_circle(c + Vector2(gap + eye_r * 0.2, eye_y), eye_r * 0.42, Color("101014"))
+	var eye_state := "sleep" if _is_sleeping() else ("sick" if _is_sick() else ("stubborn" if _is_stubborn() else ("happy" if _smile > 0.35 else "idle")))
+	_draw_chibi_eye(c + Vector2(-gap, eye_y), eye_r, gleam, eye_state, -1.0)
+	_draw_chibi_eye(c + Vector2(gap, eye_y), eye_r, gleam, eye_state, 1.0)
 
 	_ellipse(c + Vector2(0, head_y + head_r * 0.42), Vector2(head_r * 0.28, head_r * 0.18), snout)
-	draw_circle(c + Vector2(0, head_y + head_r * 0.32), 1.6, Color("2a2a32"))
+	draw_circle(c + Vector2(0, head_y + head_r * 0.32), 1.8, Color("2a2a32"))
+	draw_circle(c + Vector2(-0.5, head_y + head_r * 0.28), 0.55, Color(1, 1, 1, 0.45))
 	_draw_sick_marks(c + Vector2(0, head_y), false)
 	_draw_stubborn_marks(c + Vector2(0, head_y), false)
 
@@ -1027,12 +1005,16 @@ func _draw_food_prop(c: Vector2, face: float, u: float) -> void:
 	var mouth := c + Vector2(4.0 * face, -2.0 + _head_dip * 0.35)
 	var hold := smoothstep(0.12, 0.30, u)
 	var p := paw_base.lerp(mouth + Vector2(6.0 * face, 8.0), hold * 0.72)
-	# Drawn paws gripping the food
+	# Drawn paws gripping the food (under then over so food is held, not floating).
 	_ellipse(paw_base + Vector2(-3.0 * face, 4.0), Vector2(6.5, 3.8), Color("3a3a44"))
 	_ellipse(paw_base + Vector2(4.0 * face, 5.0), Vector2(5.8, 3.4), Color("3a3a44"))
 	var bite_shrink := 1.0 - smoothstep(0.30, 0.78, u) * 0.55
 	var a := fade * 0.98
 	VisualPolish.draw_food(self, _eat_food, p, a, 0.92 * bite_shrink)
+	# Forepaw digits over the treat
+	if hold > 0.2:
+		_ellipse(p + Vector2(-4.0 * face, 5.0), Vector2(4.2, 2.6), Color("3a3a44"))
+		_ellipse(p + Vector2(3.0 * face, 5.5), Vector2(3.8, 2.4), Color("32323a"))
 
 
 func _draw_eat_crumbs(c: Vector2) -> void:
@@ -1041,6 +1023,47 @@ func _draw_eat_crumbs(c: Vector2) -> void:
 		var aa := 1.0 - float(crumb.t) / float(crumb.life)
 		var p := c + Vector2(float(crumb.x), float(crumb.y) - 4.0)
 		_ellipse(p, Vector2(2.2, 1.8), Color(flash.r, flash.g, flash.b, 0.75 * aa))
+
+
+func _draw_chibi_eye(center: Vector2, radius: float, gleam: Color, state: String, brow_flip: float = 1.0) -> void:
+	var outline := Color("202328")
+	if state == "sleep":
+		draw_arc(center + Vector2(0, 1), radius * 0.78, 0.12, PI - 0.12, 14, outline, 2.0, true)
+		return
+	if state == "happy":
+		draw_line(center + Vector2(-radius * 1.05, 0), center + Vector2(0, -radius * 0.95), gleam, 2.1)
+		draw_line(center + Vector2(0, -radius * 0.95), center + Vector2(radius * 1.05, 0), gleam, 2.1)
+		return
+
+	var eye_fill := Color("fff8ea")
+	var eye_radii := Vector2(radius * 0.95, radius * 1.08)
+	if state == "sick":
+		eye_radii.y *= 0.72
+	_ellipse(center, eye_radii, outline)
+	_ellipse(center, eye_radii * 0.86, eye_fill)
+	_ellipse(center + Vector2(radius * 0.1, radius * 0.12), Vector2(radius * 0.55, radius * 0.68), Color("171619"))
+	draw_circle(center + Vector2(-radius * 0.22, -radius * 0.28), radius * 0.2, gleam)
+	draw_circle(center + Vector2(radius * 0.2, radius * 0.18), radius * 0.08, Color(1, 1, 1, 0.65))
+
+	if state == "sick":
+		draw_line(center + Vector2(-radius, -radius * 0.63), center + Vector2(radius, -radius * 0.25), outline, 1.7)
+	elif state == "stubborn":
+		draw_line(
+			center + Vector2(-radius * 0.95, -radius * (0.95 + 0.12 * brow_flip)),
+			center + Vector2(radius * 0.78, -radius * (0.62 - 0.12 * brow_flip)),
+			outline,
+			2.0
+		)
+
+
+func _draw_eating_details(c: Vector2, face: float, u: float) -> void:
+	# Visual-only chew feedback: puffy cheeks + chew line. Does not alter PetState.
+	if u > 0.35 and u < 0.82:
+		var chew := (u - 0.35) / 0.47
+		var pulse := absf(sin(chew * PI * 6.0))
+		_ellipse(c + Vector2(-11.0 * face, 1.0 + _head_dip * 0.5), Vector2(4.5 + pulse * 1.5, 3.5), Color(0.94, 0.72, 0.62, 0.24 * pulse))
+		_ellipse(c + Vector2(11.0 * face, 1.0 + _head_dip * 0.5), Vector2(4.5 + pulse * 1.5, 3.5), Color(0.94, 0.72, 0.62, 0.24 * pulse))
+		draw_line(c + Vector2(-3, 8 + pulse), c + Vector2(3, 8 - pulse), Color("2a2a32"), 1.4)
 
 
 func _draw_wings(c: Vector2, face: float, span: float) -> void:
@@ -1396,24 +1419,8 @@ func _draw_sleeping(c: Vector2) -> void:
 
 
 func _side_eye(p: Vector2, r: float, gleam: Color = Color("faf6ec")) -> void:
-	if _is_sleeping():
-		draw_line(p + Vector2(-r * 1.15, 0), p + Vector2(0, r * 0.45), Color("2a2a32"), 1.8)
-		draw_line(p + Vector2(0, r * 0.45), p + Vector2(r * 1.15, 0), Color("2a2a32"), 1.8)
-	elif _is_sick():
-		_ellipse(p, Vector2(r * 1.2, r * 0.52), gleam)
-		_ellipse(p + Vector2(r * 0.12, r * 0.05), Vector2(r * 0.38, r * 0.28), Color("101014"))
-		draw_line(p + Vector2(-r * 1.25, -r * 0.4), p + Vector2(0, r * 0.15), Color("2a2a32"), 1.5)
-		draw_line(p + Vector2(0, r * 0.15), p + Vector2(r * 1.25, -r * 0.25), Color("2a2a32"), 1.5)
-	elif _is_stubborn():
-		_ellipse(p, Vector2(r * 1.05, r * 0.72), gleam)
-		_ellipse(p + Vector2(r * 0.2, 0), Vector2(r * 0.42, r * 0.4), Color("101014"))
-		draw_line(p + Vector2(-r * 1.15, -r * 0.95), p + Vector2(r * 0.35, -r * 0.35), Color("2a2a32"), 1.8)
-	elif _smile > 0.35:
-		draw_line(p + Vector2(-r * 1.1, 0), p + Vector2(0, -r), gleam, 2.0)
-		draw_line(p + Vector2(0, -r), p + Vector2(r * 1.1, 0), gleam, 2.0)
-	else:
-		draw_circle(p, r, gleam)
-		draw_circle(p + Vector2(r * 0.25, 0), r * 0.45, Color("101014"))
+	var state := "sleep" if _is_sleeping() else ("sick" if _is_sick() else ("stubborn" if _is_stubborn() else ("happy" if _smile > 0.35 else "idle")))
+	_draw_chibi_eye(p, r * 1.15, gleam, state, 1.0)
 
 
 func _draw_sick_marks(head: Vector2, side: bool = false) -> void:
