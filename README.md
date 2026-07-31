@@ -43,11 +43,16 @@ Fresh packs in [`dist/`](dist/):
 
 | Zip | What’s inside |
 | --- | --- |
+| [`JimothyPet-f814-full-project.zip`](dist/JimothyPet-f814-full-project.zip) | **Full f814 project** — all source (web + Godot) + shipping **1.0.28** APK/AAB + store/promo assets |
+| [`JimothyPet-f814-full-source.zip`](dist/JimothyPet-f814-full-source.zip) | Full f814 source tree (no APK/AAB binaries) |
 | [`Jimothy-web.zip`](dist/Jimothy-web.zip) | Browser build — unzip and open `index.html`, or host the folder |
 | [`Jimothy-godot-only-4.7.1.zip`](dist/Jimothy-godot-only-4.7.1.zip) | Godot 4.7.1 project only |
 | [`JimothyPet-godot-4.7.1.zip`](dist/JimothyPet-godot-4.7.1.zip) | Full repo (web + Godot) |
 | [`jimothy-android-1.0.28-gradle.apk`](dist/jimothy-android-1.0.28-gradle.apk) | Phone install with **closed-app alerts** (Gradle + NotificationScheduler) |
 | [`jimothy-android-1.0.28-gradle.aab`](dist/jimothy-android-1.0.28-gradle.aab) | Play Console bundle (`com.jimothypet.app`, versionCode 28, **no `USE_EXACT_ALARM`**). Re-sign with your upload keystore — see godot/README.md |
+
+Also available as a GitHub branch archive:  
+`https://github.com/rgarn023/JimothyPet/archive/refs/heads/cursor/jimothy-raccoon-pet-f814.zip`
 
 ## Life cycle (real time)
 
