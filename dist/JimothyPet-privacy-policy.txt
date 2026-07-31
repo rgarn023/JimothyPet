@@ -1,0 +1,91 @@
+JimothyPet Privacy Policy
+  
+
+  
+    
+      Privacy Policy for JimothyPet
+      
+        Effective date: July 27, 2026
+        Developer: Charoite Games (Robert Garnett)
+        App: JimothyPet (package com.jimothypet.app — Android / web virtual pet)
+      
+
+      
+        This Privacy Policy describes how JimothyPet (“the App”)
+        handles information. JimothyPet is a local virtual-pet game. It is designed
+        to keep your pet progress on your device and not to sell personal data.
+      
+
+      1. Information we collect
+      JimothyPet does not require an account and does not ask for your name, email, phone number, or payment details inside the App.
+      The App may store the following information on your device only:
+      
+        Game save data (pet stats, care progress, settings, unlocks)
+        Local preferences (for example sound mute, alert toggles, language, and sleep schedule)
+        Local notification scheduling data needed for optional care reminders
+      
+      This information stays on your device unless you choose to back up, share, or transfer device data through your own tools (for example device backup).
+
+      2. Permissions
+      Depending on your device and settings, JimothyPet may request:
+      
+        Notifications — to send optional care alerts (for example form changes, mess, boredom, or acting up). You can turn alerts off in the App or in system settings.
+        Schedule exact alarms / boot completed / wake lock (Android) — only as needed so scheduled care reminders can fire after you leave the App. The App does not use the restricted USE_EXACT_ALARM permission.
+      
+      JimothyPet does not use location, contacts, camera, microphone, or SMS permissions for its core features.
+
+      3. How we use information
+      On-device data is used only to:
+      
+        Run and restore your pet game
+        Remember your settings
+        Deliver optional local care notifications you enable
+      
+
+      4. Data sharing
+      
+        We do not sell your personal information. JimothyPet does not include third-party advertising SDKs or analytics SDKs in its normal design.
+        Local notifications are created on your device by the App / operating system; they are not used to profile you for ads.
+      
+      
+        If you download the App from Google Play, Google may process distribution, crash, and device information under Google’s own policies.
+      
+
+      5. Children’s privacy
+      
+        JimothyPet is a casual pet game and may be suitable for a general audience.
+        We do not knowingly collect personal information from children. Because the App keeps progress locally and does not require sign-in, it does not request child personal data.
+      
+
+      6. Data retention and deletion
+      
+        Game data remains on your device until you clear app storage, uninstall the App, or reset progress in-app (where available).
+        Uninstalling JimothyPet removes the App’s local data from that device (subject to any separate device backups you control).
+      
+
+      7. Security
+      
+        We take reasonable steps to keep the App functioning safely. No method of electronic storage is 100% secure.
+        Please keep your device updated and protect access to your phone.
+      
+
+      8. Your choices
+      
+        Disable care alerts in the App or in Android notification settings
+        Clear app data or uninstall to remove local saves
+        Contact us with privacy questions using the email below
+      
+
+      9. Changes to this policy
+      
+        We may update this Privacy Policy from time to time. The “Effective date” above will change when we do.
+        Continued use of the App after an update means you accept the revised policy.
+      
+
+      10. Contact
+      
+        If you have questions about this Privacy Policy or JimothyPet, contact:
+        
+        Charoite Games
+        Email: rgarn023@gmail.com
+        GitHub: github.com/rgarn023/JimothyPet
